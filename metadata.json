@@ -1,0 +1,8 @@
+{
+  "name": "DJ Ital Official | Jungle & D&B Pioneer & Vital Fest",
+  "description": "Official website and management dashboard for UK jungle pioneer DJ Ital (Kool FM, Vital Fest, V&A Museum acknowledged). Built with modern minimalist glass aesthetics and SQLite database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

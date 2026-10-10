@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DJ Ital Official | Jungle & D&B Pioneer & Vital Fest</title>
+    <meta name="description" content="Official website and management dashboard for UK jungle pioneer DJ Ital (Kool FM, Vital Fest, V&A Museum acknowledged). Built with modern minimalist glass aesthetics and SQLite database." />
+    <meta name="keywords" content="DJ Ital, Vital Fest, Jungle, Drum and Bass, Kool FM, pirate radio, UK bass, sound system, London, V&A Museum, vinyl dubplates, acetate recordings" />
+    <meta name="theme-color" content="#0a0a0a" />
+
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/png" href="/images/vital_fest_logo.png" />
+    <link rel="apple-touch-icon" href="/images/vital_fest_logo.png" />
+
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DJ Ital Official" />
+    <meta property="og:title" content="DJ Ital Official | Jungle & D&B Pioneer & Vital Fest" />
+    <meta property="og:description" content="Official website and management dashboard for UK jungle pioneer DJ Ital (Kool FM, Vital Fest, V&A Museum acknowledged). Built with modern minimalist glass aesthetics and SQLite database." />
+    <meta property="og:image" content="/images/dj_ital_hero_1790112374509.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DJ Ital - UK Jungle Pioneer and Vital Fest Founder" />
+    <meta property="og:locale" content="en_GB" />
+
+    <!-- Twitter / X Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@djital" />
+    <meta name="twitter:creator" content="@djital" />
+    <meta name="twitter:title" content="DJ Ital Official | Jungle & D&B Pioneer & Vital Fest" />
+    <meta name="twitter:description" content="Official website and management dashboard for UK jungle pioneer DJ Ital (Kool FM, Vital Fest, V&A Museum acknowledged). Built with modern minimalist glass aesthetics and SQLite database." />
+    <meta name="twitter:image" content="/images/dj_ital_hero_1790112374509.jpg" />
+
+    <!-- Google Fonts Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Syne:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Schema.org Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Person",
+          "@id": "https://djital.co.uk/#person",
+          "name": "DJ Ital",
+          "jobTitle": "Jungle & Drum and Bass Pioneer, Producer & Sound System Selector",
+          "description": "UK Jungle Drum and Bass Pioneer, Kool FM resident, and founder of Vital Fest.",
+          "image": "/images/dj_ital_hero_1790112374509.jpg",
+          "sameAs": [
+            "https://instagram.com/djital",
+            "https://soundcloud.com/djital",
+            "https://mixcloud.com/djital",
+            "https://youtube.com/@djital"
+          ],
+          "knowsAbout": [
+            "Jungle Music",
+            "Drum and Bass",
+            "Sound System Culture",
+            "Pirate Radio Heritage",
+            "Vinyl Dubplates"
+          ]
+        },
+        {
+          "@type": "MusicGroup",
+          "@id": "https://djital.co.uk/#artist",
+          "name": "DJ Ital",
+          "genre": [
+            "Jungle",
+            "Drum and Bass",
+            "Reggae",
+            "Dub",
+            "UK Bass"
+          ],
+          "foundingLocation": {
+            "@type": "City",
+            "name": "London, United Kingdom"
+          }
+        },
+        {
+          "@type": "EventSeries",
+          "@id": "https://djital.co.uk/#vitalfest",
+          "name": "Vital Fest",
+          "description": "Celebration of Jungle, Drum and Bass, and UK underground sound system heritage.",
+          "organizer": {
+            "@id": "https://djital.co.uk/#person"
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="antialiased selection:bg-amber-400/20 selection:text-amber-200 transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
