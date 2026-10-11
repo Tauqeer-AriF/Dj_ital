@@ -341,7 +341,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
           {activeMode === 'presets' && (
             <div className="space-y-1.5">
               <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">
-                Select from Curated London Archive:
+                Select from London Archive Photography:
               </div>
               <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto pr-1">
                 {ARCHIVE_IMAGE_PRESETS.map((preset) => {

@@ -53,6 +53,8 @@ export interface ProfileData {
   custom_accent_color?: string;
   body_font_preset?: string;
   logo_url?: string;
+  navbar_subtitle?: string;
+  subtitle?: string;
 }
 
 export interface MediaLibraryItem {
@@ -385,7 +387,7 @@ const DEFAULT_SITE_MEDIA: Array<[string, string, string, string, string, string]
     'va_museum_image',
     'Heritage & V&A Museum',
     'V&A Museum Archival Display',
-    'Official archival exhibition loan of DJ Ital 1990s flight jacket and flyers recognized by the Victoria and Albert Museum.',
+    'Official archival exhibition loan of DJ Ital 1990s flight jacket and flyers recognised by the Victoria and Albert Museum.',
     '/images/va_museum_exhibition_1790112416279.jpg',
     '/images/va_museum_exhibition_1790112416279.jpg',
   ],
@@ -449,7 +451,7 @@ const DEFAULT_SITE_MEDIA: Array<[string, string, string, string, string, string]
     'doc_ep4_thumbnail',
     'Documentary Series',
     'Episode 4: V&A Museum Recognition',
-    'Thumbnail poster for Episode 4: 35 years culminating in national museum archival honors.',
+    'Thumbnail poster for Episode 4: 35 years culminating in national museum archival honours.',
     '/images/va_museum_exhibition_1790112416279.jpg',
     '/images/va_museum_exhibition_1790112416279.jpg',
   ],
@@ -587,7 +589,7 @@ function ensureSchemaMigrations(db: Database) {
     addColumnIfNotExists(db, 'profile', 'regions_covered', "TEXT DEFAULT 'UK, Europe & International / Worldwide'");
     addColumnIfNotExists(db, 'profile', 'direct_email', "TEXT DEFAULT 'djital.booking@gmail.com'");
     addColumnIfNotExists(db, 'profile', 'whatsapp_number', "TEXT DEFAULT '+44 7900 123456'");
-    addColumnIfNotExists(db, 'profile', 'whatsapp_message', "TEXT DEFAULT 'Hi DJ Ital, I would like to inquire about booking you for an upcoming event.'");
+    addColumnIfNotExists(db, 'profile', 'whatsapp_message', "TEXT DEFAULT 'Hi DJ Ital, I would like to enquire about booking you for an upcoming event.'");
     addColumnIfNotExists(db, 'profile', 'shopify_merch_url', "TEXT DEFAULT 'https://vitalfest.myshopify.com'");
     addColumnIfNotExists(db, 'profile', 'merch_badge_text', "TEXT DEFAULT 'Official Vital Fest Merch & Vinyl Store'");
     addColumnIfNotExists(db, 'profile', 'dejavu_stream_url', "TEXT DEFAULT 'https://dejavufm.com'");
@@ -618,6 +620,8 @@ function ensureSchemaMigrations(db: Database) {
     addColumnIfNotExists(db, 'profile', 'custom_accent_color', "TEXT DEFAULT '#f59e0b'");
     addColumnIfNotExists(db, 'profile', 'body_font_preset', "TEXT DEFAULT 'jakarta'");
     addColumnIfNotExists(db, 'profile', 'logo_url', "TEXT DEFAULT '/images/vital_fest_logo.png'");
+    addColumnIfNotExists(db, 'profile', 'navbar_subtitle', "TEXT DEFAULT ''");
+    addColumnIfNotExists(db, 'profile', 'subtitle', "TEXT DEFAULT ''");
     addColumnIfNotExists(db, 'profile', 'stream_url', "TEXT DEFAULT ''");
     addColumnIfNotExists(db, 'profile', 'hero_stream_url', "TEXT DEFAULT ''");
     addColumnIfNotExists(db, 'profile', 'main_player_stream_url', "TEXT DEFAULT ''");
@@ -671,6 +675,31 @@ function ensureSchemaMigrations(db: Database) {
         UPDATE events
         SET flyer_image = '/images/vital_fest_crowd_1790112387611.jpg'
         WHERE flyer_image IS NULL OR flyer_image = '';
+      `);
+
+      // UK Grammar & Terminology Harmonization for existing SQLite records
+      db.run(`
+        UPDATE profile
+        SET bio_short = REPLACE(REPLACE(REPLACE(REPLACE(bio_short, 'recognized', 'recognised'), 'Recognized', 'Recognised'), 'memorialized', 'memorialised'), 'artifact', 'artefact'),
+            bio_full = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(bio_full, 'recognized', 'recognised'), 'Recognized', 'Recognised'), 'memorialized', 'memorialised'), 'Memorialized', 'Memorialised'), 'artifact', 'artefact'), 'artifacts', 'artefacts'),
+            whatsapp_message = REPLACE(whatsapp_message, 'inquire', 'enquire');
+      `);
+      db.run(`
+        UPDATE testimonials
+        SET quote = REPLACE(REPLACE(quote, 'organizer', 'organiser'), 'organizers', 'organisers');
+      `);
+      db.run(`
+        UPDATE releases
+        SET audio_theme = REPLACE(audio_theme, 'synthesizer', 'synthesiser'),
+            description = REPLACE(description, 'synthesizer', 'synthesiser');
+      `);
+      db.run(`
+        UPDATE gallery
+        SET caption = REPLACE(caption, 'artifact', 'artefact');
+      `);
+      db.run(`
+        UPDATE site_media
+        SET description = REPLACE(description, 'recognized', 'recognised');
       `);
     } catch {
       // Ignore migration errors if tables are empty
@@ -1068,7 +1097,9 @@ function initSchemaAndSeeds(db: Database) {
       slideshow_images TEXT,
       stream_url TEXT,
       hero_stream_url TEXT,
-      main_player_stream_url TEXT
+      main_player_stream_url TEXT,
+      navbar_subtitle TEXT,
+      subtitle TEXT
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -1230,8 +1261,8 @@ function initSchemaAndSeeds(db: Database) {
       'British Jungle & Drum and Bass Pioneer | Kool FM 94.5 | Founder of Vital Fest',
       'Hackney, East London, UK',
       '1991',
-      'DJ Ital (born 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he is best known for his work with the influential pirate radio station Kool FM and as the founder of Vital Fest. In April 2026, his historical importance to British music was officially recognized by the Victoria and Albert Museum (V&A East: The Music is Black).',
-      'DJ Ital (born 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he is best known for his work with the influential pirate radio station Kool FM and as the founder of Vital Fest. In 2026, his historical importance to British music was recognized by the Victoria and Albert Museum.\n\nCareer\nItal began his career in the early 1990s, emerging from the East London underground scene. He became a core member of Kool FM (94.5), a station central to the development of jungle and drum and bass.\n\n"Decibels"\nIn 1995, Ital produced the track "Decibel" (commonly known as "Decibels"), which was featured on the Kool FM - The 5th Anniversary compilation album. The track is cited as a significant example of the mid-90s jungle sound, blending complex breakbeats with heavy electronic-influenced basslines.\n\nMedia and Documentaries\nItal has been featured in several retrospective accounts of the jungle movement. In October 2006, he was interviewed by Giles Wood for Knowledge Magazine (Issue 85), where he discussed his technical approach to mixing and the evolution of the pirate radio scene.\nIn 2024, he produced and released the documentary series DJ Ital: The Journey on YouTube. The series serves as an archival project, documenting the "Golden Era" of jungle through first-hand accounts and rare footage.\n\nVital Fest\nDJ Ital is the founder and promoter of Vital Fest, a club night series and festival based primarily in Hackney, East London. Since its inception in 2023, the event has been hosted at several notable venues, including The Hackney Social (Bohemia Place), The Yard Theatre, and Arch 14. The event is characterized by its focus on the "foundation" sounds of the genre, frequently featuring veteran artists such as DJ Brockie, The Ragga Twins, and Jumpin Jack Frost. Resident Advisor has noted the event\'s role in preserving the community-led sound system culture of East London.\n\nCultural Recognition: V&A East: The Music is Black\nIn April 2026, DJ Ital\'s cultural legacy was memorialized by the Victoria and Albert Museum in the exhibition The Music is Black: A British Story at V&A East. The exhibition features Ital’s original Kool FM bomber jacket, displayed as a primary artifact to represent the pirate radio era\'s influence on British identity and the global electronic music landscape.',
+      'DJ Ital (born 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he is best known for his work with the influential pirate radio station Kool FM and as the founder of Vital Fest. In April 2026, his historical importance to British music was officially recognised by the Victoria and Albert Museum (V&A East: The Music is Black).',
+      'DJ Ital (born 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he is best known for his work with the influential pirate radio station Kool FM and as the founder of Vital Fest. In 2026, his historical importance to British music was recognised by the Victoria and Albert Museum.\n\nCareer\nItal began his career in the early 1990s, emerging from the East London underground scene. He became a core member of Kool FM (94.5), a station central to the development of jungle and drum and bass.\n\n"Decibels"\nIn 1995, Ital produced the track "Decibel" (commonly known as "Decibels"), which was featured on the Kool FM - The 5th Anniversary compilation album. The track is cited as a significant example of the mid-90s jungle sound, blending complex breakbeats with heavy electronic-influenced basslines.\n\nMedia and Documentaries\nItal has been featured in several retrospective accounts of the jungle movement. In October 2006, he was interviewed by Giles Wood for Knowledge Magazine (Issue 85), where he discussed his technical approach to mixing and the evolution of the pirate radio scene.\nIn 2024, he produced and released the documentary series DJ Ital: The Journey on YouTube. The series serves as an archival project, documenting the "Golden Era" of jungle through first-hand accounts and rare footage.\n\nVital Fest\nDJ Ital is the founder and promoter of Vital Fest, a club night series and festival based primarily in Hackney, East London. Since its inception in 2023, the event has been hosted at several notable venues, including The Hackney Social (Bohemia Place), The Yard Theatre, and Arch 14. The event is characterized by its focus on the "foundation" sounds of the genre, frequently featuring veteran artists such as DJ Brockie, The Ragga Twins, and Jumpin Jack Frost. Resident Advisor has noted the event\'s role in preserving the community-led sound system culture of East London.\n\nCultural Recognition: V&A East: The Music is Black\nIn April 2026, DJ Ital\'s cultural legacy was memorialised by the Victoria and Albert Museum in the exhibition The Music is Black: A British Story at V&A East. The exhibition features Ital’s original Kool FM bomber jacket, displayed as a primary artefact to represent the pirate radio era\'s influence on British identity and the global electronic music landscape.',
       'IP1 Agency London',
       'djital@mail.com',
       2026,
@@ -1242,7 +1273,7 @@ function initSchemaAndSeeds(db: Database) {
       'UK, Europe & International / Worldwide',
       'djital@mail.com',
       '+44 7900 123456',
-      'Hi DJ Ital, I would like to inquire about booking you for an event.',
+      'Hi DJ Ital, I would like to enquire about booking you for an event.',
       'https://vitalfest.myshopify.com',
       'Official Vital Fest Merch & Vinyl Store',
       'https://dejavufm.com',

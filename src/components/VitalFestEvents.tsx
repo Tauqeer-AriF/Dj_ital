@@ -39,7 +39,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return { day: dateStr.slice(-2), month: 'TBA', year: '' };
       const day = d.getDate().toString().padStart(2, '0');
-      const month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+      const month = d.toLocaleString('en-GB', { month: 'short' }).toUpperCase();
       const year = d.getFullYear().toString();
       return { day, month, year };
     } catch {
@@ -57,28 +57,28 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
           <ScrollReveal variant="fade-up">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
               <div className="space-y-3 max-w-2xl">
-                <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-                  <span className="text-amber-600 dark:text-amber-400 font-bold">02 / SOUND SYSTEM SCHEDULE</span>
+                <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                  <span className="sound-badge">[ VITAL FEST SESSIONS // LIVE DATES ]</span>
                   <span aria-hidden="true" className="opacity-60">·</span>
-                  <span className="text-neutral-700 dark:text-white">LIVE RAVES & DATES</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">EAST LONDON SOUND CLASH</span>
                 </div>
                 <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
                   Vital Fest & Live Dates
                 </h2>
                 <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base font-normal leading-relaxed">
-                  High-octane East London jungle dancefloors, authentic dubplate clashes, and full Vital Fest curated lineups with official event flyers.
+                  Heavyweight East London jungle sessions, dubplate clashes, and full Vital Fest line-ups with original event flyers.
                 </p>
               </div>
 
-              {/* Interactive Filter Control */}
-              <div className="flex items-center gap-1 p-1 bg-neutral-200/80 dark:bg-neutral-900 border border-neutral-300 dark:border-white/20 rounded-xl shrink-0 shadow-md self-start md:self-auto">
+              {/* Interactive Segmented Filter Control (Zero Pills) */}
+              <div className="sound-filter-group shrink-0 self-start md:self-auto">
                 {(['All', 'Upcoming', 'Past'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setFilter(tab)}
-                    className={`px-4 py-2 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer ${
+                    className={`sound-filter-tab ${
                       filter === tab
-                        ? 'bg-amber-400 text-neutral-950 shadow-md scale-102'
+                        ? 'bg-amber-400 text-neutral-950 font-black shadow-sm'
                         : 'text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-300'
                     }`}
                   >
@@ -92,10 +92,10 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
           {/* Events Grid */}
           {filteredEvents.length === 0 ? (
             <ScrollReveal variant="fade-up">
-              <div className="text-center py-20 border-2 border-dashed border-neutral-300 dark:border-white/20 rounded-3xl bg-white/70 dark:bg-neutral-900/60 text-neutral-900 dark:text-white text-sm space-y-2">
+              <div className="text-center py-20 border border-dashed border-neutral-300 dark:border-white/20 rounded sound-cabinet text-neutral-900 dark:text-white text-sm space-y-2">
                 <CalendarDays className="w-8 h-8 mx-auto text-amber-500 dark:text-amber-400 opacity-80" />
-                <p className="font-bold text-neutral-900 dark:text-white">No events matching this filter currently.</p>
-                <p className="text-xs text-neutral-600 dark:text-white/80">New Vital Fest announcements will appear here automatically.</p>
+                <p className="font-bold text-neutral-900 dark:text-white font-industrial text-base">No events matching this filter currently.</p>
+                <p className="text-xs text-neutral-600 dark:text-white/80 font-industrial">New Vital Fest announcements will appear here automatically.</p>
               </div>
             </ScrollReveal>
           ) : (
@@ -112,15 +112,12 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                     delay={idx * 100}
                   >
                     <div
-                      className={`group hover-glass-sheen relative rounded-3xl transition-all duration-300 flex flex-col justify-between shadow-xl hover:-translate-y-1.5 h-full overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-amber-400/40 before:to-transparent ${
+                      className={`group relative rounded sound-cabinet transition-all duration-300 flex flex-col justify-between shadow-xl hover:-translate-y-1 h-full overflow-hidden ${
                         isUpcoming
-                          ? 'border border-amber-400/60 dark:border-amber-400/40 glass-panel-amber hover:border-amber-400 shadow-[0_8px_35px_rgba(245,158,11,0.12)] dark:shadow-[0_12px_45px_rgba(0,0,0,0.7)]'
-                          : 'border border-neutral-200 dark:border-white/10 glass-panel hover:border-neutral-300 dark:hover:border-white/20'
+                          ? 'border border-amber-500/60 dark:border-amber-400/50 shadow-[0_8px_35px_rgba(245,158,11,0.15)]'
+                          : 'border border-neutral-300 dark:border-white/10'
                       }`}
                     >
-                      {/* Ambient Glow Sweep on Hover */}
-                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-amber-400/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
                       {/* Event Flyer Banner */}
                       <div className="relative aspect-[16/8] sm:aspect-[16/7] overflow-hidden bg-neutral-900 border-b border-neutral-200 dark:border-white/10">
                         <img
@@ -136,24 +133,24 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                         {/* Click to Enlarge Flyer Trigger */}
                         <button
                           onClick={() => setEnlargedFlyer({ title: evt.title, image: flyerUrl })}
-                          className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/30 text-white text-[11px] font-mono font-bold hover:bg-amber-400 hover:text-neutral-950 transition-colors cursor-pointer shadow-lg"
+                          className="hardware-btn absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded bg-black/90 backdrop-blur-md border border-white/30 text-white text-[11px] font-industrial font-bold hover:bg-amber-400 hover:text-neutral-950 transition-colors cursor-pointer shadow-lg"
                           title="View Full-Size Show Flyer"
                         >
                           <ImageIcon className="w-3.5 h-3.5" />
-                          <span>View Flyer</span>
+                          <span>VIEW FLYER</span>
                         </button>
 
                         {/* Date badge on top of flyer */}
                         <div className="absolute bottom-3 left-4 flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-amber-400 text-neutral-950 flex flex-col items-center justify-center font-bold shadow-lg">
-                            <span className="text-[10px] font-mono uppercase tracking-wider leading-none">
+                          <div className="w-12 h-12 rounded bg-amber-400 text-neutral-950 flex flex-col items-center justify-center font-bold shadow-lg">
+                            <span className="text-[10px] font-industrial font-black uppercase tracking-wider leading-none">
                               {month}
                             </span>
                             <span className="text-xl font-display font-black leading-tight mt-0.5">
                               {day}
                             </span>
                           </div>
-                          <div className="text-white text-xs font-mono drop-shadow-md">
+                          <div className="text-white text-xs font-industrial drop-shadow-md">
                             <div className="font-bold flex items-center gap-1.5 text-white">
                               <span>{year}</span>
                               {evt.start_time && (
@@ -163,7 +160,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                                 </>
                               )}
                             </div>
-                            <div className="text-amber-300 font-bold">{evt.price_text}</div>
+                            <div className="text-amber-300 font-black">{evt.price_text}</div>
                           </div>
                         </div>
                       </div>
@@ -176,7 +173,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                             <h3 className="text-xl sm:text-2xl font-display font-black text-neutral-950 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-snug">
                               {evt.title}
                             </h3>
-                            <span className="shrink-0 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-300 dark:bg-white/10 dark:text-white dark:border-white/20">
+                            <span className="shrink-0 sound-tag">
                               {evt.status}
                             </span>
                           </div>
@@ -184,16 +181,16 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                           {/* Venue & Location */}
                           <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-700 dark:text-white font-medium">
                             <MapPin className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
-                            <span className="font-bold text-neutral-900 dark:text-white">{evt.venue}</span>
+                            <span className="font-bold text-neutral-900 dark:text-white font-industrial text-sm">{evt.venue}</span>
                             <span aria-hidden="true" className="text-neutral-400 dark:text-white/60">/</span>
                             <span className="truncate text-neutral-600 dark:text-white/90">{evt.location}</span>
                           </div>
 
                           {/* Lineup Highlights */}
                           <div className="pt-3 border-t border-neutral-200 dark:border-white/10 space-y-1.5">
-                            <div className="text-[11px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-bold">
+                            <div className="text-[11px] font-industrial uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-black">
                               <Users className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                              <span>Confirmed Lineup & Hosts</span>
+                              <span>CONFIRMED LINEUP & SELECTORS</span>
                             </div>
                             <p className="text-xs sm:text-sm text-neutral-700 dark:text-white leading-relaxed font-normal">
                               {evt.lineup}
@@ -203,7 +200,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
 
                         {/* Footer Action */}
                         <div className="pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-neutral-500 dark:text-white/70 font-bold">
+                          <span className="text-[11px] font-industrial text-neutral-500 dark:text-white/70 font-bold uppercase tracking-wider">
                             ARCHIVE REF #{evt.id}
                           </span>
 
@@ -211,10 +208,10 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                             href={evt.ticket_url || 'https://djital.me/vitalfest'}
                             target="_blank"
                             rel="noreferrer"
-                            className="group/btn hover-shimmer flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-all shadow-lg shadow-amber-400/20 active:scale-95 cursor-pointer hover:scale-102"
+                            className="hardware-btn group/btn flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-industrial font-black transition-all shadow-md active:scale-95 cursor-pointer"
                           >
                             <Ticket className="w-3.5 h-3.5 group-hover/btn:rotate-12 transition-transform" />
-                            <span>Tickets & Entry</span>
+                            <span>TICKETS & ENTRY</span>
                             <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
                           </a>
                         </div>
@@ -232,15 +229,15 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
           <div className="pt-8 border-t border-neutral-200 dark:border-white/10 space-y-6">
             <ScrollReveal variant="fade-up">
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-amber-600 dark:text-amber-400 font-bold">
+                <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-widest uppercase text-amber-600 dark:text-amber-400">
                   <Quote className="w-4 h-4" />
-                  <span>SOCIAL PROOF & ACCREDITATIONS</span>
+                  <span>[ ACCREDITATIONS & TESTIMONIALS ]</span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-neutral-950 dark:text-white uppercase tracking-tight">
-                  Venue & Promoter Testimonials
+                  Venue & Promoter Endorsements
                 </h3>
                 <p className="text-xs sm:text-sm text-neutral-600 dark:text-white/90 max-w-xl font-normal">
-                  Word from festival organizers, venue managers, and music historians who have booked DJ Ital.
+                  Word from festival organisers, venue managers, and music historians who have booked DJ Ital.
                 </p>
               </div>
             </ScrollReveal>
@@ -248,7 +245,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {testimonials.map((t, idx) => (
                 <ScrollReveal key={t.id} variant="fade-up" delay={idx * 80}>
-                  <div className="p-6 rounded-2xl glass-card hover-glass-sheen shadow-xl flex flex-col justify-between h-full space-y-4 text-neutral-900 dark:text-white">
+                  <div className="p-6 rounded sound-card shadow-xl flex flex-col justify-between h-full space-y-4 text-neutral-900 dark:text-white">
                     <div className="space-y-3">
                       <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400">
                         {[...Array(t.rating || 5)].map((_, i) => (
@@ -260,11 +257,11 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-neutral-200 dark:border-white/10">
-                      <div className="text-xs font-display font-bold text-neutral-950 dark:text-white">
+                    <div className="pt-3 border-t border-neutral-200 dark:border-white/10 font-industrial">
+                      <div className="text-xs font-black uppercase text-neutral-950 dark:text-white">
                         {t.author_name}
                       </div>
-                      <div className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
                         {t.role_venue}
                       </div>
                     </div>
@@ -280,18 +277,18 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
           <div className="pt-8 border-t border-neutral-200 dark:border-white/10 space-y-6">
             <ScrollReveal variant="fade-up">
               <div className="text-center space-y-1">
-                <div className="text-xs font-mono font-bold tracking-widest uppercase text-amber-600 dark:text-amber-400">
-                  TOP SPOTS, FESTIVALS & INSTITUTIONS PLAYED
+                <div className="text-xs font-industrial font-black tracking-widest uppercase text-amber-600 dark:text-amber-400">
+                  [ TOP CLUBS, FESTIVALS & INSTITUTIONS PLAYED ]
                 </div>
               </div>
             </ScrollReveal>
 
             <ScrollReveal variant="fade-up" delay={100}>
-              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 {venueLogos.map((v) => (
                   <div
                     key={v.id}
-                    className="px-5 py-3 rounded-2xl glass-card hover-shimmer flex items-center gap-2 text-xs font-mono font-bold tracking-wider text-neutral-900 dark:text-white hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors shadow-sm"
+                    className="px-4 py-2.5 rounded sound-card flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-neutral-900 dark:text-white hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors shadow-sm"
                   >
                     <Building2 className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                     <span>{v.name}</span>
@@ -312,15 +309,15 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl max-h-[90vh] rounded-3xl overflow-hidden border border-white/20 bg-neutral-950 shadow-2xl flex flex-col"
+            className="relative max-w-2xl max-h-[90vh] rounded sound-cabinet overflow-hidden border border-white/20 bg-neutral-950 shadow-2xl flex flex-col"
           >
             <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 text-white">
-              <span className="text-xs font-mono font-bold truncate pr-4 text-white">
+              <span className="text-xs font-industrial font-bold uppercase tracking-wider truncate pr-4 text-white">
                 {enlargedFlyer.title} — Official Event Flyer
               </span>
               <button
                 onClick={() => setEnlargedFlyer(null)}
-                className="p-1 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded text-white/80 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -329,7 +326,7 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
               <img
                 src={enlargedFlyer.image}
                 alt={enlargedFlyer.title}
-                className="w-full h-auto rounded-2xl object-contain max-h-[78vh]"
+                className="w-full h-auto rounded object-contain max-h-[78vh]"
               />
             </div>
           </div>

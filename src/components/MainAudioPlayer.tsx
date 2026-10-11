@@ -185,8 +185,8 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
       {/* Embedded Stream Modal (for SoundCloud or Mixcloud streams) */}
       {activeEmbedUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-700 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between text-xs font-mono">
+          <div className="w-full max-w-2xl sound-cabinet rounded border border-neutral-700 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between text-xs font-industrial uppercase tracking-wider">
               <div className="flex items-center gap-2 text-amber-400 font-bold">
                 <Radio className="w-4 h-4 animate-pulse" />
                 <span>EXTERNAL AUDIO STREAM DECK</span>
@@ -194,12 +194,12 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveEmbedUrl(null)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                className="hardware-btn p-1.5 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="w-full rounded-2xl overflow-hidden bg-black aspect-[16/6] min-h-[160px] border border-white/10">
+            <div className="w-full rounded overflow-hidden bg-black aspect-[16/6] min-h-[160px] border border-white/10">
               <iframe
                 width="100%"
                 height="160"
@@ -217,7 +217,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveEmbedUrl(null)}
-                className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-xs font-bold transition-colors cursor-pointer"
+                className="hardware-btn px-4 py-2 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-industrial text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Close Deck
               </button>
@@ -239,61 +239,107 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
         onError={handleAudioError}
       />
 
-      {/* Minimized: Just the Play/Pause button */}
+      {/* Minimized: Sound System Audio Console Badge */}
       {isMinimized ? (
         <aside
-          aria-label="Audio player (minimized)"
-          className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-40 transition-all duration-300 animate-in fade-in zoom-in-95 group"
+          aria-label="Sound System Audio Console (Minimized)"
+          className="fixed top-20 sm:top-24 right-3 sm:right-6 z-40 transition-all duration-300 animate-in fade-in slide-in-from-right-4 group"
         >
-          <div className="relative p-1.5 rounded-full glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.35)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.85)] border border-amber-400/40 flex items-center justify-center">
-            {/* Ambient amber glow when playing */}
+          <div className="p-2 sm:p-2.5 rounded-lg sound-cabinet border border-amber-500/40 text-neutral-900 dark:text-white shadow-2xl flex items-center gap-3 relative overflow-hidden backdrop-blur-2xl">
+            {/* Ambient amber glow when transmitting */}
             {isPlaying && (
-              <span className="absolute inset-0 rounded-full bg-amber-400/20 blur-md animate-pulse" />
+              <span className="absolute inset-0 bg-amber-400/10 pointer-events-none animate-pulse" />
             )}
 
-            {/* Minimal Play / Pause Floating Button */}
+            {/* Live Frequency / Status Indicator */}
+            <div className="flex items-center gap-2 pl-1.5">
+              <div className="flex items-center gap-0.5 h-3.5">
+                <span className={`w-1 bg-amber-400 rounded-none ${isPlaying ? 'vu-bar-1' : 'h-1'}`} />
+                <span className={`w-1 bg-amber-400 rounded-none ${isPlaying ? 'vu-bar-2' : 'h-2'}`} />
+                <span className={`w-1 bg-amber-500 rounded-none ${isPlaying ? 'vu-bar-3' : 'h-1.5'}`} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-industrial font-black tracking-wider text-amber-600 dark:text-amber-400 uppercase leading-none">
+                  {isPlaying ? 'TRANSMITTING' : 'DUB STATION'}
+                </span>
+                <span className="text-[8px] font-industrial text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                  94.5 MHz LONDON
+                </span>
+              </div>
+            </div>
+
+            {/* Tactile Hardware Play/Pause Button */}
             <button
               type="button"
               onClick={onTogglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              title={isPlaying ? 'Pause' : 'Play'}
-              className={`hover-shimmer w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center shadow-2xl shadow-amber-400/40 hover:scale-105 active:scale-95 transition-all cursor-pointer font-bold relative z-10 ${
-                isPlaying ? 'ring-4 ring-amber-400/35' : ''
-              }`}
+              aria-label={isPlaying ? 'Pause transmission' : 'Play transmission'}
+              title={isPlaying ? 'Pause transmission' : 'Play transmission'}
+              className="hardware-btn w-9 h-9 sm:w-10 sm:h-10 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center shadow-lg transition-all"
             >
-              {/* Subtle spinning vinyl dash ring if playing */}
-              {isPlaying && (
-                <span className="absolute inset-0 rounded-full border-2 border-neutral-950/30 border-dashed animate-spin-vinyl" />
-              )}
               {isPlaying ? (
-                <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current relative z-10" />
+                <Pause className="w-4 h-4 fill-current" />
               ) : (
-                <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5 relative z-10" />
+                <Play className="w-4 h-4 fill-current ml-0.5" />
               )}
             </button>
 
-            {/* Subtle Expand Button on top corner */}
+            {/* Expand Console Trigger */}
             <button
               type="button"
               onClick={() => handleToggleMinimize()}
-              aria-label="Expand player bar"
-              title="Expand player bar"
-              className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-neutral-900/95 border border-white/25 text-white hover:text-amber-400 hover:bg-neutral-800 flex items-center justify-center shadow-lg transition-all cursor-pointer opacity-90 group-hover:opacity-100 hover:scale-110 backdrop-blur-md z-20"
+              aria-label="Expand sound console"
+              title="Expand sound console"
+              className="hardware-btn p-1.5 rounded border border-neutral-300 dark:border-white/20 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors"
             >
-              <ChevronUp className="w-3.5 h-3.5" />
+              <ChevronDown className="w-4 h-4" />
             </button>
           </div>
         </aside>
       ) : (
         <aside
-          aria-label="Audio player"
-          className="fixed bottom-4 sm:bottom-6 left-3 right-3 sm:left-6 sm:right-6 max-w-5xl mx-auto z-40 transition-all duration-300"
+          aria-label="Sound System Master Dub Station"
+          className="fixed top-20 sm:top-24 right-3 sm:right-6 z-40 max-w-sm sm:max-w-md w-[calc(100vw-1.5rem)] sm:w-88 transition-all duration-300 animate-in fade-in slide-in-from-top-4"
         >
-          <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl glass-dock border border-neutral-200/80 dark:border-amber-400/25 text-neutral-900 dark:text-white relative overflow-hidden transition-all duration-300 before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-amber-400/40 before:to-transparent">
-            {/* Ambient subtle warm glow when playing */}
-            {isPlaying && (
-              <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/10 blur-3xl rounded-full pointer-events-none" />
-            )}
+          <div className="p-4 sm:p-5 rounded-lg sound-cabinet border border-neutral-300 dark:border-amber-500/30 text-neutral-900 dark:text-white shadow-2xl relative overflow-hidden backdrop-blur-2xl">
+            {/* Corner Industrial Rivets */}
+            <span className="absolute top-1.5 left-2 text-[9px] font-mono text-neutral-400 dark:text-neutral-600 select-none">＋</span>
+            <span className="absolute top-1.5 right-2 text-[9px] font-mono text-neutral-400 dark:text-neutral-600 select-none">＋</span>
+            <span className="absolute bottom-1 left-2 text-[9px] font-mono text-neutral-400 dark:text-neutral-600 select-none">＋</span>
+            <span className="absolute bottom-1 right-2 text-[9px] font-mono text-neutral-400 dark:text-neutral-600 select-none">＋</span>
+
+            {/* Console Masthead Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10 mb-3.5">
+              <div className="flex items-center gap-2">
+                <span className="sound-tag">
+                  DUB STATION MK-IV
+                </span>
+                <span className="text-[10px] font-industrial text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-bold">
+                  EAST LONDON
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Real-time VU meter strips */}
+                <div className="flex items-center gap-0.5 h-3 px-1.5 py-0.5 rounded bg-neutral-950/20 dark:bg-black/60 border border-neutral-200 dark:border-white/10">
+                  <span className={`w-0.5 bg-emerald-500 ${isPlaying ? 'vu-bar-1' : 'h-1'}`} />
+                  <span className={`w-0.5 bg-emerald-400 ${isPlaying ? 'vu-bar-2' : 'h-1.5'}`} />
+                  <span className={`w-0.5 bg-amber-400 ${isPlaying ? 'vu-bar-3' : 'h-2'}`} />
+                  <span className={`w-0.5 bg-amber-500 ${isPlaying ? 'vu-bar-4' : 'h-1'}`} />
+                  <span className={`w-0.5 bg-red-500 ${isPlaying ? 'vu-bar-5' : 'h-0.5'}`} />
+                </div>
+
+                {/* Minimize Button */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleMinimize()}
+                  aria-label="Minimize sound console"
+                  title="Minimize sound console"
+                  className="hardware-btn p-1 rounded border border-neutral-300 dark:border-white/15 text-neutral-500 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-center justify-between gap-3 sm:gap-6 relative z-10">
             
@@ -301,7 +347,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {/* Spinning Dubplate Icon */}
               <div
-                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-neutral-950 border border-amber-400/40 p-1 flex items-center justify-center shrink-0 relative overflow-hidden transition-all ${
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded bg-neutral-950 border border-amber-400/40 p-1 flex items-center justify-center shrink-0 relative overflow-hidden transition-all ${
                   isPlaying ? 'shadow-[0_0_20px_rgba(245,158,11,0.5)] ring-2 ring-amber-400/30' : ''
                 }`}
               >
@@ -317,12 +363,12 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
               {/* Title & Metadata */}
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <span className="text-[10px] font-industrial font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                     {isPlaying && !isBuffering && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="w-1.5 h-1.5 rounded-none bg-emerald-400 animate-ping" />
                     )}
                     {isBuffering && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-spin" />
+                      <span className="w-1.5 h-1.5 rounded-none bg-amber-400 animate-spin" />
                     )}
                     {isCurrentLiveStream
                       ? 'LIVE RADIO STREAM'
@@ -332,13 +378,13 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                   </span>
 
                   {isBuffering && (
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-mono font-bold animate-pulse">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-industrial font-bold uppercase animate-pulse">
                       BUFFERING...
                     </span>
                   )}
 
                   {retryWithProxy && (
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-mono font-bold">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-industrial font-bold uppercase">
                       SECURE PROXY ACTIVE
                     </span>
                   )}
@@ -353,7 +399,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                 </div>
 
                 {streamError && (
-                  <div className="flex items-center gap-2 text-[11px] font-mono text-red-500 dark:text-red-400 pt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] font-industrial text-red-500 dark:text-red-400 pt-0.5 uppercase tracking-wider font-bold">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">{streamError}</span>
                     <button
@@ -369,76 +415,45 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
               </div>
             </div>
 
-            {/* Middle Playback Controls */}
+            {/* Middle & Right Playback Controls */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 type="button"
                 onClick={onTogglePlay}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-                className="hover-shimmer w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/30 transition-transform active:scale-95 cursor-pointer font-bold relative overflow-hidden"
+                disabled={isBuffering}
+                aria-label={isPlaying ? 'Pause transmission' : 'Start transmission'}
+                className="hardware-btn px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center gap-1.5 shadow-md active:scale-95 text-xs font-industrial font-black"
               >
                 {isPlaying ? (
-                  <Pause className="w-5 h-5 fill-current" />
+                  <>
+                    <Pause className="w-4 h-4 fill-current" />
+                    <span>MUTE AIR</span>
+                  </>
                 ) : (
-                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                  <>
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                    <span>ENGAGE DUB</span>
+                  </>
                 )}
               </button>
-            </div>
-
-            {/* Right Stream Sources & Quick Switchers */}
-            <div className="flex items-center gap-2 shrink-0">
-              {liveStreamUrl && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isEmbedStream(liveStreamUrl)) {
-                      handleOpenSoundCloudModal(liveStreamUrl);
-                    } else if (onPlayLiveStream) {
-                      onPlayLiveStream();
-                    } else {
-                      onTogglePlay();
-                    }
-                  }}
-                  className={`hidden sm:flex px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all items-center gap-1.5 cursor-pointer border hover-shimmer ${
-                    isCurrentLiveStream && isPlaying
-                      ? 'bg-amber-400 text-neutral-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
-                      : 'bg-neutral-100/80 dark:bg-white/10 hover:bg-amber-400 hover:text-neutral-950 text-neutral-800 dark:text-white border-neutral-300 dark:border-white/15'
-                  }`}
-                  title={`Live Radio Stream: ${liveStreamUrl}`}
-                >
-                  <Radio className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{isCurrentLiveStream && isPlaying ? 'Now Live' : 'Live Stream'}</span>
-                </button>
-              )}
 
               {/* Volume Button */}
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className="p-2 rounded-xl text-neutral-600 dark:text-white/80 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                className="hardware-btn p-2 rounded border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
-
-              {/* Minimal Minimize Button */}
-              <button
-                type="button"
-                onClick={() => handleToggleMinimize()}
-                className="p-2 rounded-xl text-neutral-600 dark:text-white/80 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                title="Minimize player bar"
-                aria-label="Minimize audio player bar"
-              >
-                <ChevronDown className="w-4 h-4" />
+                {isMuted ? <VolumeX className="w-4 h-4 text-red-500" /> : <Volume2 className="w-4 h-4 text-amber-500" />}
               </button>
             </div>
           </div>
 
           {/* Real-time Visualizer Strip when playing */}
           {isPlaying && (
-            <div className="mt-2.5 pt-2 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between text-[11px] font-mono">
+            <div className="mt-2.5 pt-2 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between text-[11px] font-industrial uppercase tracking-wider">
               <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span className="w-2 h-2 rounded-none bg-emerald-400 animate-ping shrink-0" />
                 <span>
                   {isBuffering
                     ? 'STREAM CONNECTING · BUFFERING RADIO FEED'
@@ -450,7 +465,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                   <span
                     key={i}
                     style={{ height: `${h * 0.16}px` }}
-                    className="w-1 bg-amber-400 rounded-full animate-subwoofer inline-block"
+                    className="w-1 bg-amber-400 rounded-none animate-subwoofer inline-block"
                   />
                 ))}
               </div>

@@ -166,7 +166,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
       <ConfirmModal
         isOpen={isResetConfirmOpen}
         title="Confirm SQLite Database Reset"
-        message="Are you sure you want to reset the SQLite database back to original seed records? All customized events, releases, bookings, and profile copy will be reverted to the factory state."
+        message="Are you sure you want to reset the SQLite database back to original seed records? All customised events, releases, bookings, and profile copy will be reverted to the factory state."
         confirmLabel="Reset Database"
         cancelLabel="Keep Current DB"
         isDestructive

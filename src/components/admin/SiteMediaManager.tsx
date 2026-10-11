@@ -94,13 +94,13 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 uppercase font-bold tracking-wider">
             <Layers className="w-4 h-4" />
-            <span>Website Media Control Center</span>
+            <span>Website Media Control Centre</span>
           </div>
           <h3 className="text-2xl font-display font-black text-neutral-950 dark:text-white tracking-tight">
             Site Images & Visual Assets
           </h3>
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-            Customize every image on the website in real-time: upload files from your device, choose from curated archive photography, or paste custom URLs. Changes persist directly into the SQLite database.
+            Customise every image on the website in real-time: upload files from your device, choose from archive photography, or paste custom URLs. Changes persist directly into the SQLite database.
           </p>
         </div>
 

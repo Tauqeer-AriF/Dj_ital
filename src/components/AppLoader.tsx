@@ -27,7 +27,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
 
   const loadingSteps = [
     { threshold: 0, text: 'LOADING VITAL FEST AUDIO ARCHIVES...' },
-    { threshold: 28, text: 'INITIALIZING SQLITE DUB ARCHIVE...' },
+    { threshold: 28, text: 'INITIALISING SQLITE DUB ARCHIVE...' },
     { threshold: 58, text: 'SYNCING KOOL FM 94.5 BROADCAST MASTERS...' },
     { threshold: 82, text: 'ENGAGING 168 BPM JUNGLE AUDIO ENGINE...' },
   ];

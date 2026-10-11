@@ -90,7 +90,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">Releases & Music Manager</h3>
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-            Catalog tracks, vinyl dubplates, and pirate radio archive master tapes.
+            Catalogue tracks, vinyl dubplates, and pirate radio archive master tapes.
           </p>
         </div>
         <button
@@ -222,7 +222,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Catalog Number</label>
+                  <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Catalogue Number</label>
                   <input
                     type="text"
                     value={formData.catalog_number}

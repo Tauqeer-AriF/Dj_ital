@@ -60,24 +60,16 @@ export const BackToTop: React.FC = () => {
 
   return (
     <div
-      className="fixed bottom-20 sm:bottom-24 right-3.5 sm:right-6 z-30 select-none pointer-events-auto"
+      className="fixed bottom-6 sm:bottom-8 right-4 sm:right-6 z-30 select-none pointer-events-auto"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Outer Sound System Radar Waves (Hover & Ascend Pulse) */}
-      <div className="absolute inset-0 -m-2 pointer-events-none flex items-center justify-center">
-        {/* Continuous subtle pulse ring */}
-        <span
-          style={{ backgroundColor: 'var(--accent-glow)' }}
-          className={`absolute w-full h-full rounded-full blur-sm transition-all duration-700 ${
-            isHovered ? 'scale-125 opacity-80 animate-ping' : 'scale-100 opacity-0'
-          }`}
-        />
-        {/* Instant ripple on click launch */}
+      <div className="absolute inset-0 -m-1.5 pointer-events-none flex items-center justify-center">
         {isAscending && (
           <span
             style={{ borderColor: 'var(--accent-primary)' }}
-            className="absolute w-16 h-16 rounded-full border-2 animate-ping duration-500 opacity-90 pointer-events-none"
+            className="absolute w-14 h-14 rounded-md border-2 animate-ping duration-500 opacity-90 pointer-events-none"
           />
         )}
       </div>
@@ -95,9 +87,9 @@ export const BackToTop: React.FC = () => {
               }
             : undefined
         }
-        className={`group relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-300 cursor-pointer shadow-2xl ${
+        className={`group hardware-btn relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-md transition-all duration-300 cursor-pointer shadow-2xl ${
           isHovered
-            ? 'scale-110 bg-neutral-100 dark:bg-neutral-950'
+            ? 'scale-105 bg-neutral-100 dark:bg-neutral-950'
             : 'scale-100 border-neutral-300 dark:border-white/15 bg-white/95 dark:bg-neutral-900/90 text-neutral-800 dark:text-neutral-200'
         } border backdrop-blur-xl active:scale-95`}
         title={`Rewind to top (${Math.round(scrollProgress)}%)`}
@@ -166,7 +158,7 @@ export const BackToTop: React.FC = () => {
           {isAscending && (
             <div
               style={{ color: 'var(--accent-primary)' }}
-              className="absolute inset-0 flex items-center justify-center animate-pulse font-mono text-[9px] font-black tracking-tighter"
+              className="absolute inset-0 flex items-center justify-center animate-pulse font-industrial text-[10px] font-black tracking-wider uppercase"
             >
               REWIND
             </div>
@@ -179,7 +171,7 @@ export const BackToTop: React.FC = () => {
             borderColor: 'var(--accent-focus)',
             color: 'var(--accent-primary)',
           }}
-          className={`absolute -top-9 right-1/2 translate-x-1/2 px-2.5 py-1 rounded-md bg-white/95 dark:bg-neutral-950/95 text-[10px] font-mono whitespace-nowrap shadow-xl border border-neutral-300 dark:border-white/20 pointer-events-none transition-all duration-200 flex items-center gap-1.5 ${
+          className={`absolute -top-9 right-1/2 translate-x-1/2 px-2.5 py-1 rounded bg-white/95 dark:bg-neutral-950/95 text-[10px] font-industrial whitespace-nowrap shadow-xl border border-neutral-300 dark:border-white/20 pointer-events-none transition-all duration-200 flex items-center gap-1.5 uppercase font-bold tracking-wider ${
             isHovered
               ? 'opacity-100 -translate-y-1 scale-100'
               : 'opacity-0 translate-y-1 scale-90 pointer-events-none'
@@ -187,11 +179,11 @@ export const BackToTop: React.FC = () => {
         >
           <span
             style={{ backgroundColor: 'var(--accent-primary)' }}
-            className="w-1.5 h-1.5 rounded-full animate-ping"
+            className="w-1.5 h-1.5 rounded-none animate-ping"
           />
-          <span className="font-bold">REWIND</span>
+          <span className="font-black">REWIND</span>
           <span className="text-neutral-400 dark:text-neutral-500">|</span>
-          <span className="font-mono text-neutral-900 dark:text-white font-semibold">
+          <span className="font-industrial text-neutral-950 dark:text-white font-black">
             {Math.round(scrollProgress)}%
           </span>
         </div>

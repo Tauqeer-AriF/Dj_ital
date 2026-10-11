@@ -69,10 +69,10 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
           <ScrollReveal variant="fade-up" className={`relative ${isDropdownOpen ? 'z-50' : 'z-30'}`}>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
               <div className="space-y-3 max-w-2xl">
-                <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-                  <span className="text-amber-600 dark:text-amber-400 font-bold">04 / AUDIO ARCHIVE</span>
+                <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                  <span className="sound-badge">[ PIRATE RADIO BROADCASTS // KOOL FM & TAPE REELS ]</span>
                   <span aria-hidden="true" className="opacity-60">·</span>
-                  <span className="text-neutral-700 dark:text-white">SOUNDCLOUD & MIXCLOUD STREAMS</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">1991–2026 ARCHIVE</span>
                 </div>
                 <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
                   Live Sets & Radio Archives
@@ -89,7 +89,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   aria-haspopup="listbox"
                   aria-expanded={isDropdownOpen}
-                  className="w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/90 dark:hover:bg-neutral-800/90 border border-neutral-300 dark:border-white/20 text-neutral-900 dark:text-white transition-all duration-200 shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3 rounded sound-card text-neutral-900 dark:text-white transition-all duration-200 shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
@@ -97,15 +97,15 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                         backgroundColor: 'var(--accent-subtle)',
                         color: 'var(--accent-primary)',
                       }}
-                      className="p-1.5 rounded-lg shrink-0"
+                      className="p-1.5 rounded shrink-0"
                     >
                       <Filter className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col items-start min-w-0">
-                      <span className="text-[10px] font-mono uppercase text-neutral-600 dark:text-neutral-300 font-semibold tracking-wider">
+                      <span className="text-[10px] font-industrial uppercase text-neutral-600 dark:text-neutral-300 font-bold tracking-wider">
                         Musical Style
                       </span>
-                      <span className="text-xs font-display font-bold text-neutral-950 dark:text-white tracking-wide truncate">
+                      <span className="text-xs font-industrial font-black text-neutral-950 dark:text-white tracking-wide truncate uppercase">
                         {selectedStyle}
                       </span>
                     </div>
@@ -116,7 +116,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                       style={{
                         color: 'var(--accent-primary)',
                       }}
-                      className="px-2 py-0.5 rounded-md bg-neutral-200 dark:bg-white/10 text-[10px] font-mono font-bold border border-neutral-300 dark:border-white/15"
+                      className="px-2 py-0.5 rounded sound-tag text-[10px] font-black"
                     >
                       {filteredMixes.length}
                     </span>
@@ -132,11 +132,11 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                 {isDropdownOpen && (
                   <div
                     role="listbox"
-                    className="absolute right-0 sm:right-0 top-full mt-2 w-full sm:w-64 z-[100] p-1.5 rounded-2xl bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-white/25 shadow-2xl space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
+                    className="absolute right-0 sm:right-0 top-full mt-2 w-full sm:w-64 z-[100] p-1.5 rounded sound-cabinet shadow-2xl space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
                   >
-                    <div className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-600 dark:text-neutral-300 font-bold border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
-                      <span>Filter by Genre</span>
-                      <span>Total {mixes.length}</span>
+                    <div className="px-3 py-1.5 text-[10px] font-industrial uppercase tracking-wider text-neutral-600 dark:text-neutral-300 font-bold border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
+                      <span>FILTER BY GENRE</span>
+                      <span>TOTAL {mixes.length}</span>
                     </div>
 
                     {styles.map((style) => {
@@ -153,9 +153,9 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                             setSelectedStyle(style);
                             setIsDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer text-left ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs font-industrial font-black uppercase tracking-wider transition-all cursor-pointer text-left ${
                             isSelected
-                              ? 'bg-amber-400 text-neutral-950 shadow-md font-extrabold'
+                              ? 'bg-amber-400 text-neutral-950 shadow-md font-black'
                               : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-amber-600 dark:hover:text-amber-300'
                           }`}
                         >
@@ -163,14 +163,14 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                             {isSelected ? (
                               <Check className="w-3.5 h-3.5 shrink-0 stroke-[3]" />
                             ) : (
-                              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-white/40 shrink-0" />
+                              <span className="w-1.5 h-1.5 rounded-none bg-neutral-400 dark:bg-white/40 shrink-0" />
                             )}
                             <span className="truncate">{style}</span>
                           </div>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold shrink-0 ml-2 ${
+                            className={`text-[10px] px-2 py-0.5 rounded font-industrial font-black shrink-0 ml-2 ${
                               isSelected
-                                ? 'bg-neutral-950/20 text-neutral-950 font-black'
+                                ? 'bg-neutral-950/20 text-neutral-950'
                                 : 'bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-white/80'
                             }`}
                           >
@@ -187,20 +187,20 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
 
           {/* Active Audio Embed Player Modal / Top Bar */}
           {activeEmbedUrl && (
-            <div className="mb-8 p-5 rounded-3xl border border-amber-500/60 dark:border-amber-400/50 glass-panel-amber text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300 before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-400/50 before:to-transparent">
-              <div className="flex items-center justify-between mb-3 text-xs font-mono">
+            <div className="mb-8 p-5 rounded sound-cabinet border border-amber-500/60 dark:border-amber-400/50 text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300">
+              <div className="flex items-center justify-between mb-3 text-xs font-industrial">
                 <div className="flex items-center gap-2">
                   <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
-                  <span className="font-bold text-amber-600 dark:text-amber-400">STREAMING DECK ACTIVE</span>
+                  <span className="font-black text-amber-600 dark:text-amber-400 tracking-wider uppercase">[ STREAMING DECK ACTIVE ]</span>
                 </div>
                 <button
                   onClick={() => setActiveEmbedUrl(null)}
-                  className="p-1 rounded-lg text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1 rounded text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="w-full rounded-2xl overflow-hidden bg-neutral-900 aspect-[16/5] min-h-[140px] flex items-center justify-center border border-neutral-200 dark:border-white/10">
+              <div className="w-full rounded overflow-hidden bg-neutral-900 aspect-[16/5] min-h-[140px] flex items-center justify-center border border-neutral-200 dark:border-white/10">
                 <iframe
                   width="100%"
                   height="120"
@@ -219,15 +219,15 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
 
           {/* Mixes Grid */}
           {filteredMixes.length === 0 ? (
-            <div className="py-12 px-6 rounded-3xl border border-dashed border-neutral-300 dark:border-white/20 text-center space-y-3 bg-neutral-50/70 dark:bg-neutral-900/40">
+            <div className="py-12 px-6 rounded sound-cabinet border border-dashed border-neutral-300 dark:border-white/20 text-center space-y-3">
               <Radio className="w-8 h-8 mx-auto text-amber-500 dark:text-amber-400 opacity-80" />
-              <p className="text-base font-bold text-neutral-900 dark:text-white">
+              <p className="text-base font-bold text-neutral-900 dark:text-white font-industrial">
                 No recorded sets found in the "{selectedStyle}" category
               </p>
               <button
                 type="button"
                 onClick={() => setSelectedStyle('All')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-neutral-950 font-mono text-xs font-bold hover:bg-amber-300 transition-colors cursor-pointer shadow-md mt-1"
+                className="hardware-btn inline-flex items-center gap-2 px-4 py-2 rounded bg-amber-400 text-neutral-950 font-industrial text-xs font-black hover:bg-amber-300 transition-colors cursor-pointer shadow-md mt-1"
               >
                 <span>Reset to All Styles ({mixes.length})</span>
               </button>
@@ -236,15 +236,15 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
             <div className={`grid ${filteredMixes.length === 1 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' : 'grid-cols-1 md:grid-cols-2'} gap-6 sm:gap-7 relative z-10`}>
               {filteredMixes.map((mix, idx) => (
                 <ScrollReveal key={mix.id} variant="fade-up" delay={idx * 80}>
-                  <div className="p-6 sm:p-7 rounded-3xl glass-card hover-glass-sheen shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 h-full text-neutral-900 dark:text-white relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-amber-400/40 before:to-transparent">
+                  <div className="p-6 sm:p-7 rounded sound-cabinet shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 h-full text-neutral-900 dark:text-white relative overflow-hidden">
                     <div className="space-y-4">
                       {/* Top Row: Platform & Style Tag */}
-                      <div className="flex items-center justify-between gap-3 text-xs font-mono">
+                      <div className="flex items-center justify-between gap-3 text-xs font-industrial">
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-md bg-amber-500/15 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30 dark:border-amber-400/40">
+                          <span className="sound-tag">
                             {mix.style}
                           </span>
-                          <span className="text-neutral-600 dark:text-white/80 font-bold">{mix.platform}</span>
+                          <span className="text-neutral-600 dark:text-white/80 font-bold uppercase tracking-wider">{mix.platform}</span>
                         </div>
                         {mix.duration && (
                           <div className="flex items-center gap-1 text-neutral-700 dark:text-white text-[11px] font-bold">
@@ -266,20 +266,20 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between">
+                    <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between font-industrial">
                       <button
                         onClick={() => setActiveEmbedUrl(mix.embed_url)}
-                        className="hover-shimmer flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-all shadow-md cursor-pointer hover:scale-102"
+                        className="hardware-btn flex items-center gap-2 px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Stream Mix</span>
+                        <span>STREAM MIX</span>
                       </button>
 
                       <a
                         href={mix.stream_url || mix.embed_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-mono text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold transition-colors"
+                        className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold uppercase tracking-wider transition-colors"
                       >
                         <span>Open on {mix.platform}</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -296,10 +296,10 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
         <div className="pt-12 border-t border-neutral-200 dark:border-white/10">
           <ScrollReveal variant="fade-up">
             <div className="space-y-3 mb-8 sm:mb-10">
-              <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-                <span className="text-amber-600 dark:text-amber-400 font-bold">05 / RECAP FOOTAGE</span>
+              <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                <span className="sound-badge">[ RECAP FOOTAGE // DUBPLATE CUTTING & CLASHES ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
-                <span className="text-neutral-700 dark:text-white">EVENT RECAPS & CROWD ACTION</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">VITAL FEST VAULT</span>
               </div>
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-neutral-950 dark:text-white uppercase tracking-tight">
                 Sound System Video Clips & Recaps
@@ -318,7 +318,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                 <ScrollReveal key={vid.id} variant="fade-up" delay={idx * 100}>
                   <div
                     onClick={() => setActiveVideo(vid)}
-                    className="rounded-2xl glass-card hover-glass-sheen overflow-hidden group cursor-pointer shadow-xl hover:-translate-y-1 transition-all duration-300 text-neutral-900 dark:text-white"
+                    className="rounded sound-card overflow-hidden group cursor-pointer shadow-xl hover:-translate-y-1 transition-all duration-300 text-neutral-900 dark:text-white"
                   >
                     {/* Thumbnail with Play Trigger */}
                     <div className="relative aspect-video bg-neutral-900 overflow-hidden">
@@ -332,27 +332,27 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30 pointer-events-none" />
 
-                      <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded bg-black/85 backdrop-blur-md text-[10px] font-mono text-white font-bold border border-white/20">
+                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded sound-tag text-[10px] font-industrial font-black text-white bg-black/90">
                         {vid.category}
                       </div>
 
                       {vid.duration && (
-                        <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/85 backdrop-blur-md text-[10px] font-mono text-white font-bold flex items-center gap-1 border border-white/10">
+                        <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/90 backdrop-blur-md text-[10px] font-industrial text-white font-bold flex items-center gap-1 border border-white/10">
                           <Clock className="w-3.5 h-3.5 text-amber-400" />
                           <span>{vid.duration}</span>
                         </div>
                       )}
 
-                      <div className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-amber-400 text-neutral-950 flex items-center justify-center shadow-xl group-hover:scale-115 transition-transform">
+                      <div className="hardware-btn absolute inset-0 m-auto w-12 h-12 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                         <Play className="w-5 h-5 fill-current ml-0.5" />
                       </div>
                     </div>
 
                     <div className="p-4 space-y-1.5">
-                      <h4 className="font-display font-bold text-base text-neutral-950 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
+                      <h4 className="font-display font-black text-base text-neutral-950 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
                         {vid.title}
                       </h4>
-                      <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-white/80 font-mono font-medium">
+                      <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-white/80 font-industrial font-bold uppercase tracking-wider">
                         <span>Click to Watch Clip</span>
                         <ExternalLink className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                       </div>
@@ -369,17 +369,17 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
       {/* Video Modal Player */}
       {activeVideo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-neutral-950 border border-white/20 overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-4xl rounded sound-cabinet overflow-hidden border border-white/20 shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 text-white">
               <div className="flex items-center gap-2">
                 <Video className="w-4 h-4 text-amber-400" />
-                <span className="font-display font-bold text-sm truncate max-w-md text-white">
+                <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-white">
                   {activeVideo.title}
                 </span>
               </div>
               <button
                 onClick={() => setActiveVideo(null)}
-                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1 rounded text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -31,7 +31,7 @@ interface BioChapter {
 
 function parseBioChapters(rawText: string | undefined): { lead: string; chapters: BioChapter[] } {
   const fallbackLead =
-    'DJ Ital (born Martin Oscar, 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he joined the legendary pirate radio station Kool FM (94.5) during its explosive early 90s genesis. In 2026, his enduring influence on British music culture was formally recognized by the Victoria and Albert Museum (V&A East).';
+    'DJ Ital (born Martin Oscar, 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he joined the legendary pirate radio station Kool FM (94.5) during its explosive early 90s genesis. In 2026, his enduring influence on British music culture was formally recognised by the Victoria and Albert Museum (V&A East).';
 
   const defaultChapters: BioChapter[] = [
     {
@@ -48,7 +48,7 @@ function parseBioChapters(rawText: string | undefined): { lead: string; chapters
       title: 'Production of Jungle Anthem "Decibel"',
       period: '1995',
       content:
-        'In 1995, Ital produced "Decibel" (widely known as "Decibels"), featured on the Kool FM 5th Anniversary compilation. The track is recognized as a benchmark of mid-90s jungle, marrying intricate time-stretched breakbeats with heavyweight electronic sub-bass.',
+        'In 1995, Ital produced "Decibel" (widely known as "Decibels"), featured on the Kool FM 5th Anniversary compilation. The track is recognised as a benchmark of mid-90s jungle, marrying intricate time-stretched breakbeats with heavyweight electronic sub-bass.',
     },
     {
       id: 'media',
@@ -56,7 +56,7 @@ function parseBioChapters(rawText: string | undefined): { lead: string; chapters
       title: 'Knowledge Magazine Retrospective & Journey Series',
       period: '2006 — 2024',
       content:
-        'Featured in Knowledge Magazine (Issue 85) by Giles Wood, detailing technical mixing craft and pirate radio evolution. In 2024, he released the documentary series "DJ Ital: The Journey", cataloging first-hand accounts and rare archival rave footage.',
+        'Featured in Knowledge Magazine (Issue 85) by Giles Wood, detailing technical mixing craft and pirate radio evolution. In 2024, he released the documentary series "DJ Ital: The Journey", cataloguing first-hand accounts and rare archival rave footage.',
     },
     {
       id: 'vital-fest',
@@ -72,7 +72,7 @@ function parseBioChapters(rawText: string | undefined): { lead: string; chapters
       title: 'V&A East: The Music is Black Exhibition',
       period: 'April 2026',
       content:
-        'His cultural legacy was formally memorialized by the Victoria and Albert Museum for the exhibition "The Music is Black: A British Story" at V&A East, with his original 1990s flight jacket and acetate dubplates preserved as permanent artifacts of UK Black British music history.',
+        'His cultural legacy was formally memorialised by the Victoria and Albert Museum for the exhibition "The Music is Black: A British Story" at V&A East, with his original 1990s flight jacket and acetate dubplates preserved as permanent artefacts of UK Black British music history.',
     },
   ];
 
@@ -130,7 +130,7 @@ function parseBioChapters(rawText: string | undefined): { lead: string; chapters
     } else if (lower.includes('victoria') || lower.includes('v&a') || lower.includes('cultural recognition')) {
       tabLabel = 'V&A East 2026';
       period = 'Institutional Archive';
-      if (title.startsWith('Archival')) title = 'V&A East Museum Cultural Memorialization';
+      if (title.startsWith('Archival')) title = 'V&A East Museum Cultural Memorialisation';
     }
 
     return {
@@ -167,10 +167,10 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
         {/* Section Header */}
         <ScrollReveal variant="fade-up">
           <div className="max-w-3xl mb-12 md:mb-16 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-              <span className="text-cyan-600 dark:text-cyan-300 font-bold">04 / CULTURAL PRESERVATION</span>
+            <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+              <span className="sound-badge text-cyan-600 dark:text-cyan-300 border-cyan-500/40 bg-cyan-500/10">[ V&A NATIONAL ARCHIVE // 1991—2026 ]</span>
               <span aria-hidden="true" className="opacity-60">·</span>
-              <span className="text-neutral-700 dark:text-white">V&A EAST ARCHIVES 2026</span>
+              <span className="text-neutral-700 dark:text-white">EAST LONDON PIRATE RIGS TO NATIONAL MUSEUM</span>
             </div>
             <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
               From Hackney Pirate Towers to the V&A Museum
@@ -188,7 +188,7 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
           <div className="lg:col-span-6 space-y-5">
             {/* Primary V&A Exhibition Showcase Card */}
             <ScrollReveal variant="fade-right">
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-950 group shadow-xl hover:border-cyan-400/50 transition-colors">
+              <div className="relative rounded sound-cabinet overflow-hidden border border-neutral-300 dark:border-white/15 bg-white dark:bg-neutral-950 group shadow-xl hover:border-cyan-400/50 transition-colors">
                 <img
                   src={resolvedVaImage}
                   alt="Victoria and Albert Museum exhibition featuring DJ Ital original Kool FM jacket"
@@ -200,9 +200,9 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/95 via-neutral-950/30 to-transparent pointer-events-none" />
 
                 {/* Museum Institutional Plaque */}
-                <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5 p-4 sm:p-5 rounded-2xl backdrop-blur-2xl bg-neutral-950/95 border border-white/20 text-white space-y-2 shadow-2xl group-hover:border-cyan-400/40 transition-colors">
-                  <div className="flex items-center justify-between text-xs font-mono font-bold">
-                    <span className="text-cyan-300 flex items-center gap-1.5">
+                <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5 p-4 sm:p-5 rounded backdrop-blur-2xl bg-neutral-950/95 border border-white/20 text-white space-y-2 shadow-2xl group-hover:border-cyan-400/40 transition-colors">
+                  <div className="flex items-center justify-between text-xs font-industrial font-black">
+                    <span className="text-cyan-300 flex items-center gap-1.5 uppercase tracking-wider">
                       <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" />
                       <span>V&A EAST: THE MUSIC IS BLACK</span>
                     </span>
@@ -220,8 +220,8 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
             {/* 4-Item Balanced Archival Credentials Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ScrollReveal variant="fade-up" delay={100}>
-                <div className="p-4 sm:p-5 rounded-2xl glass-panel text-neutral-900 dark:text-white space-y-2 hover:border-amber-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
+                <div className="p-4 sm:p-5 rounded sound-card text-neutral-900 dark:text-white space-y-2 hover:border-amber-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
+                  <div className="flex items-center gap-2 text-xs font-industrial text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">
                     <Radio className="w-4 h-4 animate-pulse" />
                     <span>Kool FM 94.5 (Est. 1991)</span>
                   </div>
@@ -232,32 +232,32 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
               </ScrollReveal>
 
               <ScrollReveal variant="fade-up" delay={150}>
-                <div className="p-4 sm:p-5 rounded-2xl glass-panel text-neutral-900 dark:text-white space-y-2 hover:border-cyan-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-300 font-bold uppercase">
+                <div className="p-4 sm:p-5 rounded sound-card text-neutral-900 dark:text-white space-y-2 hover:border-cyan-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
+                  <div className="flex items-center gap-2 text-xs font-industrial text-cyan-600 dark:text-cyan-300 font-black uppercase tracking-wider">
                     <Landmark className="w-4 h-4" />
                     <span>Knowledge Magazine</span>
                   </div>
                   <p className="text-xs text-neutral-700 dark:text-white/90 leading-relaxed font-normal">
-                    Featured in the landmark print retrospective (Issue 85) honoring DJ Ital's technical mixing approach and the golden era evolution of pirate radio.
+                    Featured in the landmark print retrospective (Issue 85) honouring DJ Ital's technical mixing approach and the golden era evolution of pirate radio.
                   </p>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal variant="fade-up" delay={200}>
-                <div className="p-4 sm:p-5 rounded-2xl glass-panel text-neutral-900 dark:text-white space-y-2 hover:border-cyan-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-300 font-bold uppercase">
+                <div className="p-4 sm:p-5 rounded sound-card text-neutral-900 dark:text-white space-y-2 hover:border-cyan-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
+                  <div className="flex items-center gap-2 text-xs font-industrial text-cyan-600 dark:text-cyan-300 font-black uppercase tracking-wider">
                     <Award className="w-4 h-4 text-cyan-400" />
                     <span>V&A Curatorial Loan</span>
                   </div>
                   <p className="text-xs text-neutral-700 dark:text-white/90 leading-relaxed font-normal">
-                    Official museum accession of original flight jacket artifact and master acetate dubplates memorialized in national heritage collections.
+                    Official museum accession of original flight jacket artefact and master acetate dubplates memorialised in national heritage collections.
                   </p>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal variant="fade-up" delay={250}>
-                <div className="p-4 sm:p-5 rounded-2xl glass-panel text-neutral-900 dark:text-white space-y-2 hover:border-amber-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
+                <div className="p-4 sm:p-5 rounded sound-card text-neutral-900 dark:text-white space-y-2 hover:border-amber-400/50 hover:-translate-y-0.5 transition-all duration-300 h-full shadow-md">
+                  <div className="flex items-center gap-2 text-xs font-industrial text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">
                     <Sparkles className="w-4 h-4 text-amber-500" />
                     <span>Resident Advisor</span>
                   </div>
@@ -270,17 +270,17 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
 
             {/* Radio Residency Institutional Callout */}
             <ScrollReveal variant="fade-up" delay={300}>
-              <div className="p-4 sm:p-5 rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 flex items-center justify-between hover:border-emerald-500/40 transition-colors shadow-sm">
+              <div className="p-4 sm:p-5 rounded sound-card bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-white/15 flex items-center justify-between hover:border-emerald-500/40 transition-colors shadow-sm">
                 <div>
-                  <div className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+                  <div className="text-[11px] font-industrial text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">
                     Current Broadcast Residency
                   </div>
-                  <div className="text-sm sm:text-base font-display font-bold text-neutral-950 dark:text-white mt-0.5">
+                  <div className="text-sm sm:text-base font-display font-black text-neutral-950 dark:text-white mt-0.5 uppercase tracking-wide">
                     DejaVu FM · Fortnightly Saturdays
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <div className="flex items-center gap-2 text-xs font-industrial text-emerald-600 dark:text-emerald-400 font-black px-3 py-1.5 rounded sound-tag bg-emerald-500/10 border border-emerald-500/30">
+                  <span className="w-2 h-2 rounded-none bg-emerald-500 animate-ping" />
                   <span>ON AIR</span>
                 </div>
               </div>
@@ -290,15 +290,15 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
           {/* Right Column: Biographical Narrative & Chronology (Cleanly Structured) */}
           <div className="lg:col-span-6 space-y-6">
             <ScrollReveal variant="fade-left" delay={100}>
-              <div className="p-6 sm:p-8 rounded-3xl glass-panel hover-glass-sheen text-neutral-900 dark:text-white space-y-6 shadow-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-cyan-400/30 before:to-transparent">
+              <div className="p-6 sm:p-8 rounded sound-cabinet text-neutral-900 dark:text-white space-y-6 shadow-2xl relative overflow-hidden">
                 
                 {/* Curatorial Provenance Header */}
                 <div id="biography" className="space-y-3">
-                  <div className="text-xs font-mono text-amber-600 dark:text-amber-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+                  <div className="text-xs font-industrial text-amber-600 dark:text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '8s' }} />
-                    <span>Curatorial Provenance</span>
+                    <span>CURATORIAL PROVENANCE</span>
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-display font-black text-neutral-950 dark:text-white tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase">
                     Rooted in Hackney Sound Systems
                   </h3>
                   
@@ -311,14 +311,14 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                 {/* Chapter Explorer: Replaces chaotic wall-of-text with clean structured chapters */}
                 {chapters.length > 0 && (
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between text-xs font-mono">
+                    <div className="flex items-center justify-between text-xs font-industrial">
                       <span className="text-neutral-500 uppercase tracking-wider font-bold">
                         Archival Chapters
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsDossierExpanded(!isDossierExpanded)}
-                        className="text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                        className="text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-bold cursor-pointer uppercase tracking-wider"
                       >
                         <span>{isDossierExpanded ? 'Compact View' : 'Expand All Chapters'}</span>
                         {isDossierExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -326,7 +326,7 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                     </div>
 
                     {/* Chapter Tabs for Quick Switching */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <div className="sound-filter-group flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
                       {chapters.map((chap, idx) => (
                         <button
                           key={chap.id}
@@ -335,10 +335,10 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                             setActiveChapterIndex(idx);
                             setIsDossierExpanded(false);
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          className={`sound-filter-tab whitespace-nowrap shrink-0 ${
                             activeChapterIndex === idx && !isDossierExpanded
-                              ? 'bg-amber-400 text-neutral-950 shadow-sm'
-                              : 'bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white'
+                              ? 'bg-amber-400 text-neutral-950 shadow-sm font-black'
+                              : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white'
                           }`}
                         >
                           {chap.tabLabel}
@@ -348,12 +348,12 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
 
                     {/* Active Chapter Display (Compact) or All Chapters (Expanded) */}
                     {!isDossierExpanded ? (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900/80 border border-neutral-200 dark:border-white/10 space-y-2 animate-in fade-in-0 duration-200">
+                      <div className="p-4 sm:p-5 rounded sound-card bg-neutral-50 dark:bg-neutral-900/80 space-y-2 animate-in fade-in-0 duration-200">
                         <div className="flex items-center justify-between gap-2">
-                          <h4 className="text-sm font-bold text-neutral-950 dark:text-white">
+                          <h4 className="text-sm font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white">
                             {chapters[activeChapterIndex]?.title}
                           </h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-400/15 text-amber-700 dark:text-amber-300 font-bold shrink-0">
+                          <span className="text-[10px] sound-tag shrink-0">
                             {chapters[activeChapterIndex]?.period}
                           </span>
                         </div>
@@ -366,13 +366,13 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                         {chapters.map((chap) => (
                           <div
                             key={chap.id}
-                            className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-900/80 border border-neutral-200 dark:border-white/10 space-y-1"
+                            className="p-3.5 rounded sound-card bg-neutral-50 dark:bg-neutral-900/80 space-y-1"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-neutral-950 dark:text-white">
+                              <span className="text-xs font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white">
                                 {chap.title}
                               </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-700 dark:text-amber-300 font-bold">
+                              <span className="text-[9px] sound-tag">
                                 {chap.period}
                               </span>
                             </div>
@@ -388,16 +388,16 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
 
                 {/* Timeline Milestones with Bold Typographic Numbers */}
                 <div className="space-y-3.5 pt-4 border-t border-neutral-200 dark:border-white/10 relative">
-                  <div className="text-xs font-mono uppercase tracking-wider text-neutral-500 font-bold mb-1">
+                  <div className="text-xs font-industrial uppercase tracking-wider text-neutral-500 font-bold mb-1">
                     Key Historical Milestones
                   </div>
 
-                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
+                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
+                    <div className="w-10 h-10 rounded bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
                       '91
                     </div>
                     <div className="space-y-0.5">
-                      <div className="text-sm font-bold text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
+                      <div className="text-sm font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
                         Joined Kool FM 94.5 Core
                       </div>
                       <div className="text-xs text-neutral-600 dark:text-white/85">
@@ -406,12 +406,12 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                     </div>
                   </div>
 
-                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
+                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
+                    <div className="w-10 h-10 rounded bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
                       '95
                     </div>
                     <div className="space-y-0.5">
-                      <div className="text-sm font-bold text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
+                      <div className="text-sm font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
                         Produced Jungle Anthem "Decibel"
                       </div>
                       <div className="text-xs text-neutral-600 dark:text-white/85">
@@ -420,12 +420,12 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                     </div>
                   </div>
 
-                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
+                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
+                    <div className="w-10 h-10 rounded bg-amber-400 text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
                       '23
                     </div>
                     <div className="space-y-0.5">
-                      <div className="text-sm font-bold text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
+                      <div className="text-sm font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white group-hover/item:text-amber-600 dark:group-hover/item:text-amber-400 transition-colors">
                         Founded Vital Fest Series
                       </div>
                       <div className="text-xs text-neutral-600 dark:text-white/85">
@@ -434,16 +434,16 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
                     </div>
                   </div>
 
-                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500 dark:bg-cyan-400 text-white dark:text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
+                  <div className="group/item flex items-start gap-4 p-2.5 -mx-2.5 rounded hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
+                    <div className="w-10 h-10 rounded bg-cyan-500 dark:bg-cyan-400 text-white dark:text-neutral-950 flex items-center justify-center text-xs font-display font-black shrink-0 shadow-md group-hover/item:scale-110 transition-transform">
                       '26
                     </div>
                     <div className="space-y-0.5">
-                      <div className="text-sm font-bold text-neutral-950 dark:text-white group-hover/item:text-cyan-600 dark:group-hover/item:text-cyan-300 transition-colors">
+                      <div className="text-sm font-black font-industrial uppercase tracking-wider text-neutral-950 dark:text-white group-hover/item:text-cyan-600 dark:group-hover/item:text-cyan-300 transition-colors">
                         V&A Museum Archival Recognition
                       </div>
                       <div className="text-xs text-neutral-600 dark:text-white/85">
-                        Permanently recognized for cultural contributions to British music history with museum exhibition loans at V&A East.
+                        Permanently recognised for cultural contributions to British music history with museum exhibition loans at V&A East.
                       </div>
                     </div>
                   </div>

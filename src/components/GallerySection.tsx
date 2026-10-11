@@ -63,17 +63,17 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
         <ScrollReveal variant="fade-up" className={`relative ${isDropdownOpen ? 'z-50' : 'z-30'}`}>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
             <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-                <span className="text-amber-600 dark:text-amber-400 font-bold">06 / PHOTOGRAPHIC ARCHIVE</span>
+              <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                <span className="text-amber-600 dark:text-amber-400 font-black">[ PHOTOGRAPHIC ARCHIVE // 1991—2026 ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
-                <span>1991 — 2026</span>
+                <span>EAST LONDON RAVE CHRONICLE</span>
               </div>
               <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
                 Sound System & Rave Gallery
               </h2>
               <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base font-normal leading-relaxed">
                 Photographic highlights across 35 years: Vital Fest dancefloors, 1990s pirate radio studios,
-                dubplate acetates, and historical museum artifacts.
+                dubplate acetates, and historical museum artefacts.
               </p>
             </div>
 
@@ -84,7 +84,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownOpen}
-                className="w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/90 dark:hover:bg-neutral-800/90 border border-neutral-300 dark:border-white/20 text-neutral-900 dark:text-white transition-all duration-200 shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3 rounded sound-card text-neutral-900 dark:text-white transition-all duration-200 shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
@@ -92,15 +92,15 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                       backgroundColor: 'var(--accent-subtle)',
                       color: 'var(--accent-primary)',
                     }}
-                    className="p-1.5 rounded-lg shrink-0"
+                    className="p-1.5 rounded shrink-0"
                   >
                     <Filter className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="text-[10px] font-mono uppercase text-neutral-600 dark:text-neutral-300 font-semibold tracking-wider">
+                    <span className="text-[10px] font-industrial uppercase text-neutral-600 dark:text-neutral-300 font-bold tracking-wider">
                       Category
                     </span>
-                    <span className="text-xs font-display font-bold text-neutral-950 dark:text-white tracking-wide truncate">
+                    <span className="text-xs font-display font-black text-neutral-950 dark:text-white tracking-wide truncate uppercase">
                       {selectedCategory}
                     </span>
                   </div>
@@ -111,7 +111,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                     style={{
                       color: 'var(--accent-primary)',
                     }}
-                    className="px-2 py-0.5 rounded-md bg-neutral-200 dark:bg-white/10 text-[10px] font-mono font-bold border border-neutral-300 dark:border-white/15"
+                    className="px-2 py-0.5 rounded bg-neutral-200 dark:bg-white/10 text-[10px] font-industrial font-bold border border-neutral-300 dark:border-white/15"
                   >
                     {filteredGallery.length}
                   </span>
@@ -127,9 +127,9 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
               {isDropdownOpen && (
                 <div
                   role="listbox"
-                  className="absolute right-0 sm:right-0 top-full mt-2 w-full sm:w-64 z-[100] p-1.5 rounded-2xl bg-white/98 dark:bg-neutral-950/98 backdrop-blur-2xl border border-neutral-200 dark:border-white/25 shadow-2xl space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
+                  className="absolute right-0 sm:right-0 top-full mt-2 w-full sm:w-64 z-[100] p-1.5 rounded sound-cabinet border border-neutral-300 dark:border-white/20 shadow-2xl space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
                 >
-                  <div className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-600 dark:text-neutral-300 font-bold border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
+                  <div className="px-3 py-1.5 text-[10px] font-industrial uppercase tracking-wider text-neutral-600 dark:text-neutral-300 font-bold border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
                     <span>Select Archive</span>
                     <span>Total {gallery.length}</span>
                   </div>
@@ -147,9 +147,9 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                           setSelectedCategory(cat);
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs font-industrial font-bold uppercase tracking-wider transition-all cursor-pointer text-left ${
                           isSelected
-                            ? 'bg-amber-400 text-neutral-950 shadow-md font-extrabold'
+                            ? 'bg-amber-400 text-neutral-950 shadow-md font-black'
                             : 'text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-amber-600 dark:hover:text-amber-300'
                         }`}
                       >
@@ -157,12 +157,12 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                           {isSelected ? (
                             <Check className="w-3.5 h-3.5 shrink-0 stroke-[3]" />
                           ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-white/40 shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-none bg-neutral-400 dark:bg-white/40 shrink-0" />
                           )}
                           <span className="truncate">{cat}</span>
                         </div>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold shrink-0 ml-2 ${
+                          className={`text-[10px] px-2 py-0.5 rounded font-industrial font-bold shrink-0 ml-2 ${
                             isSelected
                               ? 'bg-neutral-950/20 text-neutral-950 font-black'
                               : 'bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-white/80'
@@ -194,7 +194,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
               >
                 <div
                   onClick={() => setLightboxItem(item)}
-                  className="group relative rounded-3xl overflow-hidden border border-neutral-200 bg-neutral-950 dark:border-white/10 shadow-md cursor-pointer hover:shadow-2xl hover:border-amber-400/60 dark:hover:border-amber-400/60 transition-all duration-300 hover:-translate-y-1 h-full"
+                  className="group relative rounded sound-card overflow-hidden bg-neutral-950 shadow-md cursor-pointer hover:shadow-2xl hover:border-amber-400/60 dark:hover:border-amber-400/60 transition-all duration-300 hover:-translate-y-1 h-full"
                 >
                   <div className="aspect-[4/3] w-full overflow-hidden relative">
                     <img
@@ -211,21 +211,21 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
 
                     {/* Hover focus frame indicator */}
-                    <div className="absolute inset-2 rounded-2xl border border-amber-400/0 group-hover:border-amber-400/40 transition-colors pointer-events-none" />
+                    <div className="absolute inset-2 rounded border border-amber-400/0 group-hover:border-amber-400/40 transition-colors pointer-events-none" />
 
                     {/* Expand icon */}
-                    <div className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110 shadow-lg">
+                    <div className="absolute top-4 right-4 p-2 rounded bg-black/70 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110 shadow-lg border border-white/20">
                       <Maximize2 className="w-4 h-4 text-amber-400" />
                     </div>
 
-                    {/* Metadata Pill */}
-                    <div className="absolute top-4 left-4 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-white font-mono text-[10px] uppercase font-bold tracking-wider">
+                    {/* Metadata Badge */}
+                    <div className="absolute top-4 left-4 sound-tag bg-black/80">
                       {item.category}
                     </div>
 
                     {/* Bottom Caption */}
                     <div className="absolute bottom-0 left-0 right-0 p-5 space-y-1.5 text-white">
-                      <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold">
+                      <div className="flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
                         <span>{item.year}</span>
                         {item.location && (
                           <>
@@ -262,18 +262,18 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
           onClick={() => setLightboxItem(null)}
         >
           <div
-            className="relative max-w-4xl w-full glass-panel border border-white/25 rounded-3xl overflow-hidden shadow-2xl space-y-4 p-6 text-white before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent"
+            className="relative max-w-4xl w-full sound-cabinet rounded border border-neutral-400 dark:border-white/25 overflow-hidden shadow-2xl space-y-4 p-6 text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setLightboxItem(null)}
-              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 text-white hover:bg-amber-400 hover:text-neutral-950 transition-colors z-10 cursor-pointer"
+              className="hardware-btn absolute top-4 right-4 p-2 rounded bg-neutral-800 text-white hover:bg-amber-400 hover:text-neutral-950 transition-colors z-10 cursor-pointer"
               aria-label="Close Lightbox"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded overflow-hidden bg-black flex items-center justify-center border border-white/10">
               <img
                 src={normalizeImageUrl(lightboxItem.image_url)}
                 alt={lightboxItem.title}
@@ -286,7 +286,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white pt-2 border-t border-white/10">
               <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold">
+                <div className="flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
                   <span>{lightboxItem.category}</span>
                   <span aria-hidden="true" className="text-white/40">·</span>
                   <span>{lightboxItem.year}</span>
@@ -303,7 +303,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                 )}
               </div>
 
-              <div className="text-[11px] font-mono text-white/70 shrink-0 self-start sm:self-center font-bold">
+              <div className="text-[11px] font-industrial text-white/70 shrink-0 self-start sm:self-center font-bold tracking-wider uppercase">
                 ARCHIVE REF #GAL-{lightboxItem.id}
               </div>
             </div>

@@ -1,4 +1,4 @@
-// Web Audio API authentic Jungle & Drum and Bass procedural synthesizer engine
+// Web Audio API authentic Jungle & Drum and Bass procedural synthesiser engine
 class JungleAudioEngine {
   private ctx: AudioContext | null = null;
   private isPlaying = false;

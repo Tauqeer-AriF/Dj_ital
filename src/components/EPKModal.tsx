@@ -79,7 +79,7 @@ Coverage: ${profile?.regions_covered || 'UK, Europe & International / Worldwide'
 Active Since: ${profile?.active_since || '1991'}
 
 HERITAGE & RECOGNITION:
-- Victoria & Albert Museum (V&A East): Formally recognized in national archival exhibitions documenting Black British sound system culture and 1990s rave heritage.
+- Victoria & Albert Museum (V&A East): Formally recognised in national archival exhibitions documenting Black British sound system culture and 1990s rave heritage.
 - Kool FM (94.5 FM): Original 1991 resident broadcaster and pirate radio pioneer during jungle's golden genesis.
 - Vital Fest: Founder and curator of London's authentic underground sound system clash festival.
 - Classic Discography: Producer of the seminal 1995 anthem "Decibel" (Kool FM 5th Anniversary).
@@ -137,11 +137,11 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl rounded-3xl glass-panel shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent">
+      <div className="relative w-full max-w-5xl rounded sound-cabinet shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-neutral-300 dark:border-white/20">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-100/70 dark:bg-white/5 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shadow-sm">
+            <div className="w-10 h-10 rounded bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shadow-sm">
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -149,7 +149,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                 <h3 className="text-lg font-display font-black text-neutral-950 dark:text-white uppercase tracking-tight">
                   Electronic Press Kit (EPK)
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-400/20 text-amber-700 dark:text-amber-300 font-bold uppercase">
+                <span className="px-2 py-0.5 rounded text-[10px] font-industrial bg-amber-400/20 text-amber-700 dark:text-amber-300 font-bold uppercase tracking-wider">
                   Press & Promoters
                 </span>
               </div>
@@ -162,14 +162,14 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="p-2 rounded-xl text-neutral-600 hover:text-neutral-950 dark:text-neutral-300 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="hardware-btn p-2 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-300 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
               title="Print or Save as PDF"
             >
               <Printer className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="hardware-btn p-2 rounded text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -191,9 +191,9 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-2 py-3 px-4 text-xs font-mono font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-2 py-3 px-4 text-xs font-industrial font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap ${
                 activeTab === t.id
-                  ? 'border-amber-400 text-amber-600 dark:text-amber-400'
+                  ? 'border-amber-400 text-amber-600 dark:text-amber-400 font-black'
                   : 'border-transparent text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
@@ -210,8 +210,8 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
             <div className="space-y-6">
               {/* Quick Summary Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-5 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-2">
-                  <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-bold">
+                <div className="p-5 rounded sound-card space-y-2">
+                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
                     Artist Tagline
                   </div>
                   <div className="text-sm font-display font-bold text-neutral-900 dark:text-white">
@@ -222,29 +222,29 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                   </p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-2">
-                  <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-bold">
+                <div className="p-5 rounded sound-card space-y-2">
+                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
                     Genres & Musical Styles
                   </div>
                   <div className="text-sm font-display font-bold text-amber-600 dark:text-amber-400">
                     {profile?.genres || 'Jungle · Drum & Bass · Reggae · Dub · UK Bass'}
                   </div>
-                  <div className="text-xs text-neutral-500 font-mono">
+                  <div className="text-xs text-neutral-500 font-industrial uppercase font-bold tracking-wider">
                     Territory: {profile?.regions_covered || 'UK, Europe & Worldwide'}
                   </div>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-2">
-                  <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider font-bold">
+                <div className="p-5 rounded sound-card space-y-2">
+                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
                     Booking Management
                   </div>
                   <div className="text-sm font-display font-bold text-neutral-900 dark:text-white">
                     {profile?.booking_agency || 'IP1 Agency London'}
                   </div>
-                  <div className="text-xs space-y-1">
+                  <div className="text-xs space-y-1 font-industrial uppercase font-bold tracking-wider">
                     <a
                       href={`mailto:${profile?.booking_email || profile?.direct_email || 'ip1.agency@mail.com'}`}
-                      className="text-amber-600 dark:text-amber-400 hover:underline block font-mono"
+                      className="text-amber-600 dark:text-amber-400 hover:underline block"
                     >
                       {profile?.booking_email || profile?.direct_email || 'ip1.agency@mail.com'}
                     </a>
@@ -253,7 +253,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                         href={`https://wa.me/${cleanWhatsApp}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-mono"
+                        className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                         <span>WhatsApp Quick Contact</span>
@@ -264,20 +264,20 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
               </div>
 
               {/* Verified Accreditations Banner */}
-              <div className="p-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-6 rounded sound-card border border-cyan-500/20 bg-cyan-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase">
+                  <div className="flex items-center gap-2 text-xs font-industrial text-cyan-600 dark:text-cyan-400 font-black uppercase tracking-wider">
                     <ShieldCheck className="w-4 h-4" />
                     <span>Victoria & Albert Museum (V&A East) Permanent Archive Loan</span>
                   </div>
                   <p className="text-xs text-neutral-700 dark:text-neutral-300 max-w-xl">
-                    Recognized by the UK national museum of art and design for enduring cultural contribution to Black British sound systems and early 90s pirate radio innovation.
+                    Recognised by the UK national museum of art and design for enduring cultural contribution to Black British sound systems and early 90s pirate radio innovation.
                   </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
                   <button
                     onClick={() => setActiveTab('bio')}
-                    className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/30 font-mono text-xs font-bold transition-colors cursor-pointer"
+                    className="hardware-btn px-4 py-2 rounded bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/30 font-industrial text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     View Archival Bio
                   </button>
@@ -285,7 +285,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
               </div>
 
               {/* One-Click EPK Package Download */}
-              <div className="p-6 rounded-2xl border border-amber-400/30 bg-amber-400/5 space-y-3">
+              <div className="p-6 rounded sound-card border border-amber-400/30 bg-amber-400/5 space-y-3">
                 <h4 className="text-base font-display font-black text-neutral-900 dark:text-white uppercase">
                   Complete EPK Press Pack Bundle
                 </h4>
@@ -295,21 +295,21 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     onClick={handleDownloadBioTxt}
-                    className="hover-shimmer flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-mono text-xs font-bold transition-all shadow-md cursor-pointer"
+                    className="hardware-btn flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial text-xs font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download Bio (.txt)</span>
                   </button>
                   <button
                     onClick={handleDownloadRiderTxt}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white dark:bg-white/10 dark:hover:bg-white/20 font-mono text-xs font-bold transition-all cursor-pointer"
+                    className="hardware-btn flex items-center gap-2 px-4 py-2.5 rounded bg-neutral-950 hover:bg-neutral-800 text-white dark:bg-white/10 dark:hover:bg-white/20 font-industrial text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download Tech Rider (.txt)</span>
                   </button>
                   <button
                     onClick={handlePrint}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 hover:border-amber-400 font-mono text-xs font-bold transition-all cursor-pointer"
+                    className="hardware-btn flex items-center gap-2 px-4 py-2.5 rounded border border-neutral-300 dark:border-white/10 hover:border-amber-400 font-industrial text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                   >
                     <Printer className="w-4 h-4" />
                     <span>Print Press Sheet</span>
@@ -576,7 +576,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                   </h5>
                   <p className="text-neutral-600 dark:text-neutral-300 mt-1 leading-relaxed">
                     {profile?.bio_short ||
-                      'Pioneering UK jungle producer, Kool FM 94.5 original, and founder of Vital Fest. A cornerstone of East London sound system heritage whose contribution was officially recognized by the Victoria and Albert Museum.'}
+                      'Pioneering UK jungle producer, Kool FM 94.5 original, and founder of Vital Fest. A cornerstone of East London sound system heritage whose contribution was officially recognised by the Victoria and Albert Museum.'}
                   </p>
                 </div>
 

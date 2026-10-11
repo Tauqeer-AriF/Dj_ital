@@ -87,10 +87,10 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
-            Promoter & Booking Inquiries ({bookings.length})
+            Promoter & Booking Enquiries ({bookings.length})
           </h3>
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-            Real-time inquiries recorded in the SQLite database with full contact, set length, and budget specs.
+            Real-time enquiries recorded in the SQLite database with full contact, set length, and budget specs.
           </p>
         </div>
 
@@ -109,8 +109,8 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
         {bookings.length === 0 ? (
           <div className="p-12 text-center border-2 border-dashed border-neutral-300 dark:border-white/10 rounded-3xl bg-white/50 dark:bg-neutral-900/30 text-neutral-500 dark:text-neutral-400 text-sm space-y-2">
             <Clock className="w-8 h-8 mx-auto text-neutral-400 opacity-60" />
-            <p className="font-semibold">No booking inquiries logged yet.</p>
-            <p className="text-xs">Inquiries submitted through the public booking form will appear here instantly.</p>
+            <p className="font-semibold">No booking enquiries logged yet.</p>
+            <p className="text-xs">Enquiries submitted through the public booking form will appear here instantly.</p>
           </div>
         ) : (
           bookings.map((b) => {
@@ -136,7 +136,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
                       <div className="flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-amber-500" />
                         <a
-                          href={`mailto:${b.client_email}?subject=RE:%20DJ%20Ital%20Booking%20Inquiry`}
+                          href={`mailto:${b.client_email}?subject=RE:%20DJ%20Ital%20Booking%20Enquiry`}
                           className="text-amber-600 dark:text-amber-400 hover:underline font-mono font-bold"
                         >
                           {b.client_email}
@@ -153,7 +153,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
                             <a
                               href={`https://wa.me/${cleanPhone}?text=Hi%20${encodeURIComponent(
                                 b.client_name
-                              )},%20thank%20you%20for%20your%20inquiry%20regarding%20DJ%20Ital...`}
+                              )},%20thank%20you%20for%20your%20enquiry%20regarding%20DJ%20Ital...`}
                               target="_blank"
                               rel="noreferrer"
                               className="text-emerald-600 hover:underline inline-flex items-center gap-0.5 font-bold font-mono ml-1"
@@ -233,8 +233,8 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
       <ConfirmModal
         isOpen={deleteCandidateId !== null}
         title="Confirm Booking Deletion"
-        message="Are you sure you want to remove this promoter booking inquiry from the SQLite database?"
-        confirmLabel="Delete Inquiry"
+        message="Are you sure you want to remove this promoter booking enquiry from the SQLite database?"
+        confirmLabel="Delete Enquiry"
         cancelLabel="Keep Record"
         isDestructive
         onConfirm={confirmDelete}

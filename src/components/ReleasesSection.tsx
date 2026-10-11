@@ -30,20 +30,20 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
         <ScrollReveal variant="fade-up">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
             <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-neutral-800 dark:text-white font-bold">
-                <span className="text-amber-600 dark:text-amber-400 font-bold">03 / AUDIO DISCOGRAPHY</span>
+              <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                <span className="sound-badge">[ DUBPLATE CATALOGUE // 168 BPM ACETATE ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
-                <span className="text-neutral-700 dark:text-white">168 BPM ACETATE DUBS</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">HISTORIC PRESSINGS & VIP DUBS</span>
               </div>
               <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
                 Releases & Audio Transmissions
               </h2>
               <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base font-normal leading-relaxed">
-                From seminal 1990s pirate radio dubplates to official anniversary pressings. Click play on any release to audition the interactive Web Audio procedural jungle synthesizer.
+                From seminal 1990s pirate radio dubplates to official anniversary pressings. Click play on any release to audition the interactive Web Audio procedural jungle synthesiser.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-200/80 dark:bg-neutral-900 border border-neutral-300 dark:border-white/20 text-xs font-mono text-neutral-900 dark:text-white font-bold shrink-0 shadow-md self-start md:self-auto">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded sound-card text-xs font-industrial text-neutral-900 dark:text-white font-black uppercase tracking-wider shrink-0 shadow-sm self-start md:self-auto">
               <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
               <span>160 — 172 BPM JUNGLE CLOCK</span>
             </div>
@@ -63,16 +63,16 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                 delay={idx * 100}
               >
                 <div
-                  className={`p-6 sm:p-8 rounded-3xl transition-all duration-300 flex flex-col justify-between shadow-xl hover:-translate-y-1 h-full text-neutral-900 dark:text-white group relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-amber-400/40 before:to-transparent ${
+                  className={`p-6 sm:p-8 rounded sound-cabinet transition-all duration-300 flex flex-col justify-between shadow-xl hover:-translate-y-1 h-full text-neutral-900 dark:text-white group relative overflow-hidden ${
                     isCurrent
-                      ? 'border border-amber-400 glass-panel-amber shimmer-active shadow-[0_0_35px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/50'
-                      : 'glass-panel hover-glass-sheen hover:border-amber-400/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_16px_45px_rgba(0,0,0,0.6)]'
+                      ? 'border border-amber-500 dark:border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/50'
+                      : 'border border-neutral-300 dark:border-white/10 hover:border-amber-500/50'
                   }`}
                 >
                   <div className="space-y-5">
                     <div className="flex items-start justify-between gap-4">
                       {/* Vinyl Sleeve & Rotating Dubplate Preview */}
-                      <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-neutral-950 border border-neutral-300 dark:border-white/15 p-1 flex items-center justify-center shrink-0 shadow-lg overflow-hidden group/disc transition-transform ${trackActiveAndPlaying ? 'scale-105 animate-subwoofer' : 'group-hover/disc:scale-105'}`}>
+                      <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded bg-neutral-950 border border-neutral-300 dark:border-white/15 p-1 flex items-center justify-center shrink-0 shadow-lg overflow-hidden group/disc transition-transform ${trackActiveAndPlaying ? 'scale-105 animate-subwoofer' : 'group-hover/disc:scale-105'}`}>
                         {/* Realistic Vinyl Grooves */}
                         <div
                           className={`w-full h-full rounded-full relative flex items-center justify-center shadow-inner ${
@@ -108,10 +108,10 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                               onPlayTrack(rel);
                             }
                           }}
-                          className={`absolute inset-0 m-auto w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                          className={`hardware-btn absolute inset-0 m-auto w-10 h-10 rounded flex items-center justify-center shadow-lg transition-all cursor-pointer ${
                             trackActiveAndPlaying
                               ? 'bg-amber-400 text-neutral-950 scale-105 shadow-amber-400/50'
-                              : 'bg-black/80 hover:bg-amber-400 text-white hover:text-neutral-950 hover:scale-110'
+                              : 'bg-black/85 hover:bg-amber-400 text-white hover:text-neutral-950 hover:scale-105'
                           }`}
                           aria-label={trackActiveAndPlaying ? 'Pause dub' : 'Play dub'}
                         >
@@ -124,8 +124,8 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                       </div>
 
                       {/* Metadata & Title */}
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 text-xs font-mono text-neutral-800 dark:text-white font-bold">
+                      <div className="space-y-1.5 min-w-0 flex-1 font-industrial">
+                        <div className="flex flex-wrap items-center gap-x-2 text-xs text-neutral-800 dark:text-white font-black uppercase tracking-wider">
                           <span className="text-amber-600 dark:text-amber-400 tabular-nums">{rel.release_year}</span>
                           <span aria-hidden="true" className="opacity-60">·</span>
                           <span className="text-neutral-700 dark:text-white">{rel.format}</span>
@@ -137,7 +137,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                           {rel.title}
                         </h3>
 
-                        <div className="text-xs font-mono text-neutral-600 dark:text-white/80 truncate font-semibold">
+                        <div className="text-xs text-neutral-600 dark:text-white/80 truncate font-bold uppercase tracking-wider">
                           {rel.label} {rel.catalog_number ? `· ${rel.catalog_number}` : ''}
                         </div>
                       </div>
@@ -150,15 +150,15 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
 
                     {/* Sound Theme Breakdown */}
                     {rel.audio_theme && (
-                      <div className="p-3 rounded-xl bg-neutral-100 dark:bg-white/10 border border-neutral-200 dark:border-white/15 text-xs text-neutral-800 dark:text-white flex items-start gap-2.5 font-medium">
+                      <div className="p-3 rounded sound-card border border-neutral-300 dark:border-white/10 text-xs text-neutral-800 dark:text-white flex items-start gap-2.5 font-medium">
                         <Music className={`w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5 ${trackActiveAndPlaying ? 'animate-bounce' : ''}`} />
-                        <span className="leading-snug break-words">{rel.audio_theme}</span>
+                        <span className="leading-snug break-words font-industrial font-bold uppercase text-[11px] tracking-wide">{rel.audio_theme}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Footer status bar */}
-                  <div className="mt-5 pt-3.5 border-t border-neutral-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-neutral-800 dark:text-white">
+                  <div className="mt-5 pt-3.5 border-t border-neutral-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs font-industrial text-neutral-800 dark:text-white">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <img
                         src={activeLogo}
@@ -168,15 +168,15 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                         }}
                         className="w-4 h-4 object-contain shrink-0 filter drop-shadow-[0_1px_4px_rgba(245,158,11,0.5)]"
                       />
-                      <span className="font-bold truncate text-[11px] sm:text-xs text-neutral-800 dark:text-white">
-                        {trackActiveAndPlaying ? 'Synthesizer Active · 168 BPM' : 'Click to Audition Dub'}
+                      <span className="font-black uppercase tracking-wider truncate text-[11px] sm:text-xs text-neutral-800 dark:text-white">
+                        {trackActiveAndPlaying ? 'Synthesiser Active · 168 BPM' : 'Click to Audition Dub'}
                       </span>
                       {trackActiveAndPlaying && (
                         <div className="flex items-end gap-0.5 h-3">
-                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-full eq-bar-1" />
-                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-full eq-bar-2" />
-                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-full eq-bar-3" />
-                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-full eq-bar-4" />
+                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-none eq-bar-1" />
+                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-none eq-bar-2" />
+                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-none eq-bar-3" />
+                          <span className="w-0.5 bg-amber-500 dark:bg-amber-400 rounded-none eq-bar-4" />
                         </div>
                       )}
                     </div>
@@ -185,9 +185,9 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                       href={rel.stream_url || 'https://djital.me'}
                       target="_blank"
                       rel="noreferrer"
-                      className="group/link hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center gap-1 font-bold shrink-0 text-[11px] sm:text-xs text-neutral-700 dark:text-white/90"
+                      className="group/link hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center gap-1 font-black uppercase tracking-wider shrink-0 text-[11px] sm:text-xs text-neutral-700 dark:text-white/90"
                     >
-                      <span>Archive Catalog</span>
+                      <span>Archive Catalogue</span>
                       <ExternalLink className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
                     </a>
                   </div>

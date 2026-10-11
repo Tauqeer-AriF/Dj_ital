@@ -99,7 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       const res = await forcePushToServer();
       if (res.success) {
-        setSyncFeedback('✅ Synchronized! All devices (iOS, Android, Windows) will now display your updated images & data.');
+        setSyncFeedback('✅ Synchronised! All devices (iOS, Android, Windows) will now display your updated images & data.');
         onRefreshData();
       } else {
         setSyncFeedback('⚠️ ' + res.message);
@@ -272,7 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     DJ Ital Heritage Management Console
                   </h2>
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
-                    Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customize every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
+                    Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customise every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
                   </p>
                 </div>
               </div>
@@ -374,7 +374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="p-5 rounded-2xl border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span>Bookings Inquiries</span>
+                    <span>Booking Enquiries</span>
                     <Inbox className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                   </div>
                   <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white tabular-nums">
@@ -388,7 +388,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {/* Quick Actions & Recent Bookings */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Inquiries Card */}
+                {/* Recent Enquiries Card */}
                 <div className="p-6 rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-display font-bold text-neutral-950 dark:text-white">Recent Booking Requests</h3>
@@ -430,13 +430,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-neutral-500">Tagline: </span>
                       <span>{profile?.tagline}</span>
                     </div>
+                    {Boolean(profile?.navbar_subtitle || profile?.subtitle) && (
+                      <div>
+                        <span className="text-neutral-500">Navbar Sub-title: </span>
+                        <span className="text-amber-500 dark:text-amber-400 font-medium">
+                          {profile?.navbar_subtitle || profile?.subtitle}
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <span className="text-neutral-500">Kool FM Role: </span>
                       <span>{profile?.kool_fm_role}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-500">V&A Museum Honor: </span>
-                      <span className="text-cyan-600 dark:text-cyan-300 font-medium">{profile?.va_recognition_year} Recognized</span>
+                      <span className="text-neutral-500">V&A Museum Honour: </span>
+                      <span className="text-cyan-600 dark:text-cyan-300 font-medium">{profile?.va_recognition_year} Recognised</span>
                     </div>
                   </div>
 

@@ -201,7 +201,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
                 </div>
                 <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
                   <div className="text-base font-black font-display text-amber-500 tabular-nums">{stats.pendingBookingsCount}</div>
-                  <div className="text-[10px] font-mono text-neutral-500 uppercase">Inquiries</div>
+                  <div className="text-[10px] font-mono text-neutral-500 uppercase">Enquiries</div>
                 </div>
               </div>
             )}

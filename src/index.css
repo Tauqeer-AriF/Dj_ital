@@ -4,30 +4,32 @@
 
 @layer base {
   :root {
-    --font-syne: 'Syne', sans-serif;
-    --font-sans: 'Plus Jakarta Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Bebas Neue', 'Oswald', sans-serif;
+    --font-industrial: 'Barlow Condensed', sans-serif;
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'Barlow Condensed', sans-serif;
+    --font-syne: 'Bebas Neue', 'Oswald', sans-serif;
   }
 
-  /* Dynamic Headline Font Presets */
-  html[data-font-preset="syne"], body[data-font-preset="syne"] { --font-syne: 'Syne', sans-serif; }
-  html[data-font-preset="space-grotesk"], body[data-font-preset="space-grotesk"] { --font-syne: 'Space Grotesk', sans-serif; }
-  html[data-font-preset="outfit"], body[data-font-preset="outfit"] { --font-syne: 'Outfit', sans-serif; }
-  html[data-font-preset="bebas"], body[data-font-preset="bebas"] { --font-syne: 'Bebas Neue', cursive, sans-serif; }
-  html[data-font-preset="inter"], body[data-font-preset="inter"] { --font-syne: 'Inter', sans-serif; }
-  html[data-font-preset="jakarta"], body[data-font-preset="jakarta"] { --font-syne: 'Plus Jakarta Sans', sans-serif; }
+  /* Sound System Dynamic Typography Engine */
+  html[data-font-preset="syne"], body[data-font-preset="syne"] { --font-display: 'Bebas Neue', 'Oswald', sans-serif; }
+  html[data-font-preset="space-grotesk"], body[data-font-preset="space-grotesk"] { --font-display: 'Space Grotesk', sans-serif; }
+  html[data-font-preset="outfit"], body[data-font-preset="outfit"] { --font-display: 'Barlow Condensed', sans-serif; }
+  html[data-font-preset="bebas"], body[data-font-preset="bebas"] { --font-display: 'Bebas Neue', cursive, sans-serif; }
+  html[data-font-preset="inter"], body[data-font-preset="inter"] { --font-display: 'Bebas Neue', 'Oswald', sans-serif; }
+  html[data-font-preset="jakarta"], body[data-font-preset="jakarta"] { --font-display: 'Bebas Neue', 'Oswald', sans-serif; }
 
   /* Dynamic Body Text Font Presets */
-  html[data-body-font-preset="jakarta"], body[data-body-font-preset="jakarta"] { --font-sans: 'Plus Jakarta Sans', sans-serif; }
-  html[data-body-font-preset="inter"], body[data-body-font-preset="inter"] { --font-sans: 'Inter', sans-serif; }
+  html[data-body-font-preset="jakarta"], body[data-body-font-preset="jakarta"] { --font-sans: 'Space Grotesk', sans-serif; }
+  html[data-body-font-preset="inter"], body[data-body-font-preset="inter"] { --font-sans: 'Space Grotesk', sans-serif; }
   html[data-body-font-preset="space-grotesk"], body[data-body-font-preset="space-grotesk"] { --font-sans: 'Space Grotesk', sans-serif; }
-  html[data-body-font-preset="outfit"], body[data-body-font-preset="outfit"] { --font-sans: 'Outfit', sans-serif; }
-  html[data-body-font-preset="mono"], body[data-body-font-preset="mono"] { --font-sans: 'JetBrains Mono', monospace; }
+  html[data-body-font-preset="outfit"], body[data-body-font-preset="outfit"] { --font-sans: 'Space Grotesk', sans-serif; }
+  html[data-body-font-preset="mono"], body[data-body-font-preset="mono"] { --font-sans: 'Barlow Condensed', sans-serif; }
   html[data-body-font-preset="system"], body[data-body-font-preset="system"] { --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
   body {
     font-family: var(--font-sans);
-    background-color: #0a0a0c;
+    background-color: #08080a;
     color: #f4f4f5;
     overflow-x: hidden;
   }
@@ -38,17 +40,27 @@
 
   html.light body,
   html[data-theme="light"] body {
-    background-color: #fafafa;
-    color: #171717;
+    background-color: #f7f7f8;
+    color: #121214;
   }
 
   h1, h2, h3, .font-display {
-    font-family: var(--font-syne);
-    letter-spacing: -0.02em;
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
+  .font-industrial {
+    font-family: var(--font-industrial);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Replace technical monospace with bold condensed sound-system industrial typeface */
   .font-mono, .tabular-nums {
-    font-family: var(--font-mono);
+    font-family: var(--font-industrial);
+    letter-spacing: 0.04em;
+    font-weight: 700;
   }
 }
 
@@ -547,6 +559,149 @@ html[data-theme="dark"] .glass-panel-amber {
     0 14px 40px -10px rgba(0, 0, 0, 0.7),
     0 0 24px -4px rgba(245, 158, 11, 0.18),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ----------------------------------------------------
+   Sound System Industrial Cabinet & Hardware Geometry
+   (Distinct visual identity moving away from rounded pills & Deja Vu)
+   ---------------------------------------------------- */
+
+.sound-cabinet {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 244, 246, 0.96) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  position: relative;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+}
+
+.dark .sound-cabinet,
+html[data-theme="dark"] .sound-cabinet {
+  background: linear-gradient(180deg, rgba(20, 20, 24, 0.95) 0%, rgba(12, 12, 14, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  position: relative;
+  box-shadow: 
+    0 12px 36px -4px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+}
+
+/* Sound System Industrial Card (Replaces bubbly rounded Deja Vu cards) */
+.sound-card {
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  position: relative;
+  transition: all 0.25s ease-out;
+}
+
+.dark .sound-card,
+html[data-theme="dark"] .sound-card {
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(18, 18, 22, 0.85);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6);
+}
+
+.sound-card:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+/* Sound System Segmented Industrial Filter Buttons (Zero Pills) */
+.sound-filter-group {
+  display: inline-flex;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.dark .sound-filter-group,
+html[data-theme="dark"] .sound-filter-group {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.sound-filter-tab {
+  font-family: var(--font-industrial);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.85rem;
+  border-radius: 2px;
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+}
+
+/* Sound System Stamped Bracket Tag */
+.sound-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-industrial);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--accent-primary);
+}
+
+/* Sound System Badge (Bold industrial header stamp) */
+.sound-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-industrial);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent-primary);
+}
+
+/* Industrial Hardware Button */
+.hardware-btn {
+  font-family: var(--font-industrial);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.hardware-btn:active {
+  transform: translateY(1px);
+}
+
+/* Analogue VU Meter Bars */
+@keyframes vu-bounce {
+  0%, 100% { height: 25%; }
+  25% { height: 90%; }
+  50% { height: 50%; }
+  75% { height: 100%; }
+}
+
+.vu-bar-1 { animation: vu-bounce 0.85s ease-in-out infinite; }
+.vu-bar-2 { animation: vu-bounce 0.65s ease-in-out infinite 0.15s; }
+.vu-bar-3 { animation: vu-bounce 0.95s ease-in-out infinite 0.3s; }
+.vu-bar-4 { animation: vu-bounce 0.75s ease-in-out infinite 0.2s; }
+.vu-bar-5 { animation: vu-bounce 0.9s ease-in-out infinite 0.4s; }
+
+/* Subtle Sound System Speaker Grill Pattern */
+.sound-grill {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.12) 1px, transparent 1px);
+  background-size: 8px 8px;
 }
 
 /* Glass Dock / Bottom Player Bar */

@@ -42,7 +42,6 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminEntryConfirmModal } from './components/admin/AdminEntryConfirmModal';
 import { EPKModal } from './components/EPKModal';
 import { DynamicBackground } from './components/DynamicBackground';
-import { MainAudioPlayer } from './components/MainAudioPlayer';
 import { ActiveTrack } from './types';
 import { audioEngine } from './audio/audioEngine';
 import { AppLoader } from './components/AppLoader';
@@ -247,6 +246,23 @@ export default function App() {
 
   // Audio actions
   // Keep single default live radio stream synchronized in persistent player bar
+  // Audio stream ref for background radio stream playback (without playerbar)
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (isPlaying && activeTrack?.type === 'live_stream' && activeTrack.streamUrl) {
+      if (audioRef.current.src !== activeTrack.streamUrl) {
+        audioRef.current.src = activeTrack.streamUrl;
+      }
+      audioRef.current.play().catch((err) => {
+        console.log('Background stream play notice:', err);
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying, activeTrack]);
+
   useEffect(() => {
     const stream = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
     if (!activeTrack || activeTrack.type === 'live_stream') {
@@ -423,7 +439,7 @@ export default function App() {
           {/* Audio & Media Gallery: Embedded SoundCloud/Mixcloud players, videos, action photos */}
           <AudioMixesGallery mixes={audioMixes} videos={videos} />
 
-          {/* Releases & Audio Synthesizer */}
+          {/* Releases & Audio Synthesiser */}
           <ReleasesSection
             releases={releases}
             activeTrack={activeTrack}
@@ -466,7 +482,7 @@ export default function App() {
           {/* Rave & Sound System Visual Gallery */}
           <GallerySection gallery={gallery} />
 
-          {/* Direct Booking Inquiries Form (SQLite-backed) */}
+          {/* Direct Booking Enquiries Form (SQLite-backed) */}
           <BookingFormSection profile={profile} onBookingSubmitted={loadData} />
 
           {/* Site Footer with subtle /admin portal link */}
@@ -476,14 +492,8 @@ export default function App() {
             onOpenEpk={() => setIsEpkOpen(true)}
           />
 
-          {/* Persistent Main Audio Player */}
-          <MainAudioPlayer
-            profile={profile}
-            activeTrack={activeTrack}
-            isPlaying={isPlaying}
-            onTogglePlay={handleTogglePlay}
-            onPlayLiveStream={() => handlePlayLiveStream()}
-          />
+          {/* Background Audio Stream (Playerbar removed) */}
+          <audio ref={audioRef} preload="none" className="hidden" aria-hidden="true" />
 
           {/* Floating Back To Top Button with Circular Progress Track */}
           <BackToTop />

@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
   const logoSrc = profile?.logo_url || profile?.epk_logo_png || '/images/vital_fest_logo.png';
 
   return (
-    <footer className="border-t border-neutral-200/80 dark:border-white/10 glass-panel pb-16 pt-16 text-neutral-900 dark:text-white transition-colors duration-200 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/50 dark:before:via-amber-400/30 before:to-transparent">
+    <footer className="border-t border-neutral-300 dark:border-white/10 sound-cabinet pb-16 pt-16 text-neutral-900 dark:text-white transition-colors duration-200 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <ScrollReveal variant="fade-up">
@@ -50,9 +50,9 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
                   <div className="text-xl font-display font-black text-neutral-950 dark:text-white tracking-tight flex items-center gap-1.5 uppercase">
                     <span>DJ</span>
                     <span className="text-amber-500 dark:text-amber-400">ITAL</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-0.5 inline-block animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-none bg-amber-400 ml-0.5 inline-block animate-pulse" />
                   </div>
-                  <div className="text-[10px] font-mono text-neutral-600 dark:text-white/80 font-bold uppercase tracking-wider">
+                  <div className="text-[10px] font-industrial text-neutral-600 dark:text-white/80 font-bold uppercase tracking-wider">
                     VITAL FEST FOUNDER · LONDON
                   </div>
                 </div>
@@ -63,24 +63,24 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
                 from the 1991 pirate radio dawn to 2026 Victoria and Albert Museum recognition.
               </p>
               
-              <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-300 font-bold pt-1">
+              <div className="flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-300 pt-1">
                 <Award className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
                 <span>Acknowledged by Victoria & Albert Museum (V&A East)</span>
               </div>
 
               {/* Social Channels Strip */}
               <div className="pt-2">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold mb-2">
+                <div className="text-[11px] font-industrial uppercase tracking-wider text-amber-600 dark:text-amber-400 font-black mb-2">
                   Official Channels & Audio
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs font-mono">
+                <div className="flex flex-wrap gap-2 text-xs font-industrial">
                   {socials.map((s) => (
                     <a
                       key={s.label}
                       href={s.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="hover-shimmer px-2.5 py-1 rounded-lg glass-card text-neutral-900 hover:text-neutral-950 dark:text-white font-bold transition-colors"
+                      className="hardware-btn px-2.5 py-1 rounded sound-card text-neutral-900 hover:text-neutral-950 dark:text-white font-bold uppercase tracking-wider transition-colors"
                     >
                       {s.label}
                     </a>
@@ -91,10 +91,10 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
 
             {/* Quick Navigation Links */}
             <div className="md:col-span-3 space-y-3">
-              <div className="text-xs font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <div className="text-xs font-industrial font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Site Navigation
               </div>
-              <ul className="space-y-2 text-xs font-medium">
+              <ul className="space-y-2 text-xs font-industrial font-bold uppercase tracking-wider">
                 <li>
                   <a href="#events" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Vital Fest Live Events</a>
                 </li>
@@ -114,14 +114,14 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
                   <a href="#gallery" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Sound System Gallery</a>
                 </li>
                 <li>
-                  <a href="#booking" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Direct Bookings & Inquiries</a>
+                  <a href="#booking" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Direct Bookings & Enquiries</a>
                 </li>
                 {onOpenEpk && (
                   <li>
                     <button
                       type="button"
                       onClick={onOpenEpk}
-                      className="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 transition-colors text-left font-bold cursor-pointer flex items-center gap-1.5"
+                      className="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 transition-colors text-left font-black uppercase cursor-pointer flex items-center gap-1.5"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>Electronic Press Kit (EPK)</span>
@@ -133,10 +133,10 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
 
             {/* Official Representation & Broadcasting */}
             <div className="md:col-span-4 space-y-3">
-              <div className="text-xs font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                Agency & Inquiries
+              <div className="text-xs font-industrial font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Agency & Enquiries
               </div>
-              <div className="text-xs space-y-2.5">
+              <div className="text-xs space-y-2.5 font-industrial uppercase tracking-wider">
                 <div>
                   <span className="text-neutral-600 dark:text-white/70">Exclusive Agency: </span>
                   <span className="text-neutral-950 dark:text-white font-bold">{profile?.booking_agency || 'IP1 Agency London'}</span>
@@ -145,7 +145,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
                   <span className="text-neutral-600 dark:text-white/70">Official Email: </span>
                   <a
                     href={`mailto:${profile?.direct_email || profile?.booking_email || 'djital.booking@gmail.com'}`}
-                    className="text-amber-600 dark:text-amber-400 hover:underline font-mono font-bold"
+                    className="text-amber-600 dark:text-amber-400 hover:underline font-bold"
                   >
                     {profile?.direct_email || profile?.booking_email || 'djital.booking@gmail.com'}
                   </a>
@@ -157,7 +157,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
                       href={`https://wa.me/${profile.whatsapp_number.replace(/[^0-9+]/g, '')}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-mono font-bold"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold"
                     >
                       {profile.whatsapp_number}
                     </a>
@@ -196,7 +196,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
         </ScrollReveal>
 
         {/* Bottom bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-600 dark:text-white/80">
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-industrial uppercase tracking-wider text-neutral-600 dark:text-white/80">
           <div>
             © {new Date().getFullYear()} DJ Ital. All rights reserved. Content based on djital.me.
           </div>
@@ -205,7 +205,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
             {onOpenDashboard && (
               <button
                 onClick={onOpenDashboard}
-                className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/60 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/60 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer font-bold uppercase tracking-wider"
                 title="Management Dashboard"
               >
                 <Lock className="w-3 h-3" />
@@ -215,7 +215,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
 
             <button
               onClick={scrollToTop}
-              className="flex items-center gap-1.5 text-neutral-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer font-bold"
+              className="hardware-btn px-2.5 py-1 rounded flex items-center gap-1.5 text-neutral-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer font-black uppercase tracking-wider"
             >
               <span>Back to Top</span>
               <ArrowUp className="w-3.5 h-3.5" />

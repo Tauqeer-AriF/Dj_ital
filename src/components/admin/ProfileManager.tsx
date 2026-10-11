@@ -161,7 +161,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         file_type: 'image',
         mime_type: file.type || 'image/png',
         url: dataUrl,
-        source: 'Brand Logo Customizer',
+        source: 'Brand Logo Customiser',
         category: 'Branding',
       });
     } catch (err: any) {
@@ -405,10 +405,10 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
-            Artist Profile and Branding Customizer
+            Artist Profile and Branding Customiser
           </h3>
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-            Customize upfront taglines, custom color palettes, font typography, radio streams, contact details, and background styles.
+            Customise upfront taglines, custom colour palettes, font typography, radio streams, contact details, and background styles.
           </p>
         </div>
         {isSaved && (
@@ -584,7 +584,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                         Application Media Library
                       </h4>
                       <p className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
-                        Select any uploaded logo, SVG badge, or visual brand asset from your media catalog.
+                        Select any uploaded logo, SVG badge, or visual brand asset from your media catalogue.
                       </p>
                     </div>
                   </div>
@@ -716,7 +716,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
               <Palette className="w-4 h-4" />
-              <span>Theme Styling: Color Scheme & Typography Font</span>
+              <span>Theme Styling: Colour Scheme & Typography Font</span>
             </div>
             <span className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
               Live SQLite Preference
@@ -727,7 +727,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
-                <span>Primary Accent Color Scheme & Custom Picker</span>
+                <span>Primary Accent Colour Scheme & Custom Picker</span>
               </label>
               <button
                 type="button"
@@ -785,11 +785,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               })}
             </div>
 
-            {/* Custom Color Input Controls */}
+            {/* Custom Colour Input Controls */}
             {selectedColorScheme === 'custom' && (
               <div className="mt-4 p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-white/15 space-y-3 animate-in fade-in-0 duration-150">
                 <div className="flex items-center justify-between text-xs font-mono font-bold text-neutral-900 dark:text-white">
-                  <span>🎨 Custom Hex Color Chooser</span>
+                  <span>🎨 Custom Hex Colour Chooser</span>
                   <span className="text-[10px] text-neutral-500">Live Realtime Hex Engine</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -836,7 +836,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                     />
                   </div>
 
-                  {/* Quick preset color chips */}
+                  {/* Quick preset colour chips */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {['#FF0055', '#FF7700', '#FFCC00', '#00FF99', '#00CCFF', '#9900FF', '#FF00CC'].map((quickHex) => (
                       <button
@@ -994,6 +994,30 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             />
           </div>
 
+          <div className="space-y-1.5 p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 dark:border-amber-400/20">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                <span>Navbar Sub-Title</span>
+              </label>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
+                Replaces Tagline in Navbar Only
+              </span>
+            </div>
+            <input
+              type="text"
+              value={formData.navbar_subtitle !== undefined ? formData.navbar_subtitle : (formData.subtitle || '')}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ ...formData, navbar_subtitle: val, subtitle: val });
+              }}
+              placeholder="e.g. British Jungle Pioneer & Radio Broadcaster (or leave blank to use main tagline)"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+            />
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              When entered, this replaces the tagline under <strong>DJ ITAL</strong> specifically in the top navigation bar. If left blank, the navbar will display the upfront tagline above.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
@@ -1125,13 +1149,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-              Prefilled WhatsApp Inquiry Message
+              Prefilled WhatsApp Enquiry Message
             </label>
             <input
               type="text"
               value={formData.whatsapp_message || ''}
               onChange={(e) => setFormData({ ...formData, whatsapp_message: e.target.value })}
-              placeholder="Hi DJ Ital, I would like to inquire about booking you for an event."
+              placeholder="Hi DJ Ital, I would like to enquire about booking you for an event."
               className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
