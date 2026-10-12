@@ -202,17 +202,6 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
           </div>
           
           <div className="flex items-center gap-4">
-            {onOpenDashboard && (
-              <button
-                onClick={onOpenDashboard}
-                className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/60 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer font-bold uppercase tracking-wider"
-                title="Management Dashboard"
-              >
-                <Lock className="w-3 h-3" />
-                <span>Admin</span>
-              </button>
-            )}
-
             <button
               onClick={scrollToTop}
               className="hardware-btn px-2.5 py-1 rounded flex items-center gap-1.5 text-neutral-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer font-black uppercase tracking-wider"

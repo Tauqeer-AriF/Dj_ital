@@ -72,7 +72,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
     'British Jungle & Drum and Bass Pioneer | Kool FM 94.5 | Founder of Vital Fest';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full transition-colors duration-200 sound-cabinet rounded-none border-b border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white shadow-xl backdrop-blur-2xl">
+    <header
+      style={{ position: 'fixed' }}
+      className="!fixed top-0 left-0 right-0 z-50 w-full transition-colors duration-200 sound-cabinet rounded-none border-b border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white shadow-xl backdrop-blur-2xl"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
         
         {/* Zone 1: Sound System Brand & Heritage Mark */}

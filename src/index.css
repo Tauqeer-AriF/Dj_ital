@@ -574,6 +574,10 @@ html[data-theme="dark"] .glass-panel-amber {
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
 }
 
+header.sound-cabinet {
+  position: fixed !important;
+}
+
 .dark .sound-cabinet,
 html[data-theme="dark"] .sound-cabinet {
   background: linear-gradient(180deg, rgba(20, 20, 24, 0.95) 0%, rgba(12, 12, 14, 0.98) 100%);
