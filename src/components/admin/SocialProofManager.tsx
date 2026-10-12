@@ -23,12 +23,14 @@ import {
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
+import { useToast } from '../../context/ToastContext';
 
 interface SocialProofManagerProps {
   onRefresh: () => void;
 }
 
 export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<'testimonials' | 'venues'>('testimonials');
   const [testimonials, setTestimonials] = useState<TestimonialData[]>([]);
   const [venues, setVenues] = useState<VenueLogoData[]>([]);
@@ -96,22 +98,35 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
 
   const handleTestimonialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTestimonial) {
-      await updateTestimonial(editingTestimonial.id, testimonialFormData);
-    } else {
-      await createTestimonial(testimonialFormData);
+    try {
+      if (editingTestimonial) {
+        await updateTestimonial(editingTestimonial.id, testimonialFormData);
+        showSuccess('Testimonial Updated', `Quote by "${testimonialFormData.author_name}" saved.`);
+      } else {
+        await createTestimonial(testimonialFormData);
+        showSuccess('Testimonial Added', `Quote by "${testimonialFormData.author_name}" added.`);
+      }
+      setIsTestimonialModalOpen(false);
+      await loadData();
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save testimonial:', err);
+      showError('Failed to Save Testimonial', err?.message || 'A database error occurred.');
     }
-    setIsTestimonialModalOpen(false);
-    await loadData();
-    onRefresh();
   };
 
   const confirmDeleteTestimonial = async () => {
     if (deleteCandidateTestimonialId !== null) {
-      await deleteTestimonial(deleteCandidateTestimonialId);
-      setDeleteCandidateTestimonialId(null);
-      await loadData();
-      onRefresh();
+      try {
+        await deleteTestimonial(deleteCandidateTestimonialId);
+        showSuccess('Testimonial Deleted', 'Quote removed from database.');
+        setDeleteCandidateTestimonialId(null);
+        await loadData();
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete testimonial:', err);
+        showError('Failed to Delete Testimonial', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -140,29 +155,42 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
 
   const handleVenueSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingVenue) {
-      await updateVenueLogo(editingVenue.id, venueFormData);
-    } else {
-      await createVenueLogo(venueFormData);
+    try {
+      if (editingVenue) {
+        await updateVenueLogo(editingVenue.id, venueFormData);
+        showSuccess('Venue Badge Updated', `"${venueFormData.name}" saved.`);
+      } else {
+        await createVenueLogo(venueFormData);
+        showSuccess('Venue Badge Added', `"${venueFormData.name}" added.`);
+      }
+      setIsVenueModalOpen(false);
+      await loadData();
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save venue logo:', err);
+      showError('Failed to Save Venue', err?.message || 'A database error occurred.');
     }
-    setIsVenueModalOpen(false);
-    await loadData();
-    onRefresh();
   };
 
   const confirmDeleteVenue = async () => {
     if (deleteCandidateVenueId !== null) {
-      await deleteVenueLogo(deleteCandidateVenueId);
-      setDeleteCandidateVenueId(null);
-      await loadData();
-      onRefresh();
+      try {
+        await deleteVenueLogo(deleteCandidateVenueId);
+        showSuccess('Venue Badge Deleted', 'Venue removed from database.');
+        setDeleteCandidateVenueId(null);
+        await loadData();
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete venue logo:', err);
+        showError('Failed to Delete Venue', err?.message || 'A database error occurred.');
+      }
     }
   };
 
   return (
     <div className="space-y-6 max-w-5xl pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
             Social Proof, Testimonials & Venue Badges
@@ -176,7 +204,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
           {activeTab === 'testimonials' ? (
             <button
               onClick={openCreateTestimonial}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Testimonial</span>
@@ -184,7 +212,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
           ) : (
             <button
               onClick={openCreateVenue}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Venue Badge</span>
@@ -197,7 +225,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
       <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-white/10 pb-3">
         <button
           onClick={() => setActiveTab('testimonials')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             activeTab === 'testimonials'
               ? 'bg-amber-400 text-neutral-950 shadow-sm'
               : 'text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
@@ -209,7 +237,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
 
         <button
           onClick={() => setActiveTab('venues')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             activeTab === 'venues'
               ? 'bg-amber-400 text-neutral-950 shadow-sm'
               : 'text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
@@ -226,7 +254,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
           {testimonials.map((t) => (
             <div
               key={t.id}
-              className="p-5 rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex flex-col justify-between space-y-4"
+              className="p-5 rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex flex-col justify-between space-y-4"
             >
               <div className="space-y-3">
                 <div className="flex items-center gap-1 text-amber-400">
@@ -246,13 +274,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   onClick={() => openEditTestimonial(t)}
-                  className="p-1.5 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setDeleteCandidateTestimonialId(t.id)}
-                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -268,7 +296,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
           {venues.map((v) => (
             <div
               key={v.id}
-              className="p-4 rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex items-center justify-between"
+              className="p-4 rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex items-center justify-between"
             >
               <div>
                 <h4 className="font-display font-bold text-sm text-neutral-900 dark:text-white">
@@ -280,13 +308,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => openEditVenue(v)}
-                  className="p-1.5 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setDeleteCandidateVenueId(v.id)}
-                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -299,14 +327,14 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
       {/* Testimonial Edit/Create Modal */}
       {isTestimonialModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingTestimonial ? 'Edit Testimonial' : 'Add New Testimonial'}
               </h4>
               <button
                 onClick={() => setIsTestimonialModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -323,7 +351,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                   value={testimonialFormData.quote}
                   onChange={(e) => setTestimonialFormData({ ...testimonialFormData, quote: e.target.value })}
                   placeholder="The feedback or review from the promoter..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -340,7 +368,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                       setTestimonialFormData({ ...testimonialFormData, author_name: e.target.value })
                     }
                     placeholder="Marcus Vance"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   />
                 </div>
 
@@ -356,7 +384,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                       setTestimonialFormData({ ...testimonialFormData, role_venue: e.target.value })
                     }
                     placeholder="Head of Programming, The Hackney Social"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   />
                 </div>
               </div>
@@ -377,13 +405,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 <button
                   type="button"
                   onClick={() => setIsTestimonialModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-mono"
+                  className="px-4 py-2 rounded text-xs font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
+                  className="px-5 py-2 rounded bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
                 >
                   Save Testimonial
                 </button>
@@ -396,14 +424,14 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
       {/* Venue Edit/Create Modal */}
       {isVenueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingVenue ? 'Edit Venue Badge' : 'Add New Venue Badge'}
               </h4>
               <button
                 onClick={() => setIsVenueModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -420,7 +448,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                   value={venueFormData.name}
                   onChange={(e) => setVenueFormData({ ...venueFormData, name: e.target.value })}
                   placeholder="e.g. Fabric London"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -433,7 +461,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                   value={venueFormData.location}
                   onChange={(e) => setVenueFormData({ ...venueFormData, location: e.target.value })}
                   placeholder="Farringdon, London"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -441,13 +469,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 <button
                   type="button"
                   onClick={() => setIsVenueModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-mono"
+                  className="px-4 py-2 rounded text-xs font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
+                  className="px-5 py-2 rounded bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
                 >
                   Save Spot
                 </button>

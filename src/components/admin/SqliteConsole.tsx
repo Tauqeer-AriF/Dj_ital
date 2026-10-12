@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Play, RotateCcw, AlertCircle } from 'lucide-react';
 import { executeQuery, resetDatabaseToSeed } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 interface SqliteConsoleProps {
   onRefresh: () => void;
 }
 
 export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [query, setQuery] = useState('SELECT id, title, venue, event_date, status FROM events LIMIT 10;');
   const [results, setResults] = useState<any[] | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
@@ -31,25 +33,36 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
       if (res.length > 0) {
         setColumns(res[0].columns);
         setResults(res[0].values);
-        setExecMessage(`Query succeeded: returned ${res[0].values.length} rows.`);
+        const msg = `Query succeeded: returned ${res[0].values.length} rows.`;
+        setExecMessage(msg);
+        showSuccess('Query Executed', msg);
       } else {
         setColumns([]);
         setResults([]);
-        setExecMessage('Query executed successfully (statement yielded no result set).');
+        const msg = 'Query executed successfully (statement yielded no result set).';
+        setExecMessage(msg);
+        showSuccess('Query Executed', msg);
       }
       onRefresh();
     } catch (err: any) {
       console.error('SQL execution error:', err);
-      setError(err.message || 'SQLite Syntax or Execution Error');
+      const errMsg = err.message || 'SQLite Syntax or Execution Error';
+      setError(errMsg);
+      showError('SQL Query Error', errMsg);
       setResults(null);
     }
   };
 
   const confirmReset = async () => {
-    setIsResetConfirmOpen(false);
-    await resetDatabaseToSeed();
-    onRefresh();
-    handleRunQuery();
+    try {
+      setIsResetConfirmOpen(false);
+      await resetDatabaseToSeed();
+      showSuccess('Database Reset', 'SQLite database restored to initial factory seed.');
+      onRefresh();
+      handleRunQuery();
+    } catch (err: any) {
+      showError('Reset Failed', err?.message || 'Database reset failed.');
+    }
   };
 
   const handleReset = () => {
@@ -68,7 +81,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
 
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-300 bg-neutral-100 hover:bg-red-50 text-neutral-700 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:hover:bg-red-500/20 dark:text-neutral-300 dark:hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-2 rounded border border-neutral-300 bg-neutral-100 hover:bg-red-50 text-neutral-700 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:hover:bg-red-500/20 dark:text-neutral-300 dark:hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Reset to Seed Data</span>
@@ -98,7 +111,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
             rows={4}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full p-4 rounded-xl font-mono text-xs bg-neutral-900 border border-neutral-700 text-amber-300 focus:outline-none focus:border-amber-400 shadow-inner"
+            className="w-full p-4 rounded font-mono text-xs bg-neutral-900 border border-neutral-700 text-amber-300 focus:outline-none focus:border-amber-400 shadow-inner"
             placeholder="Type your SQL query here (e.g. SELECT * FROM events;)"
           />
         </div>
@@ -110,7 +123,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
 
           <button
             onClick={handleRunQuery}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 font-semibold text-xs transition-colors cursor-pointer shadow-md"
+            className="flex items-center gap-2 px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-semibold text-xs transition-colors cursor-pointer shadow-md"
           >
             <Play className="w-4 h-4 fill-current" />
             <span>Execute Query</span>
@@ -120,7 +133,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
 
       {/* Error or Success notification */}
       {error && (
-        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2 font-mono">
+        <div className="p-3.5 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2 font-mono">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -134,7 +147,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
 
       {/* Query Results Table */}
       {results && columns.length > 0 && (
-        <div className="rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden shadow-sm bg-white dark:bg-neutral-900">
+        <div className="rounded border border-neutral-200 dark:border-white/10 overflow-hidden shadow-sm bg-white dark:bg-neutral-900">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <thead className="bg-neutral-100 text-neutral-700 border-b border-neutral-200 dark:bg-black/50 dark:text-neutral-300 dark:border-white/10">

@@ -13,8 +13,10 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { getAdminAuthInfo, changeAdminPassword, AdminAuthInfo } from '../../db/sqlite';
+import { useToast } from '../../context/ToastContext';
 
 export const SecurityManager: React.FC = () => {
+  const { showSuccess, showError } = useToast();
   const [authInfo, setAuthInfo] = useState<AdminAuthInfo | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -90,16 +92,22 @@ export const SecurityManager: React.FC = () => {
     try {
       const res = await changeAdminPassword(currentPassword, newPassword);
       if (res.success) {
-        setSuccessMsg(res.message || 'Dashboard password successfully changed!');
+        const msg = res.message || 'Dashboard password successfully changed!';
+        setSuccessMsg(msg);
+        showSuccess('Password Updated', msg);
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
         await loadAuthInfo();
       } else {
-        setErrorMsg(res.error || 'Failed to update password.');
+        const err = res.error || 'Failed to update password.';
+        setErrorMsg(err);
+        showError('Security Error', err);
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Unexpected error updating password.');
+      const msg = err?.message || 'Unexpected error updating password.';
+      setErrorMsg(msg);
+      showError('Security Error', msg);
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +116,7 @@ export const SecurityManager: React.FC = () => {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header Banner */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
+      <div className="p-6 sm:p-8 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
@@ -124,7 +132,7 @@ export const SecurityManager: React.FC = () => {
           </div>
 
           {/* Current Status Badge */}
-          <div className="shrink-0 p-4 rounded-2xl glass-card space-y-1 min-w-[200px]">
+          <div className="shrink-0 p-4 rounded glass-card space-y-1 min-w-[200px]">
             <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 font-bold">
               Access State
             </div>
@@ -152,10 +160,10 @@ export const SecurityManager: React.FC = () => {
       </div>
 
       {/* Change Password Form Card */}
-      <div className="p-6 sm:p-8 rounded-3xl glass-panel hover-glass-sheen shadow-xl space-y-6 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent">
+      <div className="p-6 sm:p-8 rounded glass-panel hover-glass-sheen shadow-xl space-y-6 relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent">
         <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
               <KeyRound className="w-5 h-5" />
             </div>
             <div>
@@ -171,7 +179,7 @@ export const SecurityManager: React.FC = () => {
 
         {/* Feedback Messages */}
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 flex items-start gap-3 text-xs sm:text-sm animate-in fade-in duration-200">
+          <div className="p-4 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 flex items-start gap-3 text-xs sm:text-sm animate-in fade-in duration-200">
             <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-500" />
             <div className="space-y-1">
               <p className="font-bold">{successMsg}</p>
@@ -183,7 +191,7 @@ export const SecurityManager: React.FC = () => {
         )}
 
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-center gap-3 text-xs sm:text-sm animate-in fade-in duration-200">
+          <div className="p-4 rounded bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-center gap-3 text-xs sm:text-sm animate-in fade-in duration-200">
             <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
             <p className="font-bold">{errorMsg}</p>
           </div>
@@ -207,7 +215,7 @@ export const SecurityManager: React.FC = () => {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter your current password..."
                 required
-                className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
+                className="w-full px-4 py-3 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
               />
               <button
                 type="button"
@@ -235,7 +243,7 @@ export const SecurityManager: React.FC = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new strong password..."
                   required
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
+                  className="w-full px-4 py-3 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
                 />
                 <button
                   type="button"
@@ -301,7 +309,7 @@ export const SecurityManager: React.FC = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat new password..."
                   required
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
+                  className="w-full px-4 py-3 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-500 pr-11 font-mono transition-colors"
                 />
                 <button
                   type="button"
@@ -325,7 +333,7 @@ export const SecurityManager: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading || isTooShort || !isMatch}
-              className="hover-shimmer w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-400/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="hover-shimmer w-full sm:w-auto px-6 py-3 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-400/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -344,13 +352,13 @@ export const SecurityManager: React.FC = () => {
       </div>
 
       {/* Security Architecture Information Panel */}
-      <div className="p-6 rounded-3xl glass-card text-xs space-y-4">
+      <div className="p-6 rounded glass-card text-xs space-y-4">
         <h3 className="font-mono font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
           <span>Security Architecture Standards</span>
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-neutral-600 dark:text-neutral-400">
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
+          <div className="p-3.5 rounded bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
             <span className="font-mono font-bold text-neutral-900 dark:text-white block">
               Cryptographic Salt & Hash
             </span>
@@ -358,7 +366,7 @@ export const SecurityManager: React.FC = () => {
               Passwords are never stored in plain text. Each password uses a 128-bit cryptographically secure pseudorandom salt with SHA-256 digests.
             </p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
+          <div className="p-3.5 rounded bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
             <span className="font-mono font-bold text-neutral-900 dark:text-white block">
               SQLite Isolation
             </span>
@@ -366,7 +374,7 @@ export const SecurityManager: React.FC = () => {
               Authentication state is encapsulated in an internal <code className="font-mono text-amber-500">admin_auth</code> database relation, protected from public queries.
             </p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
+          <div className="p-3.5 rounded bg-white dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/5 space-y-1">
             <span className="font-mono font-bold text-neutral-900 dark:text-white block">
               Multi-Device Persistence
             </span>

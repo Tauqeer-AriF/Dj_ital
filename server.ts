@@ -17,13 +17,22 @@ function resolveDataDirectory(): string {
   if (process.env.DATA_DIR && process.env.DATA_DIR.trim()) {
     return path.resolve(process.env.DATA_DIR.trim());
   }
-  // Check common Docker / Railway persistent volume mount path
-  if (fs.existsSync('/data')) {
-    try {
-      fs.accessSync('/data', fs.constants.W_OK);
-      return '/data';
-    } catch {
-      // Not writable, fall through
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.RAILWAY_VOLUME_MOUNT_PATH.trim()) {
+    return path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH.trim());
+  }
+  if (process.env.PERSISTENT_DATA_DIR && process.env.PERSISTENT_DATA_DIR.trim()) {
+    return path.resolve(process.env.PERSISTENT_DATA_DIR.trim());
+  }
+  // Check common Docker / Railway / Linux persistent volume mount paths
+  const candidateMounts = ['/data', '/var/data', '/mnt/data'];
+  for (const m of candidateMounts) {
+    if (fs.existsSync(m)) {
+      try {
+        fs.accessSync(m, fs.constants.W_OK);
+        return m;
+      } catch {
+        // Not writable, try next
+      }
     }
   }
   return SEED_DIR;
@@ -101,10 +110,11 @@ app.get('/api/db/state', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     if (fs.existsSync(DB_FILE)) {
       const data = fs.readFileSync(DB_FILE, 'utf-8');
-      let meta = { updatedAt: new Date().toISOString() };
+      let meta: any = { updatedAt: '2026-01-01T00:00:00.000Z', isSeed: true };
       if (fs.existsSync(DB_META_FILE)) {
         try {
-          meta = JSON.parse(fs.readFileSync(DB_META_FILE, 'utf-8'));
+          const parsed = JSON.parse(fs.readFileSync(DB_META_FILE, 'utf-8'));
+          meta = { ...meta, ...parsed };
         } catch {
           // ignore
         }

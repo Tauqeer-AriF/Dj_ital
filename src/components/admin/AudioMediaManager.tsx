@@ -25,12 +25,14 @@ import {
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
+import { useToast } from '../../context/ToastContext';
 
 interface AudioMediaManagerProps {
   onRefresh: () => void;
 }
 
 export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [activeSubTab, setActiveSubTab] = useState<'mixes' | 'videos'>('mixes');
   const [mixes, setMixes] = useState<AudioMixData[]>([]);
   const [videos, setVideos] = useState<VideoData[]>([]);
@@ -109,22 +111,35 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
   const handleMixSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingMix) {
-      await updateAudioMix(editingMix.id, mixFormData);
-    } else {
-      await createAudioMix(mixFormData);
+    try {
+      if (editingMix) {
+        await updateAudioMix(editingMix.id, mixFormData);
+        showSuccess('Audio Mix Updated', `"${mixFormData.title}" saved successfully.`);
+      } else {
+        await createAudioMix(mixFormData);
+        showSuccess('Audio Mix Added', `"${mixFormData.title}" catalogued successfully.`);
+      }
+      setIsMixModalOpen(false);
+      await loadData();
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save mix:', err);
+      showError('Failed to Save Mix', err?.message || 'A database error occurred.');
     }
-    setIsMixModalOpen(false);
-    await loadData();
-    onRefresh();
   };
 
   const confirmDeleteMix = async () => {
     if (deleteCandidateMixId !== null) {
-      await deleteAudioMix(deleteCandidateMixId);
-      setDeleteCandidateMixId(null);
-      await loadData();
-      onRefresh();
+      try {
+        await deleteAudioMix(deleteCandidateMixId);
+        showSuccess('Mix Removed', 'Audio mix deleted from SQLite.');
+        setDeleteCandidateMixId(null);
+        await loadData();
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete mix:', err);
+        showError('Failed to Delete Mix', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -157,29 +172,42 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
   const handleVideoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingVideo) {
-      await updateVideo(editingVideo.id, videoFormData);
-    } else {
-      await createVideo(videoFormData);
+    try {
+      if (editingVideo) {
+        await updateVideo(editingVideo.id, videoFormData);
+        showSuccess('Video Updated', `"${videoFormData.title}" saved successfully.`);
+      } else {
+        await createVideo(videoFormData);
+        showSuccess('Video Added', `"${videoFormData.title}" catalogued successfully.`);
+      }
+      setIsVideoModalOpen(false);
+      await loadData();
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save video:', err);
+      showError('Failed to Save Video', err?.message || 'A database error occurred.');
     }
-    setIsVideoModalOpen(false);
-    await loadData();
-    onRefresh();
   };
 
   const confirmDeleteVideo = async () => {
     if (deleteCandidateVideoId !== null) {
-      await deleteVideo(deleteCandidateVideoId);
-      setDeleteCandidateVideoId(null);
-      await loadData();
-      onRefresh();
+      try {
+        await deleteVideo(deleteCandidateVideoId);
+        showSuccess('Video Removed', 'Video record deleted from SQLite.');
+        setDeleteCandidateVideoId(null);
+        await loadData();
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete video:', err);
+        showError('Failed to Delete Video', err?.message || 'A database error occurred.');
+      }
     }
   };
 
   return (
     <div className="space-y-6 max-w-5xl pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
             Audio Sets, Radio Streams & Video Clips
@@ -193,7 +221,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
           {activeSubTab === 'mixes' ? (
             <button
               onClick={openCreateMix}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Audio Set</span>
@@ -201,7 +229,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
           ) : (
             <button
               onClick={openCreateVideo}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Video Clip</span>
@@ -214,7 +242,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-white/10 pb-3">
         <button
           onClick={() => setActiveSubTab('mixes')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             activeSubTab === 'mixes'
               ? 'bg-amber-400 text-neutral-950 shadow-sm'
               : 'text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
@@ -226,7 +254,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
         <button
           onClick={() => setActiveSubTab('videos')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             activeSubTab === 'videos'
               ? 'bg-amber-400 text-neutral-950 shadow-sm'
               : 'text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white'
@@ -243,7 +271,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
           {mixes.map((mix) => (
             <div
               key={mix.id}
-              className="p-5 rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex flex-col justify-between space-y-4"
+              className="p-5 rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex flex-col justify-between space-y-4"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono">
@@ -266,14 +294,14 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
               <div className="pt-3 border-t border-neutral-100 dark:border-white/10 flex items-center justify-end gap-2">
                 <button
                   onClick={() => openEditMix(mix)}
-                  className="p-2 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-2 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                   title="Edit Mix"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setDeleteCandidateMixId(mix.id)}
-                  className="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  className="p-2 rounded text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                   title="Delete Mix"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -290,7 +318,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
           {videos.map((vid) => (
             <div
               key={vid.id}
-              className="rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 overflow-hidden shadow-sm flex flex-col justify-between"
+              className="rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 overflow-hidden shadow-sm flex flex-col justify-between"
             >
               <div className="relative aspect-video bg-neutral-950">
                 <img
@@ -317,13 +345,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <div className="pt-2 border-t border-neutral-100 dark:border-white/10 flex items-center justify-end gap-2">
                   <button
                     onClick={() => openEditVideo(vid)}
-                    className="p-1.5 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setDeleteCandidateVideoId(vid.id)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -337,14 +365,14 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       {/* Edit/Create Mix Modal */}
       {isMixModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingMix ? 'Edit Audio Set' : 'Add New Audio Set'}
               </h4>
               <button
                 onClick={() => setIsMixModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -361,7 +389,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   value={mixFormData.title}
                   onChange={(e) => setMixFormData({ ...mixFormData, title: e.target.value })}
                   placeholder="e.g. Kool FM 94.5 Archive (1994)"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -373,7 +401,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   <select
                     value={mixFormData.style}
                     onChange={(e) => setMixFormData({ ...mixFormData, style: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
                     <option value="Jungle / D&B">Jungle / D&B</option>
                     <option value="Reggae / Dub">Reggae / Dub</option>
@@ -389,7 +417,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   <select
                     value={mixFormData.platform}
                     onChange={(e) => setMixFormData({ ...mixFormData, platform: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
                     <option value="SoundCloud">SoundCloud</option>
                     <option value="Mixcloud">Mixcloud</option>
@@ -409,7 +437,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   value={mixFormData.embed_url}
                   onChange={(e) => setMixFormData({ ...mixFormData, embed_url: e.target.value })}
                   placeholder="https://soundcloud.com/..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -423,7 +451,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     value={mixFormData.duration}
                     onChange={(e) => setMixFormData({ ...mixFormData, duration: e.target.value })}
                     placeholder="e.g. 58:40"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   />
                 </div>
 
@@ -436,7 +464,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     value={mixFormData.stream_url}
                     onChange={(e) => setMixFormData({ ...mixFormData, stream_url: e.target.value })}
                     placeholder="https://..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   />
                 </div>
               </div>
@@ -449,7 +477,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   rows={2}
                   value={mixFormData.description}
                   onChange={(e) => setMixFormData({ ...mixFormData, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -457,13 +485,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <button
                   type="button"
                   onClick={() => setIsMixModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-mono"
+                  className="px-4 py-2 rounded text-xs font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
+                  className="px-5 py-2 rounded bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
                 >
                   Save Mix
                 </button>
@@ -476,14 +504,14 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       {/* Edit/Create Video Modal */}
       {isVideoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingVideo ? 'Edit Video Clip' : 'Add New Video Clip'}
               </h4>
               <button
                 onClick={() => setIsVideoModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -500,7 +528,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   value={videoFormData.title}
                   onChange={(e) => setVideoFormData({ ...videoFormData, title: e.target.value })}
                   placeholder="e.g. Vital Fest 2026 Crowd Reaction"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -512,7 +540,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   <select
                     value={videoFormData.category}
                     onChange={(e) => setVideoFormData({ ...videoFormData, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
                     <option value="Event Recap">Event Recap</option>
                     <option value="Live Set Clip">Live Set Clip</option>
@@ -530,7 +558,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     value={videoFormData.duration}
                     onChange={(e) => setVideoFormData({ ...videoFormData, duration: e.target.value })}
                     placeholder="e.g. 02:45"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   />
                 </div>
               </div>
@@ -545,7 +573,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   value={videoFormData.video_url}
                   onChange={(e) => setVideoFormData({ ...videoFormData, video_url: e.target.value })}
                   placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
               </div>
 
@@ -565,13 +593,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <button
                   type="button"
                   onClick={() => setIsVideoModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-mono"
+                  className="px-4 py-2 rounded text-xs font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
+                  className="px-5 py-2 rounded bg-amber-400 text-neutral-950 font-mono text-xs font-bold"
                 >
                   Save Video
                 </button>

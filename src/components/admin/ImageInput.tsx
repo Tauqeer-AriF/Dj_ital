@@ -136,11 +136,11 @@ export const ImageInput: React.FC<ImageInputProps> = ({
       </div>
 
       {/* Main Image Control Container */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 p-4 rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900/80">
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 p-4 rounded border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900/80">
         
         {/* Left: Interactive Image Preview */}
         <div className="sm:col-span-5 relative">
-          <div className={`relative w-full ${aspectClasses} rounded-xl overflow-hidden bg-neutral-950 border border-neutral-300 dark:border-white/10 shadow-inner flex items-center justify-center group`}>
+          <div className={`relative w-full ${aspectClasses} rounded overflow-hidden bg-neutral-950 border border-neutral-300 dark:border-white/10 shadow-inner flex items-center justify-center group`}>
             {normalizedValue && !imgError ? (
               <img
                 src={normalizedValue}
@@ -169,11 +169,11 @@ export const ImageInput: React.FC<ImageInputProps> = ({
         <div className="sm:col-span-7 flex flex-col justify-between space-y-3">
           
           {/* Tabs: Upload | Media Library | Presets | URL */}
-          <div className="grid grid-cols-4 gap-1 p-1 bg-neutral-200/80 dark:bg-neutral-950/80 rounded-xl border border-neutral-300 dark:border-white/10 text-xs">
+          <div className="grid grid-cols-4 gap-1 p-1 bg-neutral-200/80 dark:bg-neutral-950/80 rounded border border-neutral-300 dark:border-white/10 text-xs">
             <button
               type="button"
               onClick={() => setActiveMode('upload')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg font-mono font-medium transition-all ${
+              className={`flex items-center justify-center gap-1 py-1.5 rounded font-mono font-medium transition-all ${
                 activeMode === 'upload'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-950 dark:text-white shadow-sm font-bold'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -189,7 +189,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                 setActiveMode('library');
                 setIsPickerOpen(true);
               }}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg font-mono font-medium transition-all ${
+              className={`flex items-center justify-center gap-1 py-1.5 rounded font-mono font-medium transition-all ${
                 activeMode === 'library'
                   ? 'bg-amber-400 text-neutral-950 shadow-sm font-bold'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -203,7 +203,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
             <button
               type="button"
               onClick={() => setActiveMode('presets')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg font-mono font-medium transition-all ${
+              className={`flex items-center justify-center gap-1 py-1.5 rounded font-mono font-medium transition-all ${
                 activeMode === 'presets'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-950 dark:text-white shadow-sm font-bold'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -216,7 +216,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
             <button
               type="button"
               onClick={() => setActiveMode('url')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg font-mono font-medium transition-all ${
+              className={`flex items-center justify-center gap-1 py-1.5 rounded font-mono font-medium transition-all ${
                 activeMode === 'url'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-950 dark:text-white shadow-sm font-bold'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -240,7 +240,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
               />
               <label
                 htmlFor={`file-upload-${label ? label.replace(/\s+/g, '-').toLowerCase() : 'input'}`}
-                className="w-full flex flex-col items-center justify-center py-4 px-3 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 rounded-xl bg-white/60 dark:bg-black/30 text-center cursor-pointer transition-colors group"
+                className="w-full flex flex-col items-center justify-center py-4 px-3 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 rounded bg-white/60 dark:bg-black/30 text-center cursor-pointer transition-colors group"
               >
                 <Upload className="w-5 h-5 text-neutral-500 group-hover:text-amber-500 transition-colors" />
                 <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 mt-1">
@@ -266,10 +266,10 @@ export const ImageInput: React.FC<ImageInputProps> = ({
               <button
                 type="button"
                 onClick={() => setIsPickerOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-amber-400/50 hover:border-amber-400 bg-amber-400/10 hover:bg-amber-400/20 transition-all cursor-pointer group text-left"
+                className="w-full flex items-center justify-between p-3 rounded border-2 border-dashed border-amber-400/50 hover:border-amber-400 bg-amber-400/10 hover:bg-amber-400/20 transition-all cursor-pointer group text-left"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
+                  <div className="w-8 h-8 rounded bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
                     <FolderArchive className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -281,7 +281,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                     </div>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg bg-amber-400 text-neutral-950 text-[10px] font-mono font-bold shrink-0 shadow-sm">
+                <span className="px-2.5 py-1 rounded bg-amber-400 text-neutral-950 text-[10px] font-mono font-bold shrink-0 shadow-sm">
                   Open Picker
                 </span>
               </button>
@@ -312,7 +312,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                             onChange(itemUrl);
                           }}
                           title={item.title}
-                          className={`relative rounded-lg overflow-hidden aspect-[4/3] border transition-all cursor-pointer group bg-neutral-950 ${
+                          className={`relative rounded overflow-hidden aspect-[4/3] border transition-all cursor-pointer group bg-neutral-950 ${
                             isItemSel
                               ? 'border-amber-400 ring-2 ring-amber-400'
                               : 'border-neutral-300 dark:border-white/10 hover:border-amber-400/50'
@@ -351,7 +351,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                       key={preset.id}
                       type="button"
                       onClick={() => handlePresetSelect(pUrl)}
-                      className={`relative rounded-lg overflow-hidden aspect-[4/3] border transition-all cursor-pointer group ${
+                      className={`relative rounded overflow-hidden aspect-[4/3] border transition-all cursor-pointer group ${
                         normalizedValue === pUrl
                           ? 'border-amber-400 ring-2 ring-amber-400/50'
                           : 'border-neutral-300 dark:border-white/10 hover:border-amber-400/50'
@@ -397,7 +397,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
                   onChange(e.target.value);
                 }}
                 placeholder="https://images.unsplash.com/... or /images/vital_fest_logo.png"
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-xs font-mono text-neutral-900 dark:text-white focus:border-amber-400 focus:outline-none"
+                className="w-full px-3 py-2 rounded bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-white/10 text-xs font-mono text-neutral-900 dark:text-white focus:border-amber-400 focus:outline-none"
               />
               <p className="text-[10px] font-mono text-neutral-500">
                 Paste any direct image link or server path.

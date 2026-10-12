@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { ReleaseData, createRelease, updateRelease, deleteRelease } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 interface ReleasesManagerProps {
   releases: ReleaseData[];
@@ -9,6 +10,7 @@ interface ReleasesManagerProps {
 }
 
 export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
@@ -62,20 +64,33 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingRelease) {
-      await updateRelease(editingRelease.id, formData);
-    } else {
-      await createRelease(formData);
+    try {
+      if (editingRelease) {
+        await updateRelease(editingRelease.id, formData);
+        showSuccess('Release Updated Successfully', `"${formData.title}" has been saved.`);
+      } else {
+        await createRelease(formData);
+        showSuccess('New Release Catalogued Successfully', `"${formData.title}" was added to the discography.`);
+      }
+      setIsModalOpen(false);
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save release:', err);
+      showError('Failed to Save Release', err?.message || 'A database error occurred.');
     }
-    setIsModalOpen(false);
-    onRefresh();
   };
 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
-      await deleteRelease(deleteCandidateId);
-      setDeleteCandidateId(null);
-      onRefresh();
+      try {
+        await deleteRelease(deleteCandidateId);
+        showSuccess('Release Removed', 'The release was deleted from SQLite.');
+        setDeleteCandidateId(null);
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete release:', err);
+        showError('Failed to Delete Release', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -95,7 +110,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
         </div>
         <button
           onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Release</span>
@@ -107,7 +122,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
         {releases.map((rel) => (
           <div
             key={rel.id}
-            className="p-5 rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md flex flex-col justify-between space-y-4"
+            className="p-5 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md flex flex-col justify-between space-y-4"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-mono text-neutral-500 dark:text-neutral-400">
@@ -132,13 +147,13 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openEditModal(rel)}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-medium cursor-pointer"
+                  className="px-3 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-medium cursor-pointer"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(rel.id)}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium cursor-pointer"
+                  className="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium cursor-pointer"
                 >
                   Delete
                 </button>
@@ -151,14 +166,14 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-4">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
               <h4 className="text-lg font-display font-bold">
                 {editingRelease ? 'Edit Release' : 'Add New Release'}
               </h4>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -173,7 +188,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Decibel (VIP Remaster)"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -185,7 +200,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                     required
                     value={formData.release_year}
                     onChange={(e) => setFormData({ ...formData, release_year: parseInt(e.target.value) || 2026 })}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -195,7 +210,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                     required
                     value={formData.bpm}
                     onChange={(e) => setFormData({ ...formData, bpm: parseInt(e.target.value) || 168 })}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -205,7 +220,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                     value={formData.format}
                     onChange={(e) => setFormData({ ...formData, format: e.target.value })}
                     placeholder='12" Vinyl / Digital'
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -218,7 +233,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                     value={formData.label}
                     onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                     placeholder="e.g. Kool FM Recordings"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -228,7 +243,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                     value={formData.catalog_number}
                     onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
                     placeholder="e.g. KOOL-005"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -240,7 +255,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   value={formData.audio_theme}
                   onChange={(e) => setFormData({ ...formData, audio_theme: e.target.value })}
                   placeholder="e.g. Rolling sub-bass with amen break cutups and ragga vocals"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -251,7 +266,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Details on production, hardware samplers, release context..."
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -259,13 +274,13 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer"
+                  className="px-4 py-2.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {editingRelease ? 'Save Changes' : 'Create Release'}
                 </button>

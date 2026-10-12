@@ -6,12 +6,14 @@ import {
   deleteNewsletterSubscriber,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 interface NewsletterManagerProps {
   onRefresh: () => void;
 }
 
 export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [subscribers, setSubscribers] = useState<NewsletterSubscriberData[]>([]);
   const [copiedAll, setCopiedAll] = useState(false);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
@@ -29,35 +31,47 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
     const emails = subscribers.map((s) => s.email).join(', ');
     navigator.clipboard.writeText(emails);
     setCopiedAll(true);
+    showSuccess('Copied to Clipboard', `Copied ${subscribers.length} subscriber email addresses.`);
     setTimeout(() => setCopiedAll(false), 2000);
   };
 
   const handleExportCsv = () => {
-    const csvContent =
-      'ID,Email,Created At,Source\n' +
-      subscribers.map((s) => `${s.id},"${s.email}","${s.created_at}","${s.source}"`).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `djital_newsletter_subscribers_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const csvContent =
+        'ID,Email,Created At,Source\n' +
+        subscribers.map((s) => `${s.id},"${s.email}","${s.created_at}","${s.source}"`).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `djital_newsletter_subscribers_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showSuccess('CSV Exported', 'Subscribers list downloaded.');
+    } catch (err: any) {
+      showError('Export Failed', err?.message || 'Failed to export CSV');
+    }
   };
 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
-      await deleteNewsletterSubscriber(deleteCandidateId);
-      setDeleteCandidateId(null);
-      await loadData();
-      onRefresh();
+      try {
+        await deleteNewsletterSubscriber(deleteCandidateId);
+        showSuccess('Subscriber Deleted', 'Subscriber removed from SQLite.');
+        setDeleteCandidateId(null);
+        await loadData();
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete subscriber:', err);
+        showError('Delete Failed', err?.message || 'A database error occurred.');
+      }
     }
   };
 
   return (
     <div className="space-y-6 max-w-5xl pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider">
             <Mail className="w-4 h-4" />
@@ -75,7 +89,7 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
           <button
             onClick={handleCopyAll}
             disabled={subscribers.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-white/10 dark:hover:bg-white/20 text-neutral-900 dark:text-white text-xs font-mono font-bold transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded bg-neutral-100 hover:bg-neutral-200 dark:bg-white/10 dark:hover:bg-white/20 text-neutral-900 dark:text-white text-xs font-mono font-bold transition-colors cursor-pointer disabled:opacity-50"
           >
             {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copiedAll ? 'Emails Copied!' : 'Copy All Emails'}</span>
@@ -83,7 +97,7 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
           <button
             onClick={handleExportCsv}
             disabled={subscribers.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-mono font-bold transition-colors cursor-pointer disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
@@ -92,7 +106,7 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
       </div>
 
       {/* Subscribers Table */}
-      <div className="rounded-3xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 overflow-hidden shadow-sm">
+      <div className="rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 overflow-hidden shadow-sm">
         {subscribers.length === 0 ? (
           <div className="py-16 text-center text-neutral-400 text-xs font-mono">
             No subscribers registered yet.
@@ -123,7 +137,7 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => setDeleteCandidateId(s.id)}
-                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="Delete Subscriber"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

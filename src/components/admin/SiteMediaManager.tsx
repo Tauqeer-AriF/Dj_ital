@@ -16,12 +16,14 @@ import {
 import { SiteMediaData, getSiteMedia, updateSiteMedia, resetSiteMedia, resetAllSiteMedia } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 interface SiteMediaManagerProps {
   onRefresh: () => void;
 }
 
 export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [mediaList, setMediaList] = useState<SiteMediaData[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [savedKey, setSavedKey] = useState<string | null>(null);
@@ -43,26 +45,41 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
   }, []);
 
   const handleImageChange = async (key: string, newUrl: string) => {
-    setLocalValues((prev) => ({ ...prev, [key]: newUrl }));
-    await updateSiteMedia(key, newUrl);
-    setSavedKey(key);
-    setTimeout(() => setSavedKey((prev) => (prev === key ? null : prev)), 2500);
-    onRefresh();
+    try {
+      setLocalValues((prev) => ({ ...prev, [key]: newUrl }));
+      await updateSiteMedia(key, newUrl);
+      setSavedKey(key);
+      showSuccess('Image Saved', `Site image for "${key}" was updated successfully.`);
+      setTimeout(() => setSavedKey((prev) => (prev === key ? null : prev)), 2500);
+      onRefresh();
+    } catch (err: any) {
+      showError('Save Failed', err?.message || 'Could not update image.');
+    }
   };
 
   const handleResetSingle = async (key: string) => {
-    await resetSiteMedia(key);
-    await loadMedia();
-    setSavedKey(key);
-    setTimeout(() => setSavedKey((prev) => (prev === key ? null : prev)), 2500);
-    onRefresh();
+    try {
+      await resetSiteMedia(key);
+      await loadMedia();
+      setSavedKey(key);
+      showSuccess('Image Reverted', `Restored default artwork for "${key}".`);
+      setTimeout(() => setSavedKey((prev) => (prev === key ? null : prev)), 2500);
+      onRefresh();
+    } catch (err: any) {
+      showError('Reset Failed', err?.message || 'Could not reset image.');
+    }
   };
 
   const handleResetAll = async () => {
-    await resetAllSiteMedia();
-    await loadMedia();
-    setShowResetAllModal(false);
-    onRefresh();
+    try {
+      await resetAllSiteMedia();
+      await loadMedia();
+      setShowResetAllModal(false);
+      showSuccess('All Images Restored', 'All site images reverted to default artwork.');
+      onRefresh();
+    } catch (err: any) {
+      showError('Reset Failed', err?.message || 'Could not reset all images.');
+    }
   };
 
   const sections = ['All', 'Hero Section', 'Heritage & V&A Museum', 'Vital Fest & Events', 'Pirate Radio Archives', 'Dubplates & Studio', 'Documentary Series'];
@@ -90,7 +107,7 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
   return (
     <div className="space-y-8 max-w-6xl pb-12">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 uppercase font-bold tracking-wider">
             <Layers className="w-4 h-4" />
@@ -108,7 +125,7 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
           <button
             type="button"
             onClick={() => setShowResetAllModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-white/10 hover:border-rose-400 text-neutral-700 dark:text-neutral-300 hover:text-rose-500 text-xs font-mono font-medium transition-colors bg-neutral-100 dark:bg-white/5 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded border border-neutral-300 dark:border-white/10 hover:border-rose-400 text-neutral-700 dark:text-neutral-300 hover:text-rose-500 text-xs font-mono font-medium transition-colors bg-neutral-100 dark:bg-white/5 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset All Images</span>
@@ -123,7 +140,7 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
             key={sec}
             type="button"
             onClick={() => setActiveFilter(sec)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3.5 py-2 rounded text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeFilter === sec
                 ? 'bg-amber-400 text-neutral-950 shadow-sm'
                 : 'bg-neutral-200/70 dark:bg-neutral-900/80 text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white border border-neutral-300/60 dark:border-white/5'
@@ -144,7 +161,7 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
           return (
             <div
               key={item.key}
-              className={`p-6 rounded-3xl border transition-all ${
+              className={`p-6 rounded border transition-all ${
                 isHero
                   ? 'border-amber-400/60 bg-white dark:bg-neutral-900/90 shadow-md ring-1 ring-amber-400/30'
                   : 'border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm'
@@ -173,7 +190,7 @@ export const SiteMediaManager: React.FC<SiteMediaManagerProps> = ({ onRefresh })
                 </div>
 
                 {isSaved && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold animate-pulse shrink-0">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold animate-pulse shrink-0">
                     <Check className="w-4 h-4" />
                     <span>Saved to SQLite!</span>
                   </div>

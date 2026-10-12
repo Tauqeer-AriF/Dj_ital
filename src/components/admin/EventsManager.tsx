@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, MapPin, X, Image as ImageIcon } from 'lucide-react
 import { EventData, createEvent, updateEvent, deleteEvent } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
+import { useToast } from '../../context/ToastContext';
 
 interface EventsManagerProps {
   events: EventData[];
@@ -10,6 +11,7 @@ interface EventsManagerProps {
 }
 
 export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
@@ -66,20 +68,33 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingEvent) {
-      await updateEvent(editingEvent.id, formData);
-    } else {
-      await createEvent(formData);
+    try {
+      if (editingEvent) {
+        await updateEvent(editingEvent.id, formData);
+        showSuccess('Event Updated Successfully', `"${formData.title}" was saved.`);
+      } else {
+        await createEvent(formData);
+        showSuccess('New Event Created Successfully', `"${formData.title}" was added to the calendar.`);
+      }
+      setIsModalOpen(false);
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save event:', err);
+      showError('Failed to Save Event', err?.message || 'A database error occurred.');
     }
-    setIsModalOpen(false);
-    onRefresh();
   };
 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
-      await deleteEvent(deleteCandidateId);
-      setDeleteCandidateId(null);
-      onRefresh();
+      try {
+        await deleteEvent(deleteCandidateId);
+        showSuccess('Event Deleted', 'The event was successfully removed from SQLite.');
+        setDeleteCandidateId(null);
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete event:', err);
+        showError('Failed to Delete Event', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -99,7 +114,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
         </div>
         <button
           onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Event</span>
@@ -109,14 +124,14 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
       {/* Events List (Responsive Cards for mobile & tablet) */}
       <div className="space-y-4">
         {events.length === 0 ? (
-          <div className="p-8 text-center border border-neutral-200 dark:border-white/10 rounded-xl bg-white dark:bg-transparent text-neutral-500 dark:text-neutral-400 text-sm">
+          <div className="p-8 text-center border border-neutral-200 dark:border-white/10 rounded bg-white dark:bg-transparent text-neutral-500 dark:text-neutral-400 text-sm">
             No events found. Click "Add New Event" to create one.
           </div>
         ) : (
           events.map((evt) => (
             <div
               key={evt.id}
-              className="p-4 sm:p-5 rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              className="p-4 sm:p-5 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
             >
               <div className="space-y-1.5 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-neutral-500 dark:text-neutral-400">
@@ -150,14 +165,14 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
               <div className="flex items-center gap-2 w-full md:w-auto justify-end pt-3 md:pt-0 border-t md:border-t-0 border-neutral-100 dark:border-white/5">
                 <button
                   onClick={() => openEditModal(evt)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-medium transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-medium transition-colors cursor-pointer"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                   <span>Edit</span>
                 </button>
                 <button
                   onClick={() => handleDelete(evt.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete</span>
@@ -171,14 +186,14 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
       {/* Modal Form for Create / Edit */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-5">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
               <h4 className="text-lg font-display font-bold">
                 {editingEvent ? 'Edit Event in SQLite' : 'Add New Event to SQLite'}
               </h4>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -193,7 +208,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Vital Fest: Hackney All-Dayer"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -206,7 +221,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     value={formData.venue}
                     onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
                     placeholder="e.g. The Hackney Social"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -217,7 +232,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g. Hackney, London E8"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -230,7 +245,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     required
                     value={formData.event_date}
                     onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -240,7 +255,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     value={formData.start_time}
                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                     placeholder="e.g. 15:00 - 23:00"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-1">
@@ -250,7 +265,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     value={formData.price_text}
                     onChange={(e) => setFormData({ ...formData, price_text: e.target.value })}
                     placeholder="e.g. £17.50 Adv"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -262,7 +277,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   value={formData.lineup}
                   onChange={(e) => setFormData({ ...formData, lineup: e.target.value })}
                   placeholder="e.g. DJ Ital, Brockie, Ragga Twins, Jumpin Jack Frost, Det"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -272,7 +287,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   >
                     <option value="Upcoming">Upcoming</option>
                     <option value="Sold Out">Sold Out</option>
@@ -286,7 +301,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                     value={formData.ticket_url}
                     onChange={(e) => setFormData({ ...formData, ticket_url: e.target.value })}
                     placeholder="https://djital.me/vitalfest"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -309,13 +324,13 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-lg text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer"
+                  className="px-4 py-2.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {editingEvent ? 'Save Changes' : 'Create Event'}
                 </button>

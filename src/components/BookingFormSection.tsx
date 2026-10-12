@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { createBooking, ProfileData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
+import { useToast } from '../context/ToastContext';
 
 interface BookingFormSectionProps {
   profile: ProfileData | null;
@@ -30,6 +31,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
   onBookingSubmitted,
   onOpenEpk,
 }) => {
+  const { showSuccess, showError } = useToast();
   const [formData, setFormData] = useState({
     client_name: '',
     client_email: '',
@@ -71,6 +73,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
     try {
       await createBooking(formData);
       setSubmittedSuccess(true);
+      showSuccess('Booking Enquiry Sent', 'Thank you! Your booking enquiry has been recorded.');
       setFormData({
         client_name: '',
         client_email: '',
@@ -83,8 +86,9 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
         message: '',
       });
       if (onBookingSubmitted) onBookingSubmitted();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Booking failed:', err);
+      showError('Booking Submission Failed', err?.message || 'Could not save enquiry.');
     } finally {
       setIsSubmitting(false);
     }

@@ -269,6 +269,60 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+// IndexedDB Dual-Layer Persistence (protects SQLite binary across browser sessions and quota limits)
+const IDB_NAME = 'djital_db_store';
+const IDB_STORE = 'db_state';
+const IDB_KEY = 'current_snapshot';
+
+function openIndexedDb(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    try {
+      const request = window.indexedDB.open(IDB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function saveToIndexedDb(b64: string, meta: LocalDbMeta): Promise<void> {
+  try {
+    const db = await openIndexedDb();
+    if (!db) return;
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    store.put({ b64, meta, savedAt: Date.now() }, IDB_KEY);
+  } catch (e) {
+    console.warn('Could not save to IndexedDB:', e);
+  }
+}
+
+export async function loadFromIndexedDb(): Promise<{ b64: string; meta: LocalDbMeta } | null> {
+  try {
+    const db = await openIndexedDb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(IDB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function syncDatabaseToServer(b64: string, customTimestamp?: string): Promise<boolean> {
   try {
     const res = await fetch('/api/db/save', {
@@ -292,18 +346,29 @@ export function saveDatabaseToStorage(db: Database, customTimestamp?: string) {
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
     const timestamp = customTimestamp || new Date().toISOString();
+    const meta: LocalDbMeta = {
+      updatedAt: timestamp,
+      clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
+      isCustom: true,
+    };
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, b64);
-      setLocalDbMeta({
-        updatedAt: timestamp,
-        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
-        isCustom: true,
-      });
+      try {
+        localStorage.setItem(STORAGE_KEY, b64);
+        setLocalDbMeta(meta);
+        // Secondary backup copy in localStorage
+        localStorage.setItem('djital_sqlite_backup_v1', b64);
+        localStorage.setItem('djital_sqlite_backup_meta_v1', JSON.stringify(meta));
+      } catch (storageErr) {
+        console.warn('localStorage quota warning:', storageErr);
+      }
     }
+    // Dual layer: also save to IndexedDB for resilience
+    saveToIndexedDb(b64, meta);
+
     // Asynchronously push to server for cross-device synchronization (Windows, iOS, etc.)
     syncDatabaseToServer(b64, timestamp);
   } catch (err) {
-    console.warn('Failed to save SQLite to localStorage:', err);
+    console.warn('Failed to save SQLite to storage:', err);
   }
 }
 
@@ -353,8 +418,27 @@ export async function getDatabase(): Promise<Database> {
     }
 
     // 1. Read existing browser local storage & meta
-    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    const localMeta = getLocalDbMeta();
+    let saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    let localMeta = getLocalDbMeta();
+
+    // 1b. Check IndexedDB if localStorage was empty or cleared
+    if (!saved) {
+      try {
+        const idb = await loadFromIndexedDb();
+        if (idb && idb.b64) {
+          saved = idb.b64;
+          localMeta = idb.meta;
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem(STORAGE_KEY, saved);
+              if (localMeta) setLocalDbMeta(localMeta);
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.warn('IndexedDB recovery fallback error:', err);
+      }
+    }
 
     // 2. Query server database snapshot
     let serverBase64: string | null = null;
@@ -373,7 +457,7 @@ export async function getDatabase(): Promise<Database> {
     }
 
     // 3. Smart Conflict Resolution & Auto-Healing on fresh deployment
-    // Prevents code deployments on Railway from wiping out user's dashboard edits!
+    // Prevents code deployments on Railway/Render/Docker from wiping out user's dashboard edits!
     let preferLocal = false;
     let preferServer = false;
 
@@ -382,19 +466,30 @@ export async function getDatabase(): Promise<Database> {
       const serverTime = serverMeta?.updatedAt ? new Date(serverMeta.updatedAt).getTime() : 0;
       const serverIsSeed = Boolean(serverMeta?.isSeed);
 
-      if (serverIsSeed && (localMeta?.isCustom || !localMeta)) {
-        // Newly deployed code starts with baseline seed snapshot, but the user has custom dashboard edits
-        preferLocal = true;
+      // If user has customized their dashboard (isCustom: true):
+      // NEVER allow a newly deployed seed snapshot to wipe user edits!
+      if (localMeta?.isCustom) {
+        if (serverIsSeed) {
+          // Deployed server is baseline seed: keep user's edits and auto-heal server!
+          preferLocal = true;
+        } else if (serverTime > localTime + 3000 && serverBase64 !== saved) {
+          // Another authenticated device explicitly saved newer data to server
+          preferServer = true;
+        } else {
+          preferLocal = true;
+        }
+      } else if (serverIsSeed) {
+        // Neither has custom edits; prefer whatever has data
+        preferLocal = Boolean(saved);
+        preferServer = !saved;
       } else if (localTime && serverTime) {
         if (localTime >= serverTime) {
           preferLocal = true;
         } else {
           preferServer = true;
         }
-      } else if (localMeta?.isCustom) {
-        preferLocal = true;
       } else {
-        preferServer = true;
+        preferLocal = true;
       }
     } else if (saved) {
       preferLocal = true;

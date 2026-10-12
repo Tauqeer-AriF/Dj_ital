@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { ShoppingBag, Mail, Send, CheckCircle, ArrowUpRight } from 'lucide-react';
 import { addNewsletterSubscriber, ProfileData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
+import { useToast } from '../context/ToastContext';
 
 interface VitalFestMerchNewsletterProps {
   profile: ProfileData | null;
 }
 
 export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> = ({ profile }) => {
+  const { showSuccess, showError } = useToast();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -20,6 +22,7 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
     e.preventDefault();
     if (!email || !email.includes('@')) {
       setErrorMsg('Please enter a valid email address.');
+      showError('Invalid Email', 'Please enter a valid email address.');
       return;
     }
 
@@ -28,9 +31,12 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
     try {
       await addNewsletterSubscriber(email, 'Homepage Banner');
       setIsSubscribed(true);
+      showSuccess('Subscribed!', 'You are now on the Vital Fest guestlist for upcoming show announcements.');
       setEmail('');
     } catch (err: any) {
-      setErrorMsg('Subscription failed. Please try again.');
+      const msg = 'Subscription failed. Please try again.';
+      setErrorMsg(msg);
+      showError('Subscription Failed', msg);
     } finally {
       setIsSubmitting(false);
     }

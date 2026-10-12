@@ -4,6 +4,7 @@ import { GalleryData, createGalleryItem, updateGalleryItem, deleteGalleryItem } 
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../../utils/imageOptimization';
+import { useToast } from '../../context/ToastContext';
 
 interface GalleryManagerProps {
   gallery: GalleryData[];
@@ -11,6 +12,7 @@ interface GalleryManagerProps {
 }
 
 export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
@@ -55,20 +57,33 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingItem) {
-      await updateGalleryItem(editingItem.id, formData);
-    } else {
-      await createGalleryItem(formData);
+    try {
+      if (editingItem) {
+        await updateGalleryItem(editingItem.id, formData);
+        showSuccess('Gallery Item Updated', `"${formData.title || 'Photo'}" was saved successfully.`);
+      } else {
+        await createGalleryItem(formData);
+        showSuccess('New Photo Added', `"${formData.title || 'New image'}" was added to the gallery.`);
+      }
+      setIsModalOpen(false);
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to save gallery item:', err);
+      showError('Failed to Save Gallery Item', err?.message || 'A database error occurred.');
     }
-    setIsModalOpen(false);
-    onRefresh();
   };
 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
-      await deleteGalleryItem(deleteCandidateId);
-      setDeleteCandidateId(null);
-      onRefresh();
+      try {
+        await deleteGalleryItem(deleteCandidateId);
+        showSuccess('Item Deleted', 'The photo was removed from the gallery.');
+        setDeleteCandidateId(null);
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete gallery item:', err);
+        showError('Failed to Delete Item', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -88,7 +103,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
         </div>
         <button
           onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Add Photo Record</span>
@@ -102,7 +117,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
           return (
             <div
               key={item.id}
-              className="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 overflow-hidden flex flex-col justify-between"
+              className="rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 overflow-hidden flex flex-col justify-between"
             >
               <div className="relative aspect-[16/10] bg-neutral-950 overflow-hidden">
                 <img
@@ -155,7 +170,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl overflow-hidden my-8">
+          <div className="w-full max-w-2xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl overflow-hidden my-8">
             <div className="p-6 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-display font-bold text-neutral-950 dark:text-white">
@@ -167,7 +182,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-1.5 rounded text-neutral-400 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -182,7 +197,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Vital Fest Sound Clash Crowd"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -202,7 +217,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   >
                     <option value="Vital Fest">Vital Fest</option>
                     <option value="Kool FM Archive">Kool FM Archive</option>
@@ -219,7 +234,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                     placeholder="2026"
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                    className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -231,7 +246,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="The Hackney Social, London"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
@@ -242,7 +257,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   value={formData.caption}
                   onChange={(e) => setFormData({ ...formData, caption: e.target.value })}
                   placeholder="Context and details about this moment in sound system history..."
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm resize-none"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm resize-none"
                 />
               </div>
 
@@ -263,13 +278,13 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {editingItem ? 'Save Changes' : 'Create Record'}
                 </button>

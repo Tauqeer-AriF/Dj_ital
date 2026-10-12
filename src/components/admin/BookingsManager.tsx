@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { BookingData, updateBookingStatus, deleteBooking } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 interface BookingsManagerProps {
   bookings: BookingData[];
@@ -20,18 +21,31 @@ interface BookingsManagerProps {
 }
 
 export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRefresh }) => {
+  const { showSuccess, showError } = useToast();
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
-    await updateBookingStatus(id, newStatus);
-    onRefresh();
+    try {
+      await updateBookingStatus(id, newStatus);
+      showSuccess('Status Updated', `Booking status changed to "${newStatus}".`);
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to update booking status:', err);
+      showError('Failed to Update Status', err?.message || 'A database error occurred.');
+    }
   };
 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
-      await deleteBooking(deleteCandidateId);
-      setDeleteCandidateId(null);
-      onRefresh();
+      try {
+        await deleteBooking(deleteCandidateId);
+        showSuccess('Booking Enquiry Deleted', 'Record was removed from SQLite.');
+        setDeleteCandidateId(null);
+        onRefresh();
+      } catch (err: any) {
+        console.error('Failed to delete booking:', err);
+        showError('Failed to Delete Booking', err?.message || 'A database error occurred.');
+      }
     }
   };
 
@@ -84,7 +98,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
 
   return (
     <div className="space-y-6 max-w-5xl pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
             Promoter & Booking Enquiries ({bookings.length})
@@ -97,7 +111,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
         {bookings.length > 0 && (
           <button
             onClick={exportToCsv}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 hover:border-amber-400 text-xs font-bold text-neutral-800 dark:text-neutral-200 transition-colors shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 hover:border-amber-400 text-xs font-bold text-neutral-800 dark:text-neutral-200 transition-colors shadow-sm cursor-pointer"
           >
             <Download className="w-4 h-4 text-amber-500" />
             <span>Export Bookings CSV</span>
@@ -107,7 +121,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
 
       <div className="space-y-4">
         {bookings.length === 0 ? (
-          <div className="p-12 text-center border-2 border-dashed border-neutral-300 dark:border-white/10 rounded-3xl bg-white/50 dark:bg-neutral-900/30 text-neutral-500 dark:text-neutral-400 text-sm space-y-2">
+          <div className="p-12 text-center border-2 border-dashed border-neutral-300 dark:border-white/10 rounded bg-white/50 dark:bg-neutral-900/30 text-neutral-500 dark:text-neutral-400 text-sm space-y-2">
             <Clock className="w-8 h-8 mx-auto text-neutral-400 opacity-60" />
             <p className="font-semibold">No booking enquiries logged yet.</p>
             <p className="text-xs">Enquiries submitted through the public booking form will appear here instantly.</p>
@@ -119,7 +133,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
             return (
               <div
                 key={b.id}
-                className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md space-y-4 hover:border-neutral-300 transition-colors"
+                className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-md space-y-4 hover:border-neutral-300 transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
@@ -175,7 +189,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
                     <select
                       value={b.status}
                       onChange={(e) => handleStatusChange(b.id, e.target.value)}
-                      className="px-3 py-1.5 rounded-xl bg-neutral-100 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/15 dark:text-white text-xs font-bold focus:outline-none cursor-pointer"
+                      className="px-3 py-1.5 rounded bg-neutral-100 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/15 dark:text-white text-xs font-bold focus:outline-none cursor-pointer"
                     >
                       <option value="Pending">Pending</option>
                       <option value="Confirmed">Confirmed</option>
@@ -184,7 +198,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
 
                     <button
                       onClick={() => handleDelete(b.id)}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
+                      className="p-1.5 rounded text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
                       aria-label="Delete booking"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -216,7 +230,7 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
 
                 {/* Message block */}
                 {b.message && (
-                  <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 dark:bg-black/40 dark:border-white/5 text-xs text-neutral-800 dark:text-neutral-300 leading-relaxed font-sans">
+                  <div className="p-4 rounded bg-neutral-50 border border-neutral-200 dark:bg-black/40 dark:border-white/5 text-xs text-neutral-800 dark:text-neutral-300 leading-relaxed font-sans">
                     <span className="font-bold text-neutral-500 dark:text-neutral-400 block mb-1">
                       Promoter Notes & Sound Specs:
                     </span>

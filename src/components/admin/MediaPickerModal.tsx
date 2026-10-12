@@ -168,11 +168,11 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in-0 duration-150">
-      <div className="relative w-full max-w-4xl bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-white/15 overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-white/15 overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-amber-500 shrink-0">
+            <div className="w-10 h-10 rounded bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-amber-500 shrink-0">
               <FolderArchive className="w-5 h-5" />
             </div>
             <div>
@@ -187,11 +187,11 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Tab: Browse vs Quick Upload */}
-            <div className="flex items-center p-1 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10">
+            <div className="flex items-center p-1 rounded bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setActiveTab('browse')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   activeTab === 'browse'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -202,7 +202,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('upload')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   activeTab === 'upload'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -216,7 +216,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-2 rounded text-neutral-500 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close picker modal"
             >
               <X className="w-5 h-5" />
@@ -237,7 +237,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search assets..."
-                  className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-400 text-xs"
+                  className="w-full pl-8 pr-7 py-1.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-amber-400 text-xs"
                 />
                 {searchQuery && (
                   <button
@@ -255,7 +255,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                     selectedCategory === 'all'
                       ? 'bg-amber-400 text-neutral-950 shadow-sm'
                       : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400'
@@ -268,7 +268,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                       selectedCategory === cat
                         ? 'bg-amber-400 text-neutral-950 shadow-sm'
                         : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400'
@@ -298,7 +298,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('upload')}
-                    className="px-4 py-2 rounded-xl bg-amber-400 text-neutral-950 font-bold text-xs font-mono cursor-pointer"
+                    className="px-4 py-2 rounded bg-amber-400 text-neutral-950 font-bold text-xs font-mono cursor-pointer"
                   >
                     Upload File Now
                   </button>
@@ -317,14 +317,14 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                           onSelect(item.url, item);
                           onClose();
                         }}
-                        className={`group relative rounded-2xl border text-left p-2 flex flex-col justify-between transition-all cursor-pointer overflow-hidden ${
+                        className={`group relative rounded border text-left p-2 flex flex-col justify-between transition-all cursor-pointer overflow-hidden ${
                           isSelected
                             ? 'border-amber-400 bg-amber-400/10 ring-2 ring-amber-400 shadow-md'
                             : 'border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 hover:border-amber-400/60 dark:hover:border-amber-400/60 hover:shadow-sm'
                         }`}
                       >
                         {/* Thumbnail Viewport */}
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-950 flex items-center justify-center border border-neutral-200 dark:border-white/10">
+                        <div className="relative aspect-[4/3] rounded overflow-hidden bg-neutral-950 flex items-center justify-center border border-neutral-200 dark:border-white/10">
                           {isImage ? (
                             <img
                               src={normalizeImageUrl(item.url)}
@@ -395,7 +395,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
             <label
               htmlFor="quick-picker-file-input"
-              className="w-full max-w-lg flex flex-col items-center justify-center p-10 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 rounded-3xl cursor-pointer bg-neutral-50 dark:bg-neutral-950/60 hover:bg-amber-400/5 transition-all text-center group"
+              className="w-full max-w-lg flex flex-col items-center justify-center p-10 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 rounded cursor-pointer bg-neutral-50 dark:bg-neutral-950/60 hover:bg-amber-400/5 transition-all text-center group"
             >
               <Upload
                 className={`w-12 h-12 text-neutral-400 group-hover:text-amber-400 transition-colors mb-3 ${
@@ -411,7 +411,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             </label>
 
             {uploadError && (
-              <div className="flex items-center gap-1.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
+              <div className="flex items-center gap-1.5 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{uploadError}</span>
               </div>
@@ -428,7 +428,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               Cancel
             </button>

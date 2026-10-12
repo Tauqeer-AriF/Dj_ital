@@ -37,6 +37,7 @@ import { MediaPickerModal } from './MediaPickerModal';
 import { applyThemeToDOM, resolveColorHex } from '../../utils/themeEngine';
 import { AppLoader } from '../AppLoader';
 import { getPlayableStreamUrl, getProxyStreamUrl, isEmbedStream } from '../../utils/streamAudio';
+import { useToast } from '../../context/ToastContext';
 
 interface ProfileManagerProps {
   profile: ProfileData | null;
@@ -47,7 +48,10 @@ interface ProfileManagerProps {
 export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefresh, onNavigateToSecurity }) => {
   const [formData, setFormData] = useState<Partial<ProfileData>>({});
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showLoaderPreview, setShowLoaderPreview] = useState(false);
+  const { showSuccess, showError } = useToast();
   const [logoMode, setLogoMode] = useState<'upload' | 'library' | 'url' | 'presets'>('upload');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isLogoPickerOpen, setIsLogoPickerOpen] = useState(false);
@@ -206,25 +210,37 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { ...formData };
-    // If one email was provided while the other is empty, harmonize them
-    if (payload.direct_email && !payload.booking_email) {
-      payload.booking_email = payload.direct_email;
-    } else if (payload.booking_email && !payload.direct_email) {
-      payload.direct_email = payload.booking_email;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const payload = { ...formData };
+      // If one email was provided while the other is empty, harmonize them
+      if (payload.direct_email && !payload.booking_email) {
+        payload.booking_email = payload.direct_email;
+      } else if (payload.booking_email && !payload.direct_email) {
+        payload.direct_email = payload.booking_email;
+      }
+      // Harmonize unified stream URL
+      if (payload.stream_url !== undefined) {
+        payload.hero_stream_url = payload.stream_url;
+        payload.main_player_stream_url = payload.stream_url;
+        payload.dejavu_stream_url = payload.stream_url;
+      }
+      await updateProfile(payload);
+      const activeHex = resolveColorHex(payload.color_scheme, payload.custom_accent_color);
+      applyThemeToDOM(activeHex, payload.font_family_preset || 'syne', payload.body_font_preset || 'jakarta', payload.color_scheme);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3500);
+      showSuccess('Profile & Theme Saved Successfully', 'All profile branding, colors, stream URLs, and contacts updated.');
+      onRefresh();
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      const errMsg = err?.message || 'Failed to save changes to database';
+      setSubmitError(errMsg);
+      showError('Failed to Save Profile', errMsg);
+    } finally {
+      setIsSubmitting(false);
     }
-    // Harmonize unified stream URL
-    if (payload.stream_url !== undefined) {
-      payload.hero_stream_url = payload.stream_url;
-      payload.main_player_stream_url = payload.stream_url;
-      payload.dejavu_stream_url = payload.stream_url;
-    }
-    await updateProfile(payload);
-    const activeHex = resolveColorHex(payload.color_scheme, payload.custom_accent_color);
-    applyThemeToDOM(activeHex, payload.font_family_preset || 'syne', payload.body_font_preset || 'jakarta', payload.color_scheme);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
-    onRefresh();
   };
 
   if (!profile) return null;
@@ -402,7 +418,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   return (
     <div className="space-y-8 max-w-5xl pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
             Artist Profile and Branding Customiser
@@ -412,7 +428,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </p>
         </div>
         {isSaved && (
-          <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+          <div className="flex items-center gap-1.5 px-4 py-2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
             <Check className="w-4 h-4" />
             <span>Profile & Theme Saved to SQLite!</span>
           </div>
@@ -422,7 +438,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
       <form onSubmit={handleSubmit} className="space-y-8">
         
         {/* Brand Identity: Official Logo Management */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
               <ImageIcon className="w-4 h-4" />
@@ -452,7 +468,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           {/* Dual Theme Live Logo Preview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Dark Theme Background Preview */}
-            <div className="p-5 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col items-center justify-center min-h-[140px] relative group shadow-inner">
+            <div className="p-5 rounded bg-neutral-950 border border-neutral-800 flex flex-col items-center justify-center min-h-[140px] relative group shadow-inner">
               <span className="absolute top-2.5 left-3 text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 <span>Dark Theme Preview</span>
@@ -468,7 +484,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             </div>
 
             {/* Light Theme Background Preview */}
-            <div className="p-5 rounded-2xl bg-white border border-neutral-200 flex flex-col items-center justify-center min-h-[140px] relative group shadow-inner">
+            <div className="p-5 rounded bg-white border border-neutral-200 flex flex-col items-center justify-center min-h-[140px] relative group shadow-inner">
               <span className="absolute top-2.5 left-3 text-[10px] font-mono uppercase tracking-wider text-neutral-600 font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span>Light Theme Preview</span>
@@ -484,7 +500,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             </div>
 
             {/* Live Fixed Navbar Mini-Simulation */}
-            <div className="sm:col-span-2 p-3.5 rounded-2xl bg-white/95 dark:bg-neutral-950/95 border border-neutral-200 dark:border-white/15 flex items-center justify-between text-xs shadow-md">
+            <div className="sm:col-span-2 p-3.5 rounded bg-white/95 dark:bg-neutral-950/95 border border-neutral-200 dark:border-white/15 flex items-center justify-between text-xs shadow-md">
               <div className="flex items-center gap-3">
                 <img
                   src={normalizeImageUrl(currentLogo)}
@@ -516,11 +532,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
 
           {/* Logo Input Mode Switcher */}
           <div className="space-y-3 pt-1">
-            <div className="flex flex-wrap items-center gap-2 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 w-fit">
+            <div className="flex flex-wrap items-center gap-2 p-1 rounded bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 w-fit">
               <button
                 type="button"
                 onClick={() => setLogoMode('upload')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   logoMode === 'upload'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -535,7 +551,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                   setLogoMode('library');
                   setIsLogoPickerOpen(true);
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   logoMode === 'library'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -548,7 +564,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <button
                 type="button"
                 onClick={() => setLogoMode('url')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   logoMode === 'url'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -560,7 +576,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <button
                 type="button"
                 onClick={() => setLogoMode('presets')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
                   logoMode === 'presets'
                     ? 'bg-amber-400 text-neutral-950 shadow-sm'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white'
@@ -573,10 +589,10 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
 
             {/* Mode: Media Library */}
             {logoMode === 'library' && (
-              <div className="p-5 rounded-2xl border-2 border-dashed border-amber-400/50 bg-amber-400/5 dark:bg-amber-400/10 space-y-3">
+              <div className="p-5 rounded border-2 border-dashed border-amber-400/50 bg-amber-400/5 dark:bg-amber-400/10 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shadow-md shrink-0">
+                    <div className="w-10 h-10 rounded bg-amber-400 text-neutral-950 flex items-center justify-center font-bold shadow-md shrink-0">
                       <FolderArchive className="w-5 h-5" />
                     </div>
                     <div>
@@ -591,7 +607,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                   <button
                     type="button"
                     onClick={() => setIsLogoPickerOpen(true)}
-                    className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-mono text-xs font-bold shadow-md transition-all cursor-pointer shrink-0"
+                    className="px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-mono text-xs font-bold shadow-md transition-all cursor-pointer shrink-0"
                   >
                     Open Media Picker
                   </button>
@@ -612,7 +628,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 />
                 <label
                   htmlFor="logo-file-upload-input"
-                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 rounded-2xl cursor-pointer bg-neutral-50/50 dark:bg-neutral-950/40 hover:bg-amber-400/5 transition-all text-center group"
+                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 rounded cursor-pointer bg-neutral-50/50 dark:bg-neutral-950/40 hover:bg-amber-400/5 transition-all text-center group"
                 >
                   <Upload className={`w-8 h-8 text-neutral-400 group-hover:text-amber-500 transition-colors mb-2 ${isUploadingLogo ? 'animate-bounce' : ''}`} />
                   <span className="text-xs font-bold text-neutral-900 dark:text-white">
@@ -641,13 +657,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                       }));
                     }}
                     placeholder="/images/vital_fest_logo.png or https://example.com/logo.png"
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs font-mono focus:border-amber-500 focus:outline-none"
+                    className="flex-1 px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs font-mono focus:border-amber-500 focus:outline-none"
                   />
                   {formData.logo_url && (
                     <button
                       type="button"
                       onClick={handleResetLogo}
-                      className="px-3 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 text-xs font-mono font-bold hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                      className="px-3 py-2.5 rounded border border-neutral-300 dark:border-white/15 text-xs font-mono font-bold hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       Clear
                     </button>
@@ -675,13 +691,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                           epk_logo_png: preset.url,
                         }));
                       }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                      className={`p-3.5 rounded border text-left transition-all cursor-pointer flex items-center gap-3 ${
                         isSelected
                           ? 'border-amber-400 bg-amber-400/10 dark:bg-neutral-800 shadow-md ring-2 ring-amber-400/50'
                           : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-950/60 hover:border-neutral-400 dark:hover:border-white/20'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-neutral-950 border border-white/10 flex items-center justify-center p-1 shrink-0">
+                      <div className="w-10 h-10 rounded bg-neutral-950 border border-white/10 flex items-center justify-center p-1 shrink-0">
                         <img
                           src={preset.url}
                           alt={preset.name}
@@ -703,7 +719,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             )}
 
             {logoError && (
-              <div className="flex items-center gap-1.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
+              <div className="flex items-center gap-1.5 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{logoError}</span>
               </div>
@@ -712,7 +728,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         </div>
 
         {/* Section 0: Application Color Scheme & Typography Controls */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
               <Palette className="w-4 h-4" />
@@ -732,7 +748,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <button
                 type="button"
                 onClick={() => setShowLoaderPreview(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm hover:opacity-90 transition-opacity cursor-pointer border border-neutral-700 dark:border-neutral-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm hover:opacity-90 transition-opacity cursor-pointer border border-neutral-700 dark:border-neutral-200"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>Preview App Loader</span>
@@ -760,7 +776,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                       borderColor: isSelected ? schemeHex : undefined,
                       boxShadow: isSelected ? `0 0 0 2px ${schemeHex}40` : undefined,
                     }}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                    className={`p-3.5 rounded border text-left transition-all cursor-pointer flex items-center gap-3 ${
                       isSelected
                         ? 'bg-neutral-100 dark:bg-neutral-800 shadow-md ring-2'
                         : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-950/60 hover:border-neutral-400 dark:hover:border-white/20'
@@ -787,13 +803,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
 
             {/* Custom Colour Input Controls */}
             {selectedColorScheme === 'custom' && (
-              <div className="mt-4 p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-white/15 space-y-3 animate-in fade-in-0 duration-150">
+              <div className="mt-4 p-4 rounded bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-white/15 space-y-3 animate-in fade-in-0 duration-150">
                 <div className="flex items-center justify-between text-xs font-mono font-bold text-neutral-900 dark:text-white">
                   <span>🎨 Custom Hex Colour Chooser</span>
                   <span className="text-[10px] text-neutral-500">Live Realtime Hex Engine</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-sm">
+                  <div className="flex items-center gap-2 p-1.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-sm">
                     <input
                       type="color"
                       value={currentCustomColor}
@@ -806,7 +822,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                         });
                         applyThemeToDOM(newCol, selectedFontPreset, selectedBodyFontPreset, 'custom');
                       }}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent p-0"
+                      className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent p-0"
                     />
                     <span className="text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300 pr-2">
                       Wheel Picker
@@ -832,7 +848,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                       }}
                       placeholder="#f59e0b"
                       maxLength={7}
-                      className="w-36 px-3 py-2 rounded-xl text-xs font-mono font-bold uppercase bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/15 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="w-36 px-3 py-2 rounded text-xs font-mono font-bold uppercase bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/15 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
                   </div>
 
@@ -851,7 +867,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                           applyThemeToDOM(quickHex, selectedFontPreset, selectedBodyFontPreset, 'custom');
                         }}
                         style={{ backgroundColor: quickHex }}
-                        className="w-6 h-6 rounded-lg border border-white/30 shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                        className="w-6 h-6 rounded border border-white/30 shadow-sm transition-transform hover:scale-110 cursor-pointer"
                         title={`Select ${quickHex}`}
                       />
                     ))}
@@ -875,7 +891,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                     key={preset.id}
                     type="button"
                     onClick={() => setFormData({ ...formData, font_family_preset: preset.id })}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                    className={`p-4 rounded border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
                       isSelected
                         ? 'border-amber-400 bg-amber-400/10 dark:bg-neutral-800 shadow-md ring-2 ring-amber-400/50'
                         : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-950/60 hover:border-neutral-400 dark:hover:border-white/20'
@@ -920,7 +936,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                     key={preset.id}
                     type="button"
                     onClick={() => setFormData({ ...formData, body_font_preset: preset.id })}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                    className={`p-4 rounded border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
                       isSelected
                         ? 'border-amber-400 bg-amber-400/10 dark:bg-neutral-800 shadow-md ring-2 ring-amber-400/50'
                         : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-950/60 hover:border-neutral-400 dark:hover:border-white/20'
@@ -953,7 +969,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         </div>
 
         {/* Section 1: Upfront Tagline & Identity */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
             <User className="w-4 h-4" />
             <span>1. Core Tagline & Upfront Branding</span>
@@ -966,7 +982,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 type="text"
                 value={formData.stage_name || ''}
                 onChange={(e) => setFormData({ ...formData, stage_name: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
 
@@ -976,7 +992,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 type="text"
                 value={formData.origin || ''}
                 onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -990,11 +1006,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               value={formData.tagline || ''}
               onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
               placeholder="e.g. British Jungle & Drum and Bass Pioneer | Kool FM 94.5 | Founder of Vital Fest"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
 
-          <div className="space-y-1.5 p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 dark:border-amber-400/20">
+          <div className="space-y-1.5 p-4 rounded bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 dark:border-amber-400/20">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
                 <span>Navbar Sub-Title</span>
@@ -1011,7 +1027,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 setFormData({ ...formData, navbar_subtitle: val, subtitle: val });
               }}
               placeholder="e.g. British Jungle Pioneer & Radio Broadcaster (or leave blank to use main tagline)"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
               When entered, this replaces the tagline under <strong>DJ ITAL</strong> specifically in the top navigation bar. If left blank, the navbar will display the upfront tagline above.
@@ -1028,7 +1044,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.genres || ''}
                 onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
                 placeholder="e.g. Jungle · Drum & Bass · Reggae · Dub · UK Bass"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
 
@@ -1041,14 +1057,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.regions_covered || ''}
                 onChange={(e) => setFormData({ ...formData, regions_covered: e.target.value })}
                 placeholder="e.g. UK, Europe & International / Worldwide"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Section 2: Biography & Highlights */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4" />
             <span>2. Skimmable Biography & Archival Credentials</span>
@@ -1063,7 +1079,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               value={formData.bio_short || ''}
               onChange={(e) => setFormData({ ...formData, bio_short: e.target.value })}
               placeholder="Skimmable summary highlighting key venues, festivals, V&A East recognition, media archive and radio slots..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
 
@@ -1077,7 +1093,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.key_venues || ''}
                 onChange={(e) => setFormData({ ...formData, key_venues: e.target.value })}
                 placeholder="Fabric London, The Hackney Social, Ministry of Sound, The Yard Theatre"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
 
@@ -1090,7 +1106,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.radio_show || ''}
                 onChange={(e) => setFormData({ ...formData, radio_show: e.target.value })}
                 placeholder="The Ital Show on Dejavu FM"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -1103,13 +1119,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               rows={4}
               value={formData.bio_full || ''}
               onChange={(e) => setFormData({ ...formData, bio_full: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
         </div>
 
         {/* Section 3: Direct Promoter Contact & WhatsApp */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" />
             <span>3. Direct Booking & WhatsApp Quick Contact</span>
@@ -1126,7 +1142,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.direct_email || ''}
                 onChange={(e) => setFormData({ ...formData, direct_email: e.target.value })}
                 placeholder="djital.booking@gmail.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
               <p className="text-[10px] text-neutral-500">
                 Shown in Immediate Promoter Help card, Direct Email button, and site footer.
@@ -1142,7 +1158,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.whatsapp_number || ''}
                 onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
                 placeholder="+44 7900 123456"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -1156,7 +1172,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               value={formData.whatsapp_message || ''}
               onChange={(e) => setFormData({ ...formData, whatsapp_message: e.target.value })}
               placeholder="Hi DJ Ital, I would like to enquire about booking you for an event."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
 
@@ -1167,7 +1183,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 type="text"
                 value={formData.booking_agency || ''}
                 onChange={(e) => setFormData({ ...formData, booking_agency: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
 
@@ -1177,14 +1193,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 type="email"
                 value={formData.booking_email || ''}
                 onChange={(e) => setFormData({ ...formData, booking_email: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Section 4: Live Audio Stream, Player & Radio Broadcasting */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center gap-2 text-xs font-mono text-red-500 font-bold uppercase tracking-wider">
               <Radio className="w-4 h-4" />
@@ -1196,7 +1212,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
 
           {/* Unified Single Stream URL Option */}
-          <div className="p-5 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 space-y-3">
+          <div className="p-5 rounded bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
@@ -1212,7 +1228,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                   <button
                     type="button"
                     onClick={() => handleTestAudioStream(formData.stream_url)}
-                    className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                    className={`px-3 py-1.5 rounded font-mono text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
                       testPlayingUrl === formData.stream_url
                         ? 'bg-amber-400 text-neutral-950 scale-102 ring-2 ring-amber-400/50'
                         : 'bg-amber-500/20 text-amber-600 dark:text-amber-300 hover:bg-amber-400 hover:text-neutral-950'
@@ -1236,7 +1252,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                     href={formData.stream_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors"
+                    className="p-1.5 rounded bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors"
                     title="Open in new tab"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -1250,11 +1266,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               value={formData.stream_url || ''}
               onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
               placeholder="e.g. https://dejavufm.radioca.st/; or http://cast.radioserver.com:8000/stream"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm font-mono"
+              className="w-full px-3.5 py-2.5 rounded bg-white border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm font-mono"
             />
 
             {testPlayingUrl === formData.stream_url && testStatus && (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-xs font-mono text-amber-600 dark:text-amber-400">
+              <div className="flex items-center gap-2 p-2.5 rounded bg-amber-400/10 border border-amber-400/30 text-xs font-mono text-amber-600 dark:text-amber-400">
                 <Volume2 className="w-4 h-4 animate-pulse shrink-0" />
                 <span className="font-bold">{testStatus}</span>
               </div>
@@ -1294,7 +1310,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.live_show_title || ''}
                 onChange={(e) => setFormData({ ...formData, live_show_title: e.target.value })}
                 placeholder="The Ital Show - Live Radio Broadcast"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
@@ -1309,7 +1325,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.shopify_merch_url || ''}
                 onChange={(e) => setFormData({ ...formData, shopify_merch_url: e.target.value })}
                 placeholder="https://vitalfest.myshopify.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
 
@@ -1322,14 +1338,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.merch_badge_text || ''}
                 onChange={(e) => setFormData({ ...formData, merch_badge_text: e.target.value })}
                 placeholder="Official Vital Fest Merch & Vinyl Store"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Section 5: Official Social Links */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-neutral-700 dark:text-neutral-300 font-bold uppercase tracking-wider">
             <Share2 className="w-4 h-4 text-amber-500" />
             <span>5. Official Social & Platform Links</span>
@@ -1343,7 +1359,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_instagram || ''}
                 onChange={(e) => setFormData({ ...formData, social_instagram: e.target.value })}
                 placeholder="https://instagram.com/djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
 
@@ -1354,7 +1370,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_facebook || ''}
                 onChange={(e) => setFormData({ ...formData, social_facebook: e.target.value })}
                 placeholder="https://facebook.com/djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
 
@@ -1365,7 +1381,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_youtube || ''}
                 onChange={(e) => setFormData({ ...formData, social_youtube: e.target.value })}
                 placeholder="https://youtube.com/@djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
 
@@ -1376,7 +1392,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_tiktok || ''}
                 onChange={(e) => setFormData({ ...formData, social_tiktok: e.target.value })}
                 placeholder="https://tiktok.com/@djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
 
@@ -1387,7 +1403,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_soundcloud || ''}
                 onChange={(e) => setFormData({ ...formData, social_soundcloud: e.target.value })}
                 placeholder="https://soundcloud.com/djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
 
@@ -1398,14 +1414,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 value={formData.social_mixcloud || ''}
                 onChange={(e) => setFormData({ ...formData, social_mixcloud: e.target.value })}
                 placeholder="https://mixcloud.com/djital"
-                className="w-full px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-xs"
               />
             </div>
           </div>
         </div>
 
         {/* Section 6: Background Motion & Slideshow Options */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">
             <Sliders className="w-4 h-4" />
             <span>6. Subtle Moving Backgrounds & Slideshow Controls</span>
@@ -1419,7 +1435,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <select
                 value={formData.bg_style || 'subtle-motion'}
                 onChange={(e) => setFormData({ ...formData, bg_style: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
               >
                 <option value="subtle-motion">Subtle Ambient Gradient Motion</option>
                 <option value="particles">Floating Bass Particles</option>
@@ -1436,7 +1452,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <select
                 value={formData.bg_speed || 'medium'}
                 onChange={(e) => setFormData({ ...formData, bg_speed: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
               >
                 <option value="slow">Slow & Gentle</option>
                 <option value="medium">Medium</option>
@@ -1456,14 +1472,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 onChange={(e) =>
                   setFormData({ ...formData, slideshow_interval: Number(e.target.value) })
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
+                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Section 7: Administrative Security & Dashboard Access Password */}
-        <div className="p-6 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-4">
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
               <KeyRound className="w-4 h-4" />
@@ -1474,7 +1490,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20">
             <div className="space-y-1">
               <div className="text-sm font-bold text-neutral-950 dark:text-white flex items-center gap-2">
                 <Lock className="w-4 h-4 text-amber-500" />
@@ -1488,7 +1504,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
               <button
                 type="button"
                 onClick={onNavigateToSecurity}
-                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm shrink-0 active:scale-95"
+                className="px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm shrink-0 active:scale-95"
               >
                 Change Password →
               </button>
@@ -1496,14 +1512,48 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Submit Bar */}
-        <div className="flex justify-end pt-2">
+        {/* Submit Bar with feedback */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-200 dark:border-white/10">
+          <div className="w-full sm:w-auto">
+            {isSaved && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs font-semibold animate-in fade-in">
+                <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span>All Profile changes saved successfully to SQLite!</span>
+              </div>
+            )}
+            {submitError && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs font-semibold animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>Error: {submitError}</span>
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
-            className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-display font-extrabold text-sm uppercase tracking-wider transition-all duration-200 shadow-xl shadow-amber-400/20 active:scale-98 cursor-pointer"
+            disabled={isSubmitting}
+            className={`flex items-center justify-center gap-2 px-8 py-3.5 rounded font-display font-extrabold text-sm uppercase tracking-wider transition-all duration-200 shadow-xl shadow-amber-400/20 active:scale-98 cursor-pointer w-full sm:w-auto ${
+              isSubmitting
+                ? 'bg-amber-400/60 text-neutral-800 cursor-not-allowed'
+                : 'bg-amber-400 hover:bg-amber-300 text-neutral-950'
+            }`}
           >
-            <Save className="w-4 h-4" />
-            <span>Save All Profile Changes</span>
+            {isSubmitting ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Saving to SQLite...</span>
+              </>
+            ) : isSaved ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Saved Successfully!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save All Profile Changes</span>
+              </>
+            )}
           </button>
         </div>
       </form>

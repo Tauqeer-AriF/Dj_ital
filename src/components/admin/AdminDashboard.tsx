@@ -30,6 +30,7 @@ import {
   Server,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import {
   ProfileData,
   EventData,
@@ -94,6 +95,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
+  const { showSuccess, showError } = useToast();
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
 
@@ -102,8 +104,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDownloadDb = async () => {
     try {
       await downloadDatabaseFile();
-    } catch (err) {
+      showSuccess('SQLite Database Exported', 'Downloaded .sqlite backup file to your device.');
+    } catch (err: any) {
       console.error('Failed to export SQLite database:', err);
+      showError('Export Failed', err?.message || 'Could not export database.');
     }
   };
 
@@ -119,11 +123,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       const buffer = await file.arrayBuffer();
       await importDatabaseBinary(new Uint8Array(buffer));
-      setSyncFeedback('✅ Database restored successfully from backup and synchronized across all devices!');
+      const msg = 'Database restored successfully from backup and synchronized across all devices!';
+      setSyncFeedback('✅ ' + msg);
+      showSuccess('Database Restored', msg);
       onRefreshData();
     } catch (err: any) {
       console.error('Failed to import database:', err);
-      setSyncFeedback('⚠️ Failed to restore backup: ' + (err?.message || 'Invalid SQLite file'));
+      const errMsg = err?.message || 'Invalid SQLite file';
+      setSyncFeedback('⚠️ Failed to restore backup: ' + errMsg);
+      showError('Restore Failed', errMsg);
     } finally {
       setIsSyncing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -136,13 +144,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       const res = await forcePushToServer();
       if (res.success) {
-        setSyncFeedback('✅ Synchronised! All devices (iOS, Android, Windows) will now display your updated images & data.');
+        const msg = 'Synchronised! All devices will now display your updated images & data.';
+        setSyncFeedback('✅ ' + msg);
+        showSuccess('Sync Successful', msg);
         onRefreshData();
       } else {
         setSyncFeedback('⚠️ ' + res.message);
+        showError('Sync Warning', res.message);
       }
     } catch (err: any) {
-      setSyncFeedback('⚠️ Error during sync: ' + (err?.message || 'Server error'));
+      const errMsg = err?.message || 'Server error';
+      setSyncFeedback('⚠️ Error during sync: ' + errMsg);
+      showError('Sync Error', errMsg);
     } finally {
       setIsSyncing(false);
     }
@@ -155,12 +168,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const res = await forcePullFromServer();
       if (res.success) {
         setSyncFeedback('✅ Pulled latest database from server.');
+        showSuccess('Database Updated', 'Successfully pulled latest changes from server.');
         onRefreshData();
       } else {
         setSyncFeedback('⚠️ ' + res.message);
+        showError('Pull Failed', res.message);
       }
     } catch (err: any) {
-      setSyncFeedback('⚠️ Error pulling: ' + (err?.message || 'Server error'));
+      const errMsg = err?.message || 'Server error';
+      setSyncFeedback('⚠️ Error pulling: ' + errMsg);
+      showError('Pull Error', errMsg);
     } finally {
       setIsSyncing(false);
     }
@@ -208,7 +225,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={handlePushToCloud}
             disabled={isSyncing}
             title="Broadcast and sync database to all devices (iOS, Android, Windows)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-900 dark:text-amber-300 hover:bg-amber-400/20 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-amber-400/40 bg-amber-400/10 text-amber-900 dark:text-amber-300 hover:bg-amber-400/20 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
           >
             <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync to All Devices'}</span>
@@ -219,7 +236,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={handleRestoreClick}
             disabled={isSyncing}
             title="Upload and restore a previous .sqlite database backup"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" />
             <span>Restore</span>
@@ -228,7 +245,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button
             onClick={handleDownloadDb}
             title="Download SQLite Database File (.sqlite)"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download .sqlite</span>
@@ -236,7 +253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="p-2 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-neutral-700" />}
@@ -245,7 +262,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {onLock && (
             <button
               onClick={onLock}
-              className="p-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-red-500 dark:border-white/10 dark:text-neutral-300 dark:hover:text-red-400 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-red-500 dark:border-white/10 dark:text-neutral-300 dark:hover:text-red-400 dark:hover:bg-white/5 transition-colors cursor-pointer"
               title="Lock Admin Dashboard"
               aria-label="Lock dashboard"
             >
@@ -255,7 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={onClose}
-            className="hover-shimmer px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 font-semibold text-xs transition-colors cursor-pointer shadow-sm"
+            className="hover-shimmer px-3.5 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-semibold text-xs transition-colors cursor-pointer shadow-sm"
           >
             View Live Site
           </button>
@@ -276,7 +293,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     isActive
                       ? 'bg-amber-400 text-neutral-950 shadow-md font-bold'
                       : 'text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/5'
@@ -288,7 +305,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                   {item.badge !== undefined && (
                     <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold tabular-nums ${
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold tabular-nums ${
                         isActive
                           ? 'bg-neutral-950 text-amber-400'
                           : 'bg-neutral-200 text-neutral-700 dark:bg-white/10 dark:text-neutral-300'
@@ -308,7 +325,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Welcome Banner */}
-              <div className="p-6 sm:p-8 rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
+              <div className="p-6 sm:p-8 rounded sound-cabinet border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
                 <div className="relative z-10 max-w-2xl space-y-2">
                   <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
                     <span>SQLite Relational Engine</span>
@@ -335,7 +352,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               />
 
               {/* Cross-Device Sync Card */}
-              <div className="p-6 rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-500/5 via-neutral-900/10 to-amber-500/10 dark:bg-neutral-900/80 shadow-md space-y-4">
+              <div className="p-6 rounded sound-cabinet border border-amber-400/40 bg-gradient-to-br from-amber-500/5 via-neutral-900/10 to-amber-500/10 dark:bg-neutral-900/80 shadow-md space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
@@ -354,7 +371,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <button
                       onClick={handlePushToCloud}
                       disabled={isSyncing}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                       <span>{isSyncing ? 'Syncing...' : 'Broadcast to All Devices'}</span>
@@ -362,14 +379,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <button
                       onClick={handlePullFromCloud}
                       disabled={isSyncing}
-                      className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-3.5 py-2.5 rounded border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
                     >
                       <span>Pull Latest from Server</span>
                     </button>
                     <button
                       onClick={handleRestoreClick}
                       disabled={isSyncing}
-                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-amber-400/40 hover:bg-amber-400/10 text-xs font-medium text-amber-900 dark:text-amber-300 transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded border border-amber-400/40 hover:bg-amber-400/10 text-xs font-medium text-amber-900 dark:text-amber-300 transition-colors cursor-pointer"
                       title="Upload and restore a previous .sqlite database backup"
                     >
                       <Upload className="w-3.5 h-3.5" />
@@ -377,7 +394,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </button>
                     <button
                       onClick={handleDownloadDb}
-                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
                       title="Download complete database backup file"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -386,7 +403,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-white/5 text-[11px] text-neutral-600 dark:text-neutral-300 leading-normal">
+                <div className="flex items-start gap-2.5 p-3 rounded bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-white/5 text-[11px] text-neutral-600 dark:text-neutral-300 leading-normal">
                   <Server className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-semibold text-neutral-900 dark:text-white">Continuous Deployment Protection:</span>{' '}
@@ -395,7 +412,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {syncFeedback && (
-                  <div className="p-3 rounded-xl bg-amber-400/15 border border-amber-400/40 text-xs text-amber-950 dark:text-amber-200 font-medium">
+                  <div className="p-3 rounded bg-amber-400/15 border border-amber-400/40 text-xs text-amber-950 dark:text-amber-200 font-medium">
                     {syncFeedback}
                   </div>
                 )}
@@ -405,7 +422,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div
                   onClick={() => setActiveTab('media')}
-                  className="p-5 rounded-2xl border border-amber-400/40 bg-white shadow-sm hover:shadow-md hover:border-amber-500 dark:border-amber-400/20 dark:bg-neutral-900/70 dark:hover:border-amber-400 cursor-pointer transition-all space-y-2 group"
+                  className="p-5 rounded sound-card border border-amber-400/40 bg-white shadow-sm hover:shadow-md hover:border-amber-500 dark:border-amber-400/20 dark:bg-neutral-900/70 dark:hover:border-amber-400 cursor-pointer transition-all space-y-2 group"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
                     <span className="font-semibold text-neutral-900 dark:text-white">Site Images & Media</span>
@@ -421,7 +438,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div
                   onClick={() => setActiveTab('events')}
-                  className="p-5 rounded-2xl border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
+                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
                     <span>Events & Shows</span>
@@ -437,7 +454,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div
                   onClick={() => setActiveTab('releases')}
-                  className="p-5 rounded-2xl border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
+                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
                     <span>Releases & Dubs</span>
@@ -453,7 +470,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div
                   onClick={() => setActiveTab('bookings')}
-                  className="p-5 rounded-2xl border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
+                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
                     <span>Booking Enquiries</span>
@@ -471,7 +488,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Quick Actions & Recent Bookings */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Enquiries Card */}
-                <div className="p-6 rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
+                <div className="p-6 rounded sound-card border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-display font-bold text-neutral-950 dark:text-white">Recent Booking Requests</h3>
                     <button
@@ -486,7 +503,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {bookings.slice(0, 3).map((b) => (
                       <div
                         key={b.id}
-                        className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 dark:bg-black/40 dark:border-white/5 dark:text-white flex items-center justify-between text-xs"
+                        className="p-3 rounded bg-neutral-50 border border-neutral-200 text-neutral-900 dark:bg-black/40 dark:border-white/5 dark:text-white flex items-center justify-between text-xs"
                       >
                         <div>
                           <div className="font-semibold text-neutral-950 dark:text-white">{b.client_name}</div>
@@ -501,7 +518,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* Profile Snapshot & Quick Shortcuts */}
-                <div className="p-6 rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
+                <div className="p-6 rounded sound-card border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
                   <h3 className="text-base font-display font-bold text-neutral-950 dark:text-white">Artist Profile & Media Status</h3>
                   <div className="text-xs space-y-2 text-neutral-700 dark:text-neutral-300">
                     <div>
@@ -533,19 +550,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="pt-2 flex flex-wrap gap-2">
                     <button
                       onClick={() => setActiveTab('media')}
-                      className="px-3 py-1.5 rounded-lg bg-amber-400 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer hover:bg-amber-300 shadow-sm"
+                      className="px-3 py-1.5 rounded bg-amber-400 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer hover:bg-amber-300 shadow-sm"
                     >
                       Manage Media & Documents
                     </button>
                     <button
                       onClick={() => setActiveTab('profile')}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 text-xs font-semibold dark:text-white transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 text-xs font-semibold dark:text-white transition-colors cursor-pointer"
                     >
                       Edit Profile and Branding
                     </button>
                     <button
                       onClick={() => setActiveTab('sqlite')}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition-colors"
+                      className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition-colors"
                     >
                       Open SQLite Query Tool
                     </button>

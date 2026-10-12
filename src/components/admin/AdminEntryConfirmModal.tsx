@@ -139,7 +139,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-2xl animate-in fade-in duration-200">
       <div
-        className="w-full max-w-lg rounded-3xl glass-panel shadow-2xl overflow-hidden transition-all text-neutral-900 dark:text-neutral-100 border border-neutral-200/80 dark:border-white/15 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent"
+        className="w-full max-w-lg rounded sound-cabinet shadow-2xl overflow-hidden transition-all text-neutral-900 dark:text-neutral-100 border border-neutral-200/80 dark:border-white/15 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent"
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-portal-title"
@@ -151,7 +151,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
           </div>
 
           <div className="relative z-10 flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-neutral-950 text-amber-400 flex items-center justify-center shadow-lg shrink-0">
+            <div className="w-12 h-12 rounded bg-neutral-950 text-amber-400 flex items-center justify-center shadow-lg shrink-0">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
@@ -177,7 +177,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
           </div>
 
           {/* Database System Readiness Status */}
-          <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950/70 border border-neutral-200 dark:border-white/10 space-y-2.5">
+          <div className="p-4 rounded sound-card bg-neutral-50 dark:bg-neutral-950/70 border border-neutral-200 dark:border-white/10 space-y-2.5">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="flex items-center gap-2 font-bold text-neutral-800 dark:text-neutral-200">
                 <Database className="w-3.5 h-3.5 text-amber-500" />
@@ -191,15 +191,15 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
 
             {stats && (
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-200 dark:border-white/10 text-center">
-                <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
+                <div className="p-2 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
                   <div className="text-base font-black font-display text-neutral-950 dark:text-white tabular-nums">{stats.eventsCount}</div>
                   <div className="text-[10px] font-mono text-neutral-500 uppercase">Live Shows</div>
                 </div>
-                <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
+                <div className="p-2 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
                   <div className="text-base font-black font-display text-neutral-950 dark:text-white tabular-nums">{stats.releasesCount}</div>
                   <div className="text-[10px] font-mono text-neutral-500 uppercase">Dubplates</div>
                 </div>
-                <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
+                <div className="p-2 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/5">
                   <div className="text-base font-black font-display text-amber-500 tabular-nums">{stats.pendingBookingsCount}</div>
                   <div className="text-[10px] font-mono text-neutral-500 uppercase">Enquiries</div>
                 </div>
@@ -242,7 +242,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
                   }}
                   disabled={isVerifying || lockoutTimer > 0}
                   placeholder={lockoutTimer > 0 ? `Locked for ${lockoutTimer}s...` : 'Enter dashboard password...'}
-                  className={`w-full px-4 py-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border ${
+                  className={`w-full px-4 py-3.5 rounded bg-neutral-50 dark:bg-neutral-950 border ${
                     errorMessage
                       ? 'border-red-500 dark:border-red-500'
                       : 'border-neutral-300 dark:border-white/15 focus:border-amber-500 dark:focus:border-amber-400'
@@ -260,7 +260,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
 
               {/* Error Banner */}
               {errorMessage && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-mono flex items-center gap-2 animate-shake">
+                <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-mono flex items-center gap-2 animate-shake">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
@@ -303,7 +303,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
               <button
                 type="button"
                 onClick={onCancel}
-                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-3 rounded border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Return to Public Site</span>
@@ -312,7 +312,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
               <button
                 type="submit"
                 disabled={isVerifying || lockoutTimer > 0}
-                className="hover-shimmer w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-400/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hover-shimmer w-full sm:w-auto px-6 py-3 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-400/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isVerifying ? (
                   <>

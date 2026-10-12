@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import {
   getProfile,
   getEvents,
@@ -355,7 +356,8 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      {isLoading ? (
+      <ToastProvider>
+        {isLoading ? (
         <AppLoader
           logoUrl={profile?.logo_url || profile?.epk_logo_png}
           colorScheme={profile?.color_scheme}
@@ -506,6 +508,7 @@ export default function App() {
           />
         </div>
       )}
+      </ToastProvider>
     </ThemeProvider>
   );
 }
