@@ -1,5 +1,6 @@
 {
   "updatedAt": "2026-10-08T18:28:00.000Z",
   "updatedBy": "admin_auth_migration",
-  "sizeBytes": 2561368
+  "sizeBytes": 2561368,
+  "isSeed": true
 }

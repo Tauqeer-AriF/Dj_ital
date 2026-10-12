@@ -10,13 +10,49 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = process.env.DATA_DIR || path.resolve(__dirname, 'data');
+
+// Persistent data volume detection (e.g. Railway volume mounted at /data or custom DATA_DIR)
+const SEED_DIR = path.resolve(__dirname, 'data');
+function resolveDataDirectory(): string {
+  if (process.env.DATA_DIR && process.env.DATA_DIR.trim()) {
+    return path.resolve(process.env.DATA_DIR.trim());
+  }
+  // Check common Docker / Railway persistent volume mount path
+  if (fs.existsSync('/data')) {
+    try {
+      fs.accessSync('/data', fs.constants.W_OK);
+      return '/data';
+    } catch {
+      // Not writable, fall through
+    }
+  }
+  return SEED_DIR;
+}
+
+const DATA_DIR = resolveDataDirectory();
 const DB_FILE = path.join(DATA_DIR, 'djital_db.sqlite.b64');
 const DB_META_FILE = path.join(DATA_DIR, 'db_meta.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Auto-seed empty persistent volume on first startup if external volume is attached
+if (DATA_DIR !== SEED_DIR && !fs.existsSync(DB_FILE)) {
+  const seedDbFile = path.join(SEED_DIR, 'djital_db.sqlite.b64');
+  const seedMetaFile = path.join(SEED_DIR, 'db_meta.json');
+  if (fs.existsSync(seedDbFile)) {
+    try {
+      fs.copyFileSync(seedDbFile, DB_FILE);
+      if (fs.existsSync(seedMetaFile)) {
+        fs.copyFileSync(seedMetaFile, DB_META_FILE);
+      }
+      console.log(`[Database] Seeded empty volume at ${DATA_DIR} with baseline snapshot.`);
+    } catch (err) {
+      console.warn(`[Database] Could not seed volume directory:`, err);
+    }
+  }
 }
 
 // Support large JSON payloads for base64 SQLite snapshots & image data
@@ -144,6 +180,7 @@ app.post('/api/db/save', (req, res) => {
       updatedAt: timestamp || new Date().toISOString(),
       updatedBy: clientDevice || 'web-client',
       sizeBytes: databaseBase64.length,
+      isSeed: false,
     };
     fs.writeFileSync(DB_META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
 

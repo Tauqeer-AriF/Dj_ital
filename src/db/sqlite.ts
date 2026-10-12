@@ -203,7 +203,31 @@ export interface NewsletterSubscriberData {
   source: string;
 }
 
-const STORAGE_KEY = 'djital_sqlite_db_v1';
+export const STORAGE_KEY = 'djital_sqlite_db_v1';
+export const STORAGE_META_KEY = 'djital_sqlite_meta_v1';
+
+export interface LocalDbMeta {
+  updatedAt: string;
+  clientDevice?: string;
+  isCustom?: boolean;
+}
+
+export function getLocalDbMeta(): LocalDbMeta | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(STORAGE_META_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+export function setLocalDbMeta(meta: LocalDbMeta) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(STORAGE_META_KEY, JSON.stringify(meta));
+  } catch {}
+}
+
 let dbInstance: Database | null = null;
 let initPromise: Promise<Database> | null = null;
 
@@ -245,15 +269,15 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export async function syncDatabaseToServer(b64: string): Promise<boolean> {
+export async function syncDatabaseToServer(b64: string, customTimestamp?: string): Promise<boolean> {
   try {
     const res = await fetch('/api/db/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         databaseBase64: b64,
-        timestamp: new Date().toISOString(),
-        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'node',
+        timestamp: customTimestamp || new Date().toISOString(),
+        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
       }),
     });
     return res.ok;
@@ -263,13 +287,21 @@ export async function syncDatabaseToServer(b64: string): Promise<boolean> {
   }
 }
 
-export function saveDatabaseToStorage(db: Database) {
+export function saveDatabaseToStorage(db: Database, customTimestamp?: string) {
   try {
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
-    localStorage.setItem(STORAGE_KEY, b64);
+    const timestamp = customTimestamp || new Date().toISOString();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, b64);
+      setLocalDbMeta({
+        updatedAt: timestamp,
+        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
+        isCustom: true,
+      });
+    }
     // Asynchronously push to server for cross-device synchronization (Windows, iOS, etc.)
-    syncDatabaseToServer(b64);
+    syncDatabaseToServer(b64, timestamp);
   } catch (err) {
     console.warn('Failed to save SQLite to localStorage:', err);
   }
@@ -320,26 +352,84 @@ export async function getDatabase(): Promise<Database> {
       });
     }
 
-    // 1. First check if server has a persisted database snapshot
+    // 1. Read existing browser local storage & meta
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    const localMeta = getLocalDbMeta();
+
+    // 2. Query server database snapshot
     let serverBase64: string | null = null;
+    let serverMeta: { updatedAt?: string; isSeed?: boolean; updatedBy?: string } | null = null;
     try {
       const res = await fetch('/api/db/state');
       if (res.ok) {
         const json = await res.json();
         if (json.exists && json.databaseBase64) {
           serverBase64 = json.databaseBase64;
+          serverMeta = json.meta || null;
         }
       }
     } catch (e) {
       console.warn('Could not query server DB state, falling back to local storage:', e);
     }
 
-    if (serverBase64) {
+    // 3. Smart Conflict Resolution & Auto-Healing on fresh deployment
+    // Prevents code deployments on Railway from wiping out user's dashboard edits!
+    let preferLocal = false;
+    let preferServer = false;
+
+    if (saved && serverBase64) {
+      const localTime = localMeta?.updatedAt ? new Date(localMeta.updatedAt).getTime() : 0;
+      const serverTime = serverMeta?.updatedAt ? new Date(serverMeta.updatedAt).getTime() : 0;
+      const serverIsSeed = Boolean(serverMeta?.isSeed);
+
+      if (serverIsSeed && (localMeta?.isCustom || !localMeta)) {
+        // Newly deployed code starts with baseline seed snapshot, but the user has custom dashboard edits
+        preferLocal = true;
+      } else if (localTime && serverTime) {
+        if (localTime >= serverTime) {
+          preferLocal = true;
+        } else {
+          preferServer = true;
+        }
+      } else if (localMeta?.isCustom) {
+        preferLocal = true;
+      } else {
+        preferServer = true;
+      }
+    } else if (saved) {
+      preferLocal = true;
+    } else if (serverBase64) {
+      preferServer = true;
+    }
+
+    if (preferLocal && saved) {
+      try {
+        const u8 = base64ToUint8Array(saved);
+        const restoredDb: Database = new SQL.Database(u8);
+        ensureSchemaMigrations(restoredDb);
+        dbInstance = restoredDb;
+
+        // Auto-heal newly deployed server instance: immediately push latest local data to server
+        const timeToSync = localMeta?.updatedAt || new Date().toISOString();
+        syncDatabaseToServer(saved, timeToSync);
+        return restoredDb;
+      } catch (err) {
+        console.warn('Failed to parse saved local SQLite DB, trying server:', err);
+      }
+    }
+
+    if (preferServer && serverBase64) {
       try {
         const u8 = base64ToUint8Array(serverBase64);
         const serverDb: Database = new SQL.Database(u8);
         ensureSchemaMigrations(serverDb);
-        localStorage.setItem(STORAGE_KEY, serverBase64);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY, serverBase64);
+          setLocalDbMeta({
+            updatedAt: serverMeta?.updatedAt || new Date().toISOString(),
+            isCustom: !serverMeta?.isSeed,
+          });
+        }
         dbInstance = serverDb;
         return serverDb;
       } catch (err) {
@@ -347,23 +437,7 @@ export async function getDatabase(): Promise<Database> {
       }
     }
 
-    // 2. If no server DB yet, check localStorage
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const u8 = base64ToUint8Array(saved);
-        const restoredDb: Database = new SQL.Database(u8);
-        ensureSchemaMigrations(restoredDb);
-        dbInstance = restoredDb;
-        // Automatically sync local changes to server so all devices (iOS, Windows, etc.) immediately inherit them
-        syncDatabaseToServer(saved);
-        return restoredDb;
-      } catch (err) {
-        console.warn('Failed to parse saved SQLite DB, initializing fresh schema', err);
-      }
-    }
-
-    // 3. If neither exists, initialize fresh schema & seeds
+    // 4. If neither exists, initialize fresh schema & seeds
     const freshDb: Database = new SQL.Database();
     initSchemaAndSeeds(freshDb);
     saveDatabaseToStorage(freshDb);
@@ -2364,8 +2438,14 @@ export async function forcePushToServer(): Promise<{ success: boolean; message: 
     const db = await getDatabase();
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
-    const ok = await syncDatabaseToServer(b64);
+    const now = new Date().toISOString();
+    const ok = await syncDatabaseToServer(b64, now);
     if (ok) {
+      setLocalDbMeta({
+        updatedAt: now,
+        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
+        isCustom: true,
+      });
       return { success: true, message: 'Current database pushed to server. All devices (iOS, Windows, etc.) will now receive this data.' };
     }
     return { success: false, message: 'Failed to push database to server. Check server connection.' };
@@ -2392,6 +2472,12 @@ export async function forcePullFromServer(): Promise<{ success: boolean; message
     dbInstance = new SQL.Database(u8);
     ensureSchemaMigrations(dbInstance);
     localStorage.setItem(STORAGE_KEY, json.databaseBase64);
+    if (json.meta?.updatedAt) {
+      setLocalDbMeta({
+        updatedAt: json.meta.updatedAt,
+        isCustom: !json.meta.isSeed,
+      });
+    }
     notifyListeners();
     return { success: true, message: 'Latest database state synchronized from server.' };
   } catch (err: any) {

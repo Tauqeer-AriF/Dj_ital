@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   LayoutDashboard,
   Calendar,
@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Radio,
   Download,
+  Upload,
   Lock,
   Layers,
   Cloud,
@@ -26,9 +27,20 @@ import {
   FolderArchive,
   KeyRound,
   ShieldCheck,
+  Server,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { ProfileData, EventData, ReleaseData, GalleryData, BookingData, downloadDatabaseFile, forcePushToServer, forcePullFromServer } from '../../db/sqlite';
+import {
+  ProfileData,
+  EventData,
+  ReleaseData,
+  GalleryData,
+  BookingData,
+  downloadDatabaseFile,
+  forcePushToServer,
+  forcePullFromServer,
+  importDatabaseBinary,
+} from '../../db/sqlite';
 import { EventsManager } from './EventsManager';
 import { ReleasesManager } from './ReleasesManager';
 import { GalleryManager } from './GalleryManager';
@@ -85,11 +97,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleDownloadDb = async () => {
     try {
       await downloadDatabaseFile();
     } catch (err) {
       console.error('Failed to export SQLite database:', err);
+    }
+  };
+
+  const handleRestoreClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      await importDatabaseBinary(new Uint8Array(buffer));
+      setSyncFeedback('✅ Database restored successfully from backup and synchronized across all devices!');
+      onRefreshData();
+    } catch (err: any) {
+      console.error('Failed to import database:', err);
+      setSyncFeedback('⚠️ Failed to restore backup: ' + (err?.message || 'Invalid SQLite file'));
+    } finally {
+      setIsSyncing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -176,6 +213,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync to All Devices'}</span>
             <span className="sm:hidden">Sync</span>
+          </button>
+
+          <button
+            onClick={handleRestoreClick}
+            disabled={isSyncing}
+            title="Upload and restore a previous .sqlite database backup"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Restore</span>
           </button>
 
           <button
@@ -277,19 +324,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
+              {/* Hidden file input for restoring SQLite backups */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleUploadBackup}
+                accept=".sqlite,.db"
+                className="hidden"
+                aria-label="Upload SQLite backup"
+              />
+
               {/* Cross-Device Sync Card */}
               <div className="p-6 rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-500/5 via-neutral-900/10 to-amber-500/10 dark:bg-neutral-900/80 shadow-md space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
                       <Cloud className="w-4 h-4 text-amber-500" />
-                      <span>Cross-Device Cloud Sync (iOS & Windows)</span>
+                      <span>Cross-Device Cloud Sync & Persistence</span>
                     </div>
                     <h3 className="font-display font-bold text-base sm:text-lg text-neutral-950 dark:text-white">
                       Synchronize Media & Database Across All Phones & Computers
                     </h3>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-2xl">
-                      When you update images or content on your Windows computer or iOS iPhone, click <strong>"Broadcast to All Devices"</strong> to immediately publish your custom images and records to the live server.
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
+                      Your changes are automatically saved to browser storage and synced to the live server. When you update content, click <strong>"Broadcast to All Devices"</strong> to immediately publish your custom images and records to all visitors.
                     </p>
                   </div>
 
@@ -309,6 +366,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     >
                       <span>Pull Latest from Server</span>
                     </button>
+                    <button
+                      onClick={handleRestoreClick}
+                      disabled={isSyncing}
+                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-amber-400/40 hover:bg-amber-400/10 text-xs font-medium text-amber-900 dark:text-amber-300 transition-colors cursor-pointer"
+                      title="Upload and restore a previous .sqlite database backup"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Restore Backup</span>
+                    </button>
+                    <button
+                      onClick={handleDownloadDb}
+                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
+                      title="Download complete database backup file"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download .sqlite</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-white/5 text-[11px] text-neutral-600 dark:text-neutral-300 leading-normal">
+                  <Server className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-neutral-900 dark:text-white">Continuous Deployment Protection:</span>{' '}
+                    Your custom dashboard changes are now protected against code redeployments. Even if a new container image is started, your newest local edits automatically heal and repopulate the server. For 100% server-side persistence on Railway, attach a Volume at <code className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px] text-amber-600 dark:text-amber-400 font-bold">/data</code>.
                   </div>
                 </div>
 
