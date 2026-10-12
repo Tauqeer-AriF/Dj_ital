@@ -58,7 +58,7 @@ export const Hero: React.FC<HeroProps> = ({
   const logoSrc = profile?.logo_url || profile?.epk_logo_png || '/images/vital_fest_logo.png';
 
   return (
-    <section className="relative overflow-hidden pt-16 sm:pt-[72px] pb-12 sm:pb-16 md:pb-20 transition-colors duration-200">
+    <section className="relative overflow-hidden pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 transition-colors duration-200">
       {/* Ambient sound system glow */}
       <div
         style={{ backgroundColor: 'var(--accent-subtle)' }}

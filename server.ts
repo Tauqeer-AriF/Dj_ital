@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.resolve(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.resolve(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'djital_db.sqlite.b64');
 const DB_META_FILE = path.join(DATA_DIR, 'db_meta.json');
 
