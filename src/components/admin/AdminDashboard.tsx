@@ -28,6 +28,7 @@ import {
   KeyRound,
   ShieldCheck,
   Server,
+  Landmark,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -54,6 +55,7 @@ import { EPKManager } from './EPKManager';
 import { SocialProofManager } from './SocialProofManager';
 import { NewsletterManager } from './NewsletterManager';
 import { SecurityManager } from './SecurityManager';
+import { HeritageManager } from './HeritageManager';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -69,6 +71,7 @@ interface AdminDashboardProps {
 type TabType =
   | 'overview'
   | 'security'
+  | 'heritage'
   | 'events'
   | 'audio_media'
   | 'epk'
@@ -186,6 +189,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
+    { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
     { id: 'media', label: 'Media & Documents', icon: <FolderArchive className="w-4 h-4" /> },
     { id: 'events', label: 'Vital Fest & Events', icon: <Calendar className="w-4 h-4" />, badge: events.length },
     { id: 'audio_media', label: 'Audio & Media Gallery', icon: <Music className="w-4 h-4" /> },
@@ -419,7 +423,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div
+                  onClick={() => setActiveTab('heritage')}
+                  className="p-5 rounded sound-card border border-cyan-400/40 bg-white shadow-sm hover:shadow-md hover:border-cyan-500 dark:border-cyan-400/20 dark:bg-neutral-900/70 dark:hover:border-cyan-400 cursor-pointer transition-all space-y-2 group"
+                >
+                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                    <span className="font-semibold text-neutral-900 dark:text-white">Heritage & V&A</span>
+                    <Landmark className="w-4 h-4 text-cyan-500 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white">
+                    100%
+                  </div>
+                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
+                    Fully Customisable
+                  </div>
+                </div>
+
                 <div
                   onClick={() => setActiveTab('media')}
                   className="p-5 rounded sound-card border border-amber-400/40 bg-white shadow-sm hover:shadow-md hover:border-amber-500 dark:border-amber-400/20 dark:bg-neutral-900/70 dark:hover:border-amber-400 cursor-pointer transition-all space-y-2 group"
@@ -549,6 +569,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="pt-2 flex flex-wrap gap-2">
                     <button
+                      onClick={() => setActiveTab('heritage')}
+                      className="px-3 py-1.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Edit Heritage & V&A Archive
+                    </button>
+                    <button
                       onClick={() => setActiveTab('media')}
                       className="px-3 py-1.5 rounded bg-amber-400 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer hover:bg-amber-300 shadow-sm"
                     >
@@ -573,6 +599,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
 
           {activeTab === 'security' && <SecurityManager />}
+          {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}
           {activeTab === 'media' && <MediaLibraryManager onRefresh={onRefreshData} />}
           {activeTab === 'events' && <EventsManager events={events} onRefresh={onRefreshData} />}
           {activeTab === 'audio_media' && <AudioMediaManager onRefresh={onRefreshData} />}

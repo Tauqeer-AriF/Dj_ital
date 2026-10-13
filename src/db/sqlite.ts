@@ -203,6 +203,180 @@ export interface NewsletterSubscriberData {
   source: string;
 }
 
+export interface HeritageSettingsData {
+  id: number;
+  badge_text: string;
+  subbadge_text: string;
+  heading: string;
+  description: string;
+  va_image: string;
+  va_image_alt: string;
+  plaque_title: string;
+  plaque_tag: string;
+  plaque_description: string;
+  residency_label: string;
+  residency_title: string;
+  residency_badge: string;
+  residency_badge_color: string;
+  provenance_tag: string;
+  provenance_heading: string;
+  lead_paragraph: string;
+  updated_at: string;
+}
+
+export interface HeritageCredentialData {
+  id: number;
+  icon: string;
+  title: string;
+  description: string;
+  color: string;
+  order_index: number;
+}
+
+export interface HeritageChapterData {
+  id: number;
+  tab_label: string;
+  title: string;
+  period: string;
+  content: string;
+  order_index: number;
+}
+
+export interface HeritageMilestoneData {
+  id: number;
+  year_badge: string;
+  title: string;
+  description: string;
+  color: string;
+  order_index: number;
+}
+
+export interface HeritageFullData {
+  settings: HeritageSettingsData;
+  credentials: HeritageCredentialData[];
+  chapters: HeritageChapterData[];
+  milestones: HeritageMilestoneData[];
+}
+
+export const DEFAULT_HERITAGE_SETTINGS: Omit<HeritageSettingsData, 'id' | 'updated_at'> = {
+  badge_text: '[ V&A NATIONAL ARCHIVE // 1991—2026 ]',
+  subbadge_text: 'EAST LONDON PIRATE RIGS TO NATIONAL MUSEUM',
+  heading: 'From Hackney Pirate Towers to the V&A Museum',
+  description: "Tracing DJ Ital's 35-year journey from pirate broadcasts across East London rooftops to receiving permanent archival recognition in the Victoria & Albert Museum in 2026.",
+  va_image: '/images/va_museum_exhibition_1790112416279.jpg',
+  va_image_alt: 'Victoria and Albert Museum exhibition featuring DJ Ital original Kool FM jacket',
+  plaque_title: 'V&A EAST: THE MUSIC IS BLACK',
+  plaque_tag: '#VAM.2026.E14',
+  plaque_description: 'Exhibition loan of DJ Ital\'s authentic 1990s Kool FM flight jacket and rare acetate dubplates featured in "The Music is Black: A British Story" at V&A East in April 2026, documenting UK Black British music history and pirate radio heritage.',
+  residency_label: 'Current Broadcast Residency',
+  residency_title: 'DejaVu FM · Fortnightly Saturdays',
+  residency_badge: 'ON AIR',
+  residency_badge_color: 'emerald',
+  provenance_tag: 'CURATORIAL PROVENANCE',
+  provenance_heading: 'Rooted in Hackney Sound Systems',
+  lead_paragraph: 'DJ Ital (born Martin Oscar, 1968, Hackney, London) is a British DJ, producer, and event promoter. A pioneer of the jungle music genre, he joined the legendary pirate radio station Kool FM (94.5) during its explosive early 90s genesis. In 2026, his enduring influence on British music culture was formally recognised by the Victoria and Albert Museum (V&A East).',
+};
+
+export const DEFAULT_HERITAGE_CREDENTIALS: Omit<HeritageCredentialData, 'id'>[] = [
+  {
+    icon: 'radio',
+    title: 'Kool FM 94.5 (Est. 1991)',
+    description: "Core resident broadcaster on the undisputed pirate powerhouse that established jungle worldwide across London's high-rise transmitters.",
+    color: 'amber',
+    order_index: 1,
+  },
+  {
+    icon: 'landmark',
+    title: 'Knowledge Magazine',
+    description: "Featured in the landmark print retrospective (Issue 85) honouring DJ Ital's technical mixing approach and the golden era evolution of pirate radio.",
+    color: 'cyan',
+    order_index: 2,
+  },
+  {
+    icon: 'award',
+    title: 'V&A Curatorial Loan',
+    description: 'Official museum accession of original flight jacket artefact and master acetate dubplates memorialised in national heritage collections.',
+    color: 'cyan',
+    order_index: 3,
+  },
+  {
+    icon: 'sparkles',
+    title: 'Resident Advisor',
+    description: 'Praised by electronic music media for leading the community sound-system resurgence at Hackney Social, Yard Theatre, and Arch 14.',
+    color: 'amber',
+    order_index: 4,
+  },
+];
+
+export const DEFAULT_HERITAGE_CHAPTERS: Omit<HeritageChapterData, 'id'>[] = [
+  {
+    tab_label: 'Kool FM',
+    title: 'Underground Genesis & Rooftop Transmitters',
+    period: '1991 — 1994',
+    content: 'Emerging from the East London underground scene, Ital joined Kool FM 94.5 during its foundational years. Transmitting weekly live sets from rooftop pirate rigs in Hackney and Bow, he played an integral role in establishing jungle and drum and bass across London.',
+    order_index: 1,
+  },
+  {
+    tab_label: '"Decibel"',
+    title: 'Production of Jungle Anthem "Decibel"',
+    period: '1995',
+    content: 'In 1995, Ital produced "Decibel" (widely known as "Decibels"), featured on the Kool FM 5th Anniversary compilation. The track is recognised as a benchmark of mid-90s jungle, marrying intricate time-stretched breakbeats with heavyweight electronic sub-bass.',
+    order_index: 2,
+  },
+  {
+    tab_label: 'Media & Docu',
+    title: 'Knowledge Magazine Retrospective & Journey Series',
+    period: '2006 — 2024',
+    content: 'Featured in Knowledge Magazine (Issue 85) by Giles Wood, detailing technical mixing craft and pirate radio evolution. In 2024, he released the documentary series "DJ Ital: The Journey", cataloguing first-hand accounts and rare archival rave footage.',
+    order_index: 3,
+  },
+  {
+    tab_label: 'Vital Fest',
+    title: 'Preserving Sound System Culture in East London',
+    period: '2023 — Present',
+    content: 'Founded Vital Fest in Hackney, hosting events across The Hackney Social, The Yard Theatre, and Arch 14. Resident Advisor highlighted the series for keeping grassroots sound system heritage alive with veterans DJ Brockie, Ragga Twins, and Jumpin Jack Frost.',
+    order_index: 4,
+  },
+  {
+    tab_label: 'V&A East',
+    title: 'V&A East: The Music is Black Exhibition',
+    period: 'April 2026',
+    content: 'His cultural legacy was formally memorialised by the Victoria and Albert Museum for the exhibition "The Music is Black: A British Story" at V&A East, with his original 1990s flight jacket and acetate dubplates preserved as permanent artefacts of UK Black British music history.',
+    order_index: 5,
+  },
+];
+
+export const DEFAULT_HERITAGE_MILESTONES: Omit<HeritageMilestoneData, 'id'>[] = [
+  {
+    year_badge: "'91",
+    title: 'Joined Kool FM 94.5 Core',
+    description: 'Broadcasting weekly sets over London from Hackney and Bow rooftop pirate rigs.',
+    color: 'amber',
+    order_index: 1,
+  },
+  {
+    year_badge: "'95",
+    title: 'Produced Jungle Anthem "Decibel"',
+    description: 'Released on Kool FM 5th Anniversary compilation; played out across raves throughout the UK.',
+    color: 'amber',
+    order_index: 2,
+  },
+  {
+    year_badge: "'23",
+    title: 'Founded Vital Fest Series',
+    description: 'Launched East London festival series uniting legends Brockie, Ragga Twins, and Jumpin Jack Frost.',
+    color: 'amber',
+    order_index: 3,
+  },
+  {
+    year_badge: "'26",
+    title: 'V&A Museum Archival Recognition',
+    description: 'Permanently recognised for cultural contributions to British music history with museum exhibition loans at V&A East.',
+    color: 'cyan',
+    order_index: 4,
+  },
+];
+
 export const STORAGE_KEY = 'djital_sqlite_db_v1';
 export const STORAGE_META_KEY = 'djital_sqlite_meta_v1';
 
@@ -740,6 +914,54 @@ function ensureSchemaMigrations(db: Database) {
         updated_at TEXT NOT NULL,
         last_login_at TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS heritage_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        badge_text TEXT,
+        subbadge_text TEXT,
+        heading TEXT,
+        description TEXT,
+        va_image TEXT,
+        va_image_alt TEXT,
+        plaque_title TEXT,
+        plaque_tag TEXT,
+        plaque_description TEXT,
+        residency_label TEXT,
+        residency_title TEXT,
+        residency_badge TEXT,
+        residency_badge_color TEXT,
+        provenance_tag TEXT,
+        provenance_heading TEXT,
+        lead_paragraph TEXT,
+        updated_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS heritage_credentials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        icon TEXT NOT NULL DEFAULT 'radio',
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT 'amber',
+        order_index INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS heritage_chapters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tab_label TEXT NOT NULL,
+        title TEXT NOT NULL,
+        period TEXT NOT NULL,
+        content TEXT NOT NULL,
+        order_index INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS heritage_milestones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year_badge TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT 'amber',
+        order_index INTEGER DEFAULT 0
+      );
     `);
 
     try {
@@ -751,6 +973,88 @@ function ensureSchemaMigrations(db: Database) {
       }
     } catch {
       // ignore
+    }
+
+    try {
+      const heritageCount = db.exec('SELECT count(*) FROM heritage_settings');
+      if (heritageCount.length === 0 || heritageCount[0].values[0][0] === 0) {
+        db.run(
+          `INSERT OR REPLACE INTO heritage_settings (
+            id, badge_text, subbadge_text, heading, description,
+            va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
+            residency_label, residency_title, residency_badge, residency_badge_color,
+            provenance_tag, provenance_heading, lead_paragraph, updated_at
+          ) VALUES (
+            1, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?
+          )`,
+          [
+            DEFAULT_HERITAGE_SETTINGS.badge_text,
+            DEFAULT_HERITAGE_SETTINGS.subbadge_text,
+            DEFAULT_HERITAGE_SETTINGS.heading,
+            DEFAULT_HERITAGE_SETTINGS.description,
+            DEFAULT_HERITAGE_SETTINGS.va_image,
+            DEFAULT_HERITAGE_SETTINGS.va_image_alt,
+            DEFAULT_HERITAGE_SETTINGS.plaque_title,
+            DEFAULT_HERITAGE_SETTINGS.plaque_tag,
+            DEFAULT_HERITAGE_SETTINGS.plaque_description,
+            DEFAULT_HERITAGE_SETTINGS.residency_label,
+            DEFAULT_HERITAGE_SETTINGS.residency_title,
+            DEFAULT_HERITAGE_SETTINGS.residency_badge,
+            DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
+            DEFAULT_HERITAGE_SETTINGS.provenance_tag,
+            DEFAULT_HERITAGE_SETTINGS.provenance_heading,
+            DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
+            new Date().toISOString(),
+          ]
+        );
+      }
+    } catch (e) {
+      console.warn('Error seeding heritage_settings:', e);
+    }
+
+    try {
+      const credsCount = db.exec('SELECT count(*) FROM heritage_credentials');
+      if (credsCount.length === 0 || credsCount[0].values[0][0] === 0) {
+        for (const c of DEFAULT_HERITAGE_CREDENTIALS) {
+          db.run(
+            'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+            [c.icon, c.title, c.description, c.color, c.order_index]
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Error seeding heritage_credentials:', e);
+    }
+
+    try {
+      const chapsCount = db.exec('SELECT count(*) FROM heritage_chapters');
+      if (chapsCount.length === 0 || chapsCount[0].values[0][0] === 0) {
+        for (const ch of DEFAULT_HERITAGE_CHAPTERS) {
+          db.run(
+            'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
+            [ch.tab_label, ch.title, ch.period, ch.content, ch.order_index]
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Error seeding heritage_chapters:', e);
+    }
+
+    try {
+      const milesCount = db.exec('SELECT count(*) FROM heritage_milestones');
+      if (milesCount.length === 0 || milesCount[0].values[0][0] === 0) {
+        for (const m of DEFAULT_HERITAGE_MILESTONES) {
+          db.run(
+            'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+            [m.year_badge, m.title, m.description, m.color, m.order_index]
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Error seeding heritage_milestones:', e);
     }
 
     // Profile table column migrations
@@ -2731,4 +3035,289 @@ export async function changeAdminPassword(
     return { success: false, error: err?.message || 'Failed to update password' };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Heritage Section CRUD & Sync Methods
+// ---------------------------------------------------------------------------
+
+export async function getHeritageSettings(): Promise<HeritageSettingsData> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM heritage_settings WHERE id = 1');
+  if (res.length === 0 || res[0].values.length === 0) {
+    return {
+      id: 1,
+      ...DEFAULT_HERITAGE_SETTINGS,
+      updated_at: new Date().toISOString(),
+    };
+  }
+  const cols = res[0].columns;
+  const obj: any = {};
+  cols.forEach((c, i) => (obj[c] = res[0].values[0][i]));
+  return obj as HeritageSettingsData;
+}
+
+export async function updateHeritageSettings(data: Partial<HeritageSettingsData>): Promise<void> {
+  const db = await getDatabase();
+  const existing = await getHeritageSettings();
+  const updated: HeritageSettingsData = {
+    ...existing,
+    ...data,
+    updated_at: new Date().toISOString(),
+  };
+
+  db.run(
+    `INSERT OR REPLACE INTO heritage_settings (
+      id, badge_text, subbadge_text, heading, description,
+      va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
+      residency_label, residency_title, residency_badge, residency_badge_color,
+      provenance_tag, provenance_heading, lead_paragraph, updated_at
+    ) VALUES (
+      1, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?
+    )`,
+    [
+      updated.badge_text,
+      updated.subbadge_text,
+      updated.heading,
+      updated.description,
+      updated.va_image,
+      updated.va_image_alt,
+      updated.plaque_title,
+      updated.plaque_tag,
+      updated.plaque_description,
+      updated.residency_label,
+      updated.residency_title,
+      updated.residency_badge,
+      updated.residency_badge_color,
+      updated.provenance_tag,
+      updated.provenance_heading,
+      updated.lead_paragraph,
+      updated.updated_at,
+    ]
+  );
+
+  // If va_image was changed, automatically sync site_media and track upload
+  if (data.va_image && data.va_image !== existing.va_image) {
+    try {
+      db.run('UPDATE site_media SET image_url = ?, updated_at = ? WHERE key = ?', [
+        data.va_image,
+        updated.updated_at,
+        'va_museum_image',
+      ]);
+      trackMediaUpload({
+        title: updated.heading || 'V&A Museum Heritage Image',
+        url: data.va_image,
+        source: 'Heritage & V&A Archive',
+        category: 'Exhibition Media',
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function resetHeritageSettings(): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  db.run(
+    `INSERT OR REPLACE INTO heritage_settings (
+      id, badge_text, subbadge_text, heading, description,
+      va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
+      residency_label, residency_title, residency_badge, residency_badge_color,
+      provenance_tag, provenance_heading, lead_paragraph, updated_at
+    ) VALUES (
+      1, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?
+    )`,
+    [
+      DEFAULT_HERITAGE_SETTINGS.badge_text,
+      DEFAULT_HERITAGE_SETTINGS.subbadge_text,
+      DEFAULT_HERITAGE_SETTINGS.heading,
+      DEFAULT_HERITAGE_SETTINGS.description,
+      DEFAULT_HERITAGE_SETTINGS.va_image,
+      DEFAULT_HERITAGE_SETTINGS.va_image_alt,
+      DEFAULT_HERITAGE_SETTINGS.plaque_title,
+      DEFAULT_HERITAGE_SETTINGS.plaque_tag,
+      DEFAULT_HERITAGE_SETTINGS.plaque_description,
+      DEFAULT_HERITAGE_SETTINGS.residency_label,
+      DEFAULT_HERITAGE_SETTINGS.residency_title,
+      DEFAULT_HERITAGE_SETTINGS.residency_badge,
+      DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
+      DEFAULT_HERITAGE_SETTINGS.provenance_tag,
+      DEFAULT_HERITAGE_SETTINGS.provenance_heading,
+      DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
+      now,
+    ]
+  );
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+// Heritage Credentials
+export async function getHeritageCredentials(): Promise<HeritageCredentialData[]> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM heritage_credentials ORDER BY order_index ASC, id ASC');
+  if (res.length === 0) return [];
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const obj: any = {};
+    cols.forEach((c, i) => (obj[c] = row[i]));
+    return obj as HeritageCredentialData;
+  });
+}
+
+export async function createHeritageCredential(data: Omit<HeritageCredentialData, 'id'>): Promise<number> {
+  const db = await getDatabase();
+  db.run(
+    'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+    [data.icon || 'radio', data.title, data.description, data.color || 'amber', data.order_index ?? 0]
+  );
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+  const lastId = db.exec('SELECT last_insert_rowid() as id');
+  return Number(lastId[0].values[0][0]);
+}
+
+export async function updateHeritageCredential(id: number, data: Partial<HeritageCredentialData>): Promise<void> {
+  const db = await getDatabase();
+  const keys = Object.keys(data).filter((k) => k !== 'id');
+  if (keys.length === 0) return;
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => (data as any)[k]);
+  values.push(id);
+  db.run(`UPDATE heritage_credentials SET ${setClause} WHERE id = ?`, values);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function deleteHeritageCredential(id: number): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM heritage_credentials WHERE id = ?', [id]);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+// Heritage Chapters
+export async function getHeritageChapters(): Promise<HeritageChapterData[]> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM heritage_chapters ORDER BY order_index ASC, id ASC');
+  if (res.length === 0) return [];
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const obj: any = {};
+    cols.forEach((c, i) => (obj[c] = row[i]));
+    return obj as HeritageChapterData;
+  });
+}
+
+export async function createHeritageChapter(data: Omit<HeritageChapterData, 'id'>): Promise<number> {
+  const db = await getDatabase();
+  db.run(
+    'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
+    [data.tab_label, data.title, data.period, data.content, data.order_index ?? 0]
+  );
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+  const lastId = db.exec('SELECT last_insert_rowid() as id');
+  return Number(lastId[0].values[0][0]);
+}
+
+export async function updateHeritageChapter(id: number, data: Partial<HeritageChapterData>): Promise<void> {
+  const db = await getDatabase();
+  const keys = Object.keys(data).filter((k) => k !== 'id');
+  if (keys.length === 0) return;
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => (data as any)[k]);
+  values.push(id);
+  db.run(`UPDATE heritage_chapters SET ${setClause} WHERE id = ?`, values);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function deleteHeritageChapter(id: number): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM heritage_chapters WHERE id = ?', [id]);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+// Heritage Milestones
+export async function getHeritageMilestones(): Promise<HeritageMilestoneData[]> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM heritage_milestones ORDER BY order_index ASC, id ASC');
+  if (res.length === 0) return [];
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const obj: any = {};
+    cols.forEach((c, i) => (obj[c] = row[i]));
+    return obj as HeritageMilestoneData;
+  });
+}
+
+export async function createHeritageMilestone(data: Omit<HeritageMilestoneData, 'id'>): Promise<number> {
+  const db = await getDatabase();
+  db.run(
+    'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+    [data.year_badge, data.title, data.description, data.color || 'amber', data.order_index ?? 0]
+  );
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+  const lastId = db.exec('SELECT last_insert_rowid() as id');
+  return Number(lastId[0].values[0][0]);
+}
+
+export async function updateHeritageMilestone(id: number, data: Partial<HeritageMilestoneData>): Promise<void> {
+  const db = await getDatabase();
+  const keys = Object.keys(data).filter((k) => k !== 'id');
+  if (keys.length === 0) return;
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => (data as any)[k]);
+  values.push(id);
+  db.run(`UPDATE heritage_milestones SET ${setClause} WHERE id = ?`, values);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function deleteHeritageMilestone(id: number): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM heritage_milestones WHERE id = ?', [id]);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+// Full Heritage Bundle
+export async function getHeritageFullData(): Promise<HeritageFullData> {
+  const [settings, credentials, chapters, milestones] = await Promise.all([
+    getHeritageSettings(),
+    getHeritageCredentials(),
+    getHeritageChapters(),
+    getHeritageMilestones(),
+  ]);
+
+  return {
+    settings,
+    credentials: credentials.length > 0 ? credentials : (DEFAULT_HERITAGE_CREDENTIALS.map((c, i) => ({ id: i + 1, ...c })) as HeritageCredentialData[]),
+    chapters: chapters.length > 0 ? chapters : (DEFAULT_HERITAGE_CHAPTERS.map((c, i) => ({ id: i + 1, ...c })) as HeritageChapterData[]),
+    milestones: milestones.length > 0 ? milestones : (DEFAULT_HERITAGE_MILESTONES.map((m, i) => ({ id: i + 1, ...m })) as HeritageMilestoneData[]),
+  };
+}
+
 
