@@ -255,6 +255,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span>Download .sqlite</span>
           </button>
 
+          <a
+            href="/dj_ital_complete_repo.zip"
+            download="dj_ital_complete_repo.zip"
+            title="Download Complete Fixed Project ZIP (All 38 components & backend files)"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Fixed .zip</span>
+          </a>
+
           <button
             onClick={toggleTheme}
             className="p-2 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 transition-colors cursor-pointer"
@@ -342,6 +352,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
                     Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customise every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
                   </p>
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    <a
+                      href="/dj_ital_complete_repo.zip"
+                      download="dj_ital_complete_repo.zip"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Complete Project (.zip)</span>
+                    </a>
+                  </div>
                 </div>
               </div>
 
