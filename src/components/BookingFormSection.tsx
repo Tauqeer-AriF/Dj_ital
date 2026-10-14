@@ -221,24 +221,37 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
             <ScrollReveal variant="fade-left" delay={100}>
               <div className="p-6 sm:p-8 md:p-9 rounded sound-cabinet shadow-2xl text-neutral-900 dark:text-white relative overflow-hidden">
                 
-                {/* Preset Quick Selectors */}
+                {/* Preset Package / Set Format Dropdown */}
                 <div className="mb-6 space-y-2">
-                  <label className="text-xs font-industrial font-black text-neutral-900 dark:text-white uppercase tracking-wider block">
-                    Quick Select Package / Set Format:
-                  </label>
-                  <div className="sound-filter-group flex flex-wrap">
-                    {presets.map((p) => (
-                      <button
-                        key={p.label}
-                        type="button"
-                        onClick={() => handleSelectPreset(p)}
-                        className={`sound-filter-tab cursor-pointer ${
-                          formData.event_type === p.label ? 'active' : ''
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-industrial font-black text-neutral-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                      <span>Curated Package / Set Format:</span>
+                    </label>
+                    <span className="text-[11px] font-mono text-neutral-500 dark:text-white/60 hidden sm:inline">
+                      Auto-configures set specs & budget
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={formData.event_type}
+                      onChange={(e) => {
+                        const matched = presets.find((p) => p.label === e.target.value);
+                        if (matched) {
+                          handleSelectPreset(matched);
+                        } else {
+                          setFormData((prev) => ({ ...prev, event_type: e.target.value }));
+                        }
+                      }}
+                      className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer shadow-sm"
+                    >
+                      <option value="">-- Select a Performance Package / Format --</option>
+                      {presets.map((p) => (
+                        <option key={p.label} value={p.label}>
+                          {p.label} ({p.length} • {p.budget})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -294,7 +307,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                       </div>
                     </div>
 
-                    {/* Row 2: Event Type, Estimated Budget, Set Length */}
+                    {/* Row 2: Event Type, Estimated Budget (Dropdown), Set Length */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
@@ -302,8 +315,16 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                         </label>
                         <select
                           value={formData.event_type}
-                          onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}
-                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const matched = presets.find((p) => p.label === val);
+                            if (matched) {
+                              handleSelectPreset(matched);
+                            } else {
+                              setFormData({ ...formData, event_type: val });
+                            }
+                          }}
+                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer"
                         >
                           <option value="Festival Headline">Festival Headline</option>
                           <option value="Dubplate Vinyl Set">Dubplate Vinyl Set</option>
@@ -314,16 +335,61 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
-                          Estimated Budget
+                        <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
+                          <span>Estimated Budget</span>
                         </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. £2,500"
-                          value={formData.estimated_budget}
-                          onChange={(e) => setFormData({ ...formData, estimated_budget: e.target.value })}
-                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
-                        />
+                        <select
+                          value={
+                            [
+                              'Under £1,500',
+                              '£1,500 - £2,200',
+                              '£1,800 - £2,500',
+                              '£2,500 - £4,000',
+                              '£3,500 - £6,000',
+                              '£6,000+',
+                              'Flexible / To Discuss',
+                            ].includes(formData.estimated_budget)
+                              ? formData.estimated_budget
+                              : formData.estimated_budget
+                              ? 'custom'
+                              : '£2,500 - £4,000'
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'custom') {
+                              setFormData({ ...formData, estimated_budget: '£2,500' });
+                            } else {
+                              setFormData({ ...formData, estimated_budget: val });
+                            }
+                          }}
+                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer"
+                        >
+                          <option value="Under £1,500">Under £1,500 (Club / Archive Panel)</option>
+                          <option value="£1,500 - £2,200">£1,500 - £2,200 (Sound Clash / Underground)</option>
+                          <option value="£1,800 - £2,500">£1,800 - £2,500 (Dubplate Vinyl Set)</option>
+                          <option value="£2,500 - £4,000">£2,500 - £4,000 (Festival Headline Stage)</option>
+                          <option value="£3,500 - £6,000">£3,500 - £6,000 (Vital Fest Takeover)</option>
+                          <option value="£6,000+">£6,000+ (International / Tour Headline)</option>
+                          <option value="Flexible / To Discuss">Flexible / To Discuss</option>
+                          <option value="custom">Custom / Specific Figure...</option>
+                        </select>
+                        {![
+                          'Under £1,500',
+                          '£1,500 - £2,200',
+                          '£1,800 - £2,500',
+                          '£2,500 - £4,000',
+                          '£3,500 - £6,000',
+                          '£6,000+',
+                          'Flexible / To Discuss',
+                        ].includes(formData.estimated_budget) && (
+                          <input
+                            type="text"
+                            placeholder="Enter specific amount (e.g. £2,750)"
+                            value={formData.estimated_budget}
+                            onChange={(e) => setFormData({ ...formData, estimated_budget: e.target.value })}
+                            className="w-full mt-1.5 px-3 py-2 rounded border border-amber-500/50 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/50 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-mono"
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-1.5">
@@ -334,7 +400,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                         <select
                           value={formData.set_length}
                           onChange={(e) => setFormData({ ...formData, set_length: e.target.value })}
-                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold"
+                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer"
                         >
                           <option value="60 min">60 min</option>
                           <option value="90 min">90 min</option>
