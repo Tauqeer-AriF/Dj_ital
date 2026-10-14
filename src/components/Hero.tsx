@@ -74,30 +74,7 @@ export const Hero: React.FC<HeroProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Live on Air Broadcast Banner */}
-        {isLiveOnAir && (
-          <ScrollReveal variant="fade-down" className="mb-4 sm:mb-6">
-            <div className="p-3.5 rounded sound-cabinet border border-red-500/50 flex items-center justify-between text-xs shadow-xl relative overflow-hidden">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-none bg-red-500 animate-ping shrink-0" />
-                <span className="font-industrial font-black text-red-600 dark:text-red-300 uppercase tracking-wider">
-                  [ LIVE ON AIR TRANSMISSION ]
-                </span>
-                <span className="font-display font-black text-neutral-950 dark:text-white truncate">
-                  {profile?.live_show_title || 'DJ Ital Live Radio Broadcast'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={onPlayTrack}
-                className="hardware-btn flex items-center gap-1 px-3 py-1.5 rounded bg-red-600 text-white text-[11px] font-industrial font-black shrink-0 hover:bg-red-500 transition-colors shadow-md"
-              >
-                <span>{isPlaying ? 'STREAMING LIVE' : 'LISTEN LIVE'}</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </ScrollReveal>
-        )}
+
 
         {/* ========================================================================= */}
         {/* MOBILE VIEWPORT (< lg)                                                    */}
