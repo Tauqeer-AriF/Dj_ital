@@ -13,6 +13,7 @@ import {
   ExternalLink,
   ChevronDown,
   CheckCircle2,
+  FolderGit2,
   Play,
   Download,
   Flame,
@@ -842,15 +843,97 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
         </div>
       ),
     },
+    {
+      id: 'download_codebase',
+      tabKey: 'storage',
+      title: '18. Download Complete Project Directory (ZIP) & Railway Deployment',
+      badge: 'PROJECT EXPORT',
+      badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+      icon: <FolderGit2 className="w-4 h-4 text-emerald-500" />,
+      summary: 'Download the entire source code directory as a clean ZIP, and deploy smoothly on Railway with 0 errors.',
+      content: (
+        <div className="space-y-4 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
+          <p>
+            You can download the <strong>complete application codebase directory</strong> at any time as a clean ZIP archive directly to your computer.
+          </p>
+
+          <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-950/30 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="font-bold text-neutral-950 dark:text-white text-sm block font-display">
+                  ⚡ 1-Click Codebase ZIP Download
+                </span>
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                  Bundles all components, styles, server scripts, Vite configuration, .npmrc dependency resolver, and sound system assets.
+                </p>
+              </div>
+
+              <a
+                href="/api/download-project"
+                download="dj-ital-sound-system.zip"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold text-xs transition-all shadow-md shrink-0 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Full Project (ZIP)</span>
+              </a>
+            </div>
+            <p className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+              Direct download URL: <code className="text-amber-600 dark:text-amber-400 font-bold">/api/download-project</code>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="font-bold text-xs uppercase text-neutral-900 dark:text-white font-mono">
+              What is included in the Download:
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Frontend React 19 Application:</strong> All TypeScript components in <code className="font-mono text-[10px]">src/</code>, Tailwind 4 styling, and icons.</li>
+              <li><strong>Full-Stack Express Server:</strong> <code className="font-mono text-[10px]">server.ts</code> with automatic volume synchronization and static serving.</li>
+              <li><strong>Production Build Config:</strong> <code className="font-mono text-[10px]">vite.config.ts</code> with ESM dirname compatibility and Tailwind plugin.</li>
+              <li><strong>Railway CI Protection:</strong> <code className="font-mono text-[10px]">.npmrc</code> configured with <code className="font-mono text-[10px]">legacy-peer-deps=true</code> to guarantee zero npm peer resolution crashes on Railway.</li>
+              <li><strong>Database & Seed Data:</strong> <code className="font-mono text-[10px]">seed_data/</code> containing the full SQLite database snapshot and metadata.</li>
+              <li><strong>Audio & Media:</strong> All local artwork, badges, sounds, and sample clips in <code className="font-mono text-[10px]">public/</code> and <code className="font-mono text-[10px]">src/assets/</code>.</li>
+            </ul>
+          </div>
+
+          <div className="p-3.5 rounded bg-neutral-100 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/10 space-y-2">
+            <div className="font-bold text-xs uppercase text-neutral-900 dark:text-white font-mono">
+              How to Deploy this ZIP to Railway:
+            </div>
+            <ol className="list-decimal list-inside space-y-1.5 text-xs">
+              <li>Unzip the downloaded file on your computer.</li>
+              <li>Push the folder to your GitHub repository (or use Railway CLI / Railway template).</li>
+              <li>On Railway, connect your repository. Railway automatically detects Node.js and builds using <code className="font-mono text-[10px]">npm run build</code> and starts with <code className="font-mono text-[10px]">npm start</code>.</li>
+              <li>In your Railway service <strong>Settings &rarr; Volumes</strong>, attach a volume with mount path <code className="font-mono text-[10px] text-amber-500 font-bold">/app/data</code>.</li>
+              <li>In <strong>Variables</strong>, set <code className="font-mono text-[10px] text-amber-500 font-bold">DATA_DIR=/app/data</code>.</li>
+            </ol>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[11px] text-neutral-500 font-mono">Also available in: Storage & Volume Manager tab</span>
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('storage')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              >
+                <span>Open Storage Manager</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      ),
+    },
   ];
 
   const categories = [
-    { id: 'all', label: 'All Guides (17)' },
+    { id: 'all', label: 'All Guides (18)' },
     { id: 'broadcast', label: 'Broadcasting & Audio' },
     { id: 'video', label: 'Video & Media' },
     { id: 'branding', label: 'Branding & 164 BPM' },
     { id: 'heritage', label: 'Heritage & Shows' },
-    { id: 'system', label: 'Security & Storage' },
+    { id: 'system', label: 'Security & Deployment' },
   ];
 
   const filteredSections = sections.filter((sec) => {
@@ -876,7 +959,7 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
       return ['heritage_va', 'events_vitalfest', 'releases_dubplates', 'social_proof'].includes(sec.id);
     }
     if (activeCategory === 'system') {
-      return ['storage_persistence', 'security_passkey', 'bookings_inbox', 'newsletter_fans', 'sqlite_console'].includes(sec.id);
+      return ['storage_persistence', 'security_passkey', 'bookings_inbox', 'newsletter_fans', 'sqlite_console', 'download_codebase'].includes(sec.id);
     }
     return true;
   });
