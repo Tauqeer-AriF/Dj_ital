@@ -86,17 +86,8 @@ export default function App() {
   const [siteMediaMap, setSiteMediaMap] = useState<Record<string, string>>({});
   const [isEpkOpen, setIsEpkOpen] = useState(false);
 
-  // Audio player state - defaulted to single live radio stream in player bar
-  const [activeTrack, setActiveTrack] = useState<ActiveTrack | null>(() => ({
-    id: 9990,
-    title: 'DJ Ital Live Radio Stream Transmission',
-    artist: 'DJ Ital',
-    year: 2026,
-    bpm: 168,
-    format: 'Live Radio Stream',
-    type: 'live_stream',
-    streamUrl: 'https://dejavufm.radioca.st/;',
-  }));
+  // Audio player state - starts idle (no live stream loaded until On Air)
+  const [activeTrack, setActiveTrack] = useState<ActiveTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Sync /admin browser URL route
@@ -257,7 +248,19 @@ export default function App() {
 
   useEffect(() => {
     if (!audioRef.current) return;
-    if (isPlaying && activeTrack?.type === 'live_stream' && activeTrack.streamUrl) {
+    const isLive = Boolean(profile?.is_live_on_air);
+
+    // CRITICAL: When OFF AIR, strictly prevent any live stream playback!
+    if (!isLive) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+      if (activeTrack?.type === 'live_stream') {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    if (isPlaying && isLive && activeTrack?.type === 'live_stream' && activeTrack.streamUrl) {
       if (audioRef.current.src !== activeTrack.streamUrl) {
         audioRef.current.src = activeTrack.streamUrl;
       }
@@ -267,23 +270,37 @@ export default function App() {
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying, activeTrack]);
+  }, [isPlaying, activeTrack, profile?.is_live_on_air]);
 
   useEffect(() => {
+    const isLive = Boolean(profile?.is_live_on_air);
+    const signatureBpm = profile?.signature_bpm || 164;
     const stream = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
-    if (!activeTrack || activeTrack.type === 'live_stream') {
+
+    if (isLive) {
+      // Live on air: point player to live stream feed
       setActiveTrack({
         id: 9990,
-        title: profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Radio Stream Transmission',
-        artist: 'DJ Ital',
+        title: profile?.live_show_title ? `${profile.live_show_title} (Live On Air)` : 'DJ Ital Live Radio Stream Transmission',
+        artist: profile?.stage_name || 'DJ Ital',
         year: 2026,
-        bpm: 168,
+        bpm: signatureBpm,
         format: 'Live Radio Stream',
         type: 'live_stream',
         streamUrl: stream,
       });
+    } else {
+      // Off air: strictly ensure NO live stream is queued or playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+      }
+      if (activeTrack?.type === 'live_stream') {
+        setIsPlaying(false);
+        setActiveTrack(null);
+      }
     }
-  }, [profile?.stream_url, profile?.live_show_title]);
+  }, [profile?.is_live_on_air, profile?.stream_url, profile?.live_show_title, profile?.signature_bpm, profile?.stage_name]);
 
   const handlePlayRelease = (release: ReleaseData) => {
     let trackType: 'decibel' | 'vital' | 'hackney' | 'transmission' = 'decibel';
@@ -294,9 +311,9 @@ export default function App() {
     const track: ActiveTrack = {
       id: release.id,
       title: release.title,
-      artist: 'DJ Ital',
+      artist: profile?.stage_name || 'DJ Ital',
       year: release.release_year,
-      bpm: release.bpm || 168,
+      bpm: release.bpm || profile?.signature_bpm || 164,
       format: release.format || '12" Vinyl',
       type: trackType,
     };
@@ -307,14 +324,26 @@ export default function App() {
   };
 
   const handlePlayLiveStream = (overrideUrl?: string) => {
+    const isLive = Boolean(profile?.is_live_on_air);
+    if (!isLive) {
+      console.log('[Broadcast] Notice: Station is OFF AIR. Live stream is blocked.');
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+      }
+      audioEngine.stop();
+      setIsPlaying(false);
+      return;
+    }
     const streamUrl = (overrideUrl || profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
+    const signatureBpm = profile?.signature_bpm || 164;
     audioEngine.stop();
     const track: ActiveTrack = {
       id: 9990,
       title: profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Radio Stream Transmission',
-      artist: 'DJ Ital',
+      artist: profile?.stage_name || 'DJ Ital',
       year: 2026,
-      bpm: 168,
+      bpm: signatureBpm,
       format: 'Live Radio Stream',
       type: 'live_stream',
       streamUrl: streamUrl,
@@ -324,11 +353,25 @@ export default function App() {
   };
 
   const handleTogglePlay = () => {
+    const isLive = Boolean(profile?.is_live_on_air);
     if (isPlaying) {
       audioEngine.stop();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       setIsPlaying(false);
-    } else if (activeTrack) {
-      if (
+      return;
+    }
+
+    if (activeTrack) {
+      if (activeTrack.type === 'live_stream') {
+        // If it's a live stream but station is OFF AIR, refuse to play live stream!
+        if (!isLive) {
+          console.log('[Broadcast] Notice: Station is OFF AIR. Cannot play live stream.');
+          setIsPlaying(false);
+          return;
+        }
+      } else if (
         activeTrack.type === 'decibel' ||
         activeTrack.type === 'vital' ||
         activeTrack.type === 'hackney' ||
@@ -338,8 +381,14 @@ export default function App() {
       }
       setIsPlaying(true);
     } else {
-      const stream = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
-      handlePlayLiveStream(stream);
+      if (isLive) {
+        const stream = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
+        handlePlayLiveStream(stream);
+      } else {
+        // When off air and no active track, strictly do NOT play anything
+        console.log('[Broadcast] Station is OFF AIR: no live stream or auto playback');
+        setIsPlaying(false);
+      }
     }
   };
 
@@ -399,6 +448,7 @@ export default function App() {
           <DynamicBackground
             style={profile?.bg_style}
             speed={profile?.bg_speed}
+            signatureBpm={profile?.signature_bpm || 164}
             slideshowEnabled={Boolean(profile?.slideshow_enabled)}
             slideshowInterval={profile?.slideshow_interval}
             slideshowImages={
@@ -422,6 +472,12 @@ export default function App() {
             nextEvent={events.find((e) => e.status === 'Upcoming') || events[0] || null}
             heroImage={siteMediaMap['hero_image']}
             onPlayTrack={() => {
+              const isLive = Boolean(profile?.is_live_on_air);
+              if (!isLive) {
+                // Strictly do not play any live stream or audio when station is off air
+                console.log('[Hero] Station is OFF AIR. Live stream playback blocked.');
+                return;
+              }
               const stream = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
               if (!activeTrack || activeTrack.type !== 'live_stream') {
                 handlePlayLiveStream(stream);
@@ -429,13 +485,25 @@ export default function App() {
                 handleTogglePlay();
               }
             }}
-            isPlaying={isPlaying}
+            isPlaying={isPlaying && Boolean(profile?.is_live_on_air)}
             activeTrack={activeTrack}
             onOpenEpk={() => setIsEpkOpen(true)}
           />
 
           {/* Editorial Marquee Ribbon */}
-          <MarqueeRibbon />
+          <MarqueeRibbon
+            textItems={[
+              (profile?.brand_slogan || 'DJITAL 164BPM').toUpperCase(),
+              'FOUNDATION JUNGLE',
+              'KOOL FM 94.5 ORIGINAL',
+              'VITAL FEST FOUNDER',
+              'V&A MUSEUM RECOGNISED 2026',
+              `${profile?.signature_bpm || 164} BPM SOUND SYSTEM CLOCK`,
+              'EAST LONDON SOUND SYSTEM CULTURE',
+              'DECIBEL DUBPLATE ARCHIVES',
+              'DEJAVU FM & RINSE FM ARCHIVES',
+            ]}
+          />
 
           {/* Vital Fest Events & Shows (with Flyers, Testimonials & Venue Logos) */}
           <VitalFestEvents
@@ -455,6 +523,7 @@ export default function App() {
             onPlayTrack={handlePlayRelease}
             onTogglePlay={handleTogglePlay}
             logoUrl={profile?.logo_url || profile?.epk_logo_png}
+            signatureBpm={profile?.signature_bpm || 164}
           />
 
           {/* V&A Museum Recognition & Kool FM 94.5 Heritage */}

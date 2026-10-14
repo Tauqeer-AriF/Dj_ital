@@ -31,6 +31,8 @@ import {
   Landmark,
   Video,
   HardDrive,
+  HelpCircle,
+  Radio as RadioIcon,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -45,6 +47,7 @@ import {
   forcePushToServer,
   forcePullFromServer,
   importDatabaseBinary,
+  updateProfile,
 } from '../../db/sqlite';
 import { EventsManager } from './EventsManager';
 import { ReleasesManager } from './ReleasesManager';
@@ -61,6 +64,7 @@ import { SecurityManager } from './SecurityManager';
 import { HeritageManager } from './HeritageManager';
 import { DocumentaryManager } from './DocumentaryManager';
 import { StorageManager } from './StorageManager';
+import { AdminHelp } from './AdminHelp';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -90,7 +94,8 @@ type TabType =
   | 'media'
   | 'profile'
   | 'bookings'
-  | 'sqlite';
+  | 'sqlite'
+  | 'help';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onClose,
@@ -203,8 +208,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleToggleLive = async () => {
+    try {
+      const nextStatus = profile?.is_live_on_air ? 0 : 1;
+      await updateProfile({ is_live_on_air: nextStatus });
+      onRefreshData();
+      if (nextStatus) {
+        showSuccess('LIVE BROADCAST ACTIVE', '🔴 Station is now LIVE ON AIR! Broadcast beacon active on site.');
+      } else {
+        showSuccess('STATION OFF AIR', 'Station set to OFF AIR. Public site switched to Archive Vault & Dubplates.');
+      }
+    } catch (err: any) {
+      showError('Failed to change broadcast status', err?.message || 'Database error');
+    }
+  };
+
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4 text-amber-500" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
     { id: 'storage', label: 'Railway Volume & Storage', icon: <HardDrive className="w-4 h-4" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
@@ -241,71 +262,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="text-sm font-display font-bold text-neutral-950 dark:text-white tracking-tight">
               DJ ITAL <span className="text-amber-500 dark:text-amber-400">ADMIN</span>
             </span>
+
+            {/* 1-Click Master Live Broadcast Switch */}
             <button
               type="button"
-              onClick={() => setActiveTab('storage')}
-              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono border transition-all cursor-pointer ${
-                storageStatus?.isPersistent
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+              onClick={handleToggleLive}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer ${
+                profile?.is_live_on_air
+                  ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse ring-2 ring-red-400/50'
+                  : 'bg-neutral-200 dark:bg-white/10 hover:bg-emerald-500 hover:text-neutral-950 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-white/10'
               }`}
-              title="Click to view Railway volume persistence & storage diagnostics"
+              title={profile?.is_live_on_air ? 'Click to stop broadcasting and go Off Air' : 'Click to Go Live and broadcast stream to listeners'}
             >
-              {storageStatus?.isPersistent ? (
-                <>
-                  <CheckCircle className="w-3 h-3 text-emerald-500" />
-                  <span>Railway Volume: Active</span>
-                </>
-              ) : (
-                <>
-                  <HardDrive className="w-3 h-3 text-amber-500" />
-                  <span>Storage: Ephemeral (Setup Volume)</span>
-                </>
-              )}
+              <span className={`w-2 h-2 rounded-full ${profile?.is_live_on_air ? 'bg-white' : 'bg-neutral-500'}`} />
+              <span className="hidden sm:inline">
+                {profile?.is_live_on_air ? '🔴 ON AIR (CLICK TO GO OFF AIR)' : '⚪ OFF AIR (CLICK TO GO LIVE)'}
+              </span>
+              <span className="sm:hidden">
+                {profile?.is_live_on_air ? '🔴 ON AIR' : '⚪ OFF AIR'}
+              </span>
             </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Help Guide Button */}
           <button
-            onClick={handlePushToCloud}
-            disabled={isSyncing}
-            title="Broadcast and sync database to all devices (iOS, Android, Windows)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-amber-400/40 bg-amber-400/10 text-amber-900 dark:text-amber-300 hover:bg-amber-400/20 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+            onClick={() => setActiveTab('help')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer border ${
+              activeTab === 'help'
+                ? 'bg-amber-400 text-neutral-950 border-amber-400 font-bold'
+                : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5'
+            }`}
+            title="Open Admin Help & Documentation"
           >
-            <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync to All Devices'}</span>
-            <span className="sm:hidden">Sync</span>
+            <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden sm:inline">Help Guide</span>
           </button>
-
-          <button
-            onClick={handleRestoreClick}
-            disabled={isSyncing}
-            title="Upload and restore a previous .sqlite database backup"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Restore</span>
-          </button>
-
-          <button
-            onClick={handleDownloadDb}
-            title="Download SQLite Database File (.sqlite)"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/10 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download .sqlite</span>
-          </button>
-
-          <a
-            href="/dj_ital_complete_repo.zip"
-            download="dj_ital_complete_repo.zip"
-            title="Download Complete Fixed Project ZIP (All 38 components & backend files)"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Fixed .zip</span>
-          </a>
 
           <button
             onClick={toggleTheme}
@@ -672,6 +665,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
+          {activeTab === 'help' && (
+            <AdminHelp onNavigateTab={(tab) => setActiveTab(tab as TabType)} />
+          )}
           {activeTab === 'security' && <SecurityManager />}
           {activeTab === 'storage' && <StorageManager onRefresh={onRefreshData} />}
           {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}

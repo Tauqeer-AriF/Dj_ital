@@ -54,8 +54,9 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
     });
   };
 
+  const isLiveOnAir = Boolean(profile?.is_live_on_air);
   const liveStreamUrl = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
-  const hasStream = Boolean(liveStreamUrl);
+  const hasStream = Boolean(liveStreamUrl) && isLiveOnAir;
 
   const isCurrentLiveStream =
     !activeTrack ||
@@ -64,7 +65,10 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
     (activeTrack.type as string) === 'main_stream' ||
     (activeTrack.type as string) === 'dejavu_stream';
 
-  const currentStreamUrl = activeTrack?.streamUrl?.trim() || (isCurrentLiveStream ? liveStreamUrl : null);
+  // CRITICAL: When OFF AIR, strictly prevent supplying any live stream URL to the audio player!
+  const currentStreamUrl = isLiveOnAir
+    ? (activeTrack?.streamUrl?.trim() || (isCurrentLiveStream ? liveStreamUrl : null))
+    : (activeTrack?.type !== 'live_stream' && activeTrack?.streamUrl ? activeTrack.streamUrl.trim() : null);
 
   // Handle direct HTML5 audio stream playback when streamUrl is provided
   useEffect(() => {
@@ -271,10 +275,15 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
             {/* Tactile Hardware Play/Pause Button */}
             <button
               type="button"
-              onClick={onTogglePlay}
-              aria-label={isPlaying ? 'Pause transmission' : 'Play transmission'}
-              title={isPlaying ? 'Pause transmission' : 'Play transmission'}
-              className="hardware-btn w-9 h-9 sm:w-10 sm:h-10 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center shadow-lg transition-all"
+              onClick={isCurrentLiveStream && !isLiveOnAir ? undefined : onTogglePlay}
+              disabled={isCurrentLiveStream && !isLiveOnAir}
+              aria-label={isPlaying ? 'Pause transmission' : (isCurrentLiveStream && !isLiveOnAir ? 'Station off air' : 'Play transmission')}
+              title={isCurrentLiveStream && !isLiveOnAir ? 'Station currently off air' : (isPlaying ? 'Pause transmission' : 'Play transmission')}
+              className={`hardware-btn w-9 h-9 sm:w-10 sm:h-10 rounded flex items-center justify-center shadow-lg transition-all ${
+                isCurrentLiveStream && !isLiveOnAir
+                  ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-75'
+                  : 'bg-amber-400 hover:bg-amber-300 text-neutral-950 cursor-pointer'
+              }`}
             >
               {isPlaying ? (
                 <Pause className="w-4 h-4 fill-current" />
@@ -371,7 +380,9 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                       <span className="w-1.5 h-1.5 rounded-none bg-amber-400 animate-spin" />
                     )}
                     {isCurrentLiveStream
-                      ? 'LIVE RADIO STREAM'
+                      ? isLiveOnAir
+                        ? 'LIVE RADIO STREAM'
+                        : 'OFF AIR // STATION SILENT'
                       : activeTrack
                       ? 'PROCEDURAL DUBPLATE'
                       : 'AUDIO TRANSMISSION'}
@@ -391,7 +402,9 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                 </div>
 
                 <div className="text-sm sm:text-base font-display font-black truncate text-neutral-950 dark:text-white leading-tight">
-                  {activeTrack
+                  {isCurrentLiveStream && !isLiveOnAir
+                    ? 'Station Currently Off Air — No Live Stream'
+                    : activeTrack
                     ? activeTrack.title
                     : profile?.live_show_title
                     ? `${profile.live_show_title} (Live Feed)`
@@ -419,10 +432,14 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 type="button"
-                onClick={onTogglePlay}
-                disabled={isBuffering}
-                aria-label={isPlaying ? 'Pause transmission' : 'Start transmission'}
-                className="hardware-btn px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center justify-center gap-1.5 shadow-md active:scale-95 text-xs font-industrial font-black"
+                onClick={isCurrentLiveStream && !isLiveOnAir ? undefined : onTogglePlay}
+                disabled={isBuffering || (isCurrentLiveStream && !isLiveOnAir)}
+                aria-label={isPlaying ? 'Pause transmission' : (isCurrentLiveStream && !isLiveOnAir ? 'Station off air' : 'Start transmission')}
+                className={`hardware-btn px-4 py-2 rounded flex items-center justify-center gap-1.5 shadow-md text-xs font-industrial font-black ${
+                  isCurrentLiveStream && !isLiveOnAir
+                    ? 'bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed opacity-80'
+                    : 'bg-amber-400 hover:bg-amber-300 text-neutral-950 active:scale-95 cursor-pointer'
+                }`}
               >
                 {isPlaying ? (
                   <>
@@ -432,7 +449,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                 ) : (
                   <>
                     <Play className="w-4 h-4 fill-current ml-0.5" />
-                    <span>ENGAGE DUB</span>
+                    <span>{isCurrentLiveStream && !isLiveOnAir ? 'OFF AIR' : 'ENGAGE DUB'}</span>
                   </>
                 )}
               </button>

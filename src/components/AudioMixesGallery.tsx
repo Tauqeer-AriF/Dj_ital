@@ -185,111 +185,203 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
             </div>
           </ScrollReveal>
 
-          {/* Active Audio Embed Player Modal / Top Bar */}
-          {activeEmbedUrl && (
-            <div className="mb-8 p-5 rounded sound-cabinet border border-amber-500/60 dark:border-amber-400/50 text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300">
-              <div className="flex items-center justify-between mb-3 text-xs font-industrial">
-                <div className="flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
-                  <span className="font-black text-amber-600 dark:text-amber-400 tracking-wider uppercase">[ STREAMING DECK ACTIVE ]</span>
-                </div>
-                <button
-                  onClick={() => setActiveEmbedUrl(null)}
-                  className="p-1 rounded text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="w-full rounded overflow-hidden bg-neutral-900 aspect-[16/5] min-h-[140px] flex items-center justify-center border border-neutral-200 dark:border-white/10">
-                <iframe
-                  width="100%"
-                  height="120"
-                  scrolling="no"
-                  frameBorder="no"
-                  allow="autoplay"
-                  src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(
-                    activeEmbedUrl
-                  )}&color=%23f59e0b&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`}
-                  className="w-full h-full"
-                  title="Audio Player"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Mixes Grid */}
-          {filteredMixes.length === 0 ? (
-            <div className="py-12 px-6 rounded sound-cabinet border border-dashed border-neutral-300 dark:border-white/20 text-center space-y-3">
-              <Radio className="w-8 h-8 mx-auto text-amber-500 dark:text-amber-400 opacity-80" />
-              <p className="text-base font-bold text-neutral-900 dark:text-white font-industrial">
-                No recorded sets found in the "{selectedStyle}" category
-              </p>
-              <button
-                type="button"
-                onClick={() => setSelectedStyle('All')}
-                className="hardware-btn inline-flex items-center gap-2 px-4 py-2 rounded bg-amber-400 text-neutral-950 font-industrial text-xs font-black hover:bg-amber-300 transition-colors cursor-pointer shadow-md mt-1"
-              >
-                <span>Reset to All Styles ({mixes.length})</span>
-              </button>
-            </div>
-          ) : (
-            <div className={`grid ${filteredMixes.length === 1 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' : 'grid-cols-1 md:grid-cols-2'} gap-6 sm:gap-7 relative z-10`}>
-              {filteredMixes.map((mix, idx) => (
-                <ScrollReveal key={mix.id} variant="fade-up" delay={idx * 80}>
-                  <div className="p-6 sm:p-7 rounded sound-cabinet shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 h-full text-neutral-900 dark:text-white relative overflow-hidden">
-                    <div className="space-y-4">
-                      {/* Top Row: Platform & Style Tag */}
-                      <div className="flex items-center justify-between gap-3 text-xs font-industrial">
-                        <div className="flex items-center gap-2">
-                          <span className="sound-tag">
-                            {mix.style}
-                          </span>
-                          <span className="text-neutral-600 dark:text-white/80 font-bold uppercase tracking-wider">{mix.platform}</span>
-                        </div>
-                        {mix.duration && (
-                          <div className="flex items-center gap-1 text-neutral-700 dark:text-white text-[11px] font-bold">
-                            <Clock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                            <span>{mix.duration}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Title & Description */}
-                      <div className="space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-display font-black text-neutral-950 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-snug">
-                          {mix.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-neutral-700 dark:text-white/95 leading-relaxed font-normal">
-                          {mix.description}
-                        </p>
-                      </div>
+              {/* Active Audio Embed Player Modal / Top Bar */}
+              {activeEmbedUrl && (
+                <div className="mb-8 p-5 rounded sound-cabinet border border-amber-500/60 dark:border-amber-400/50 text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center justify-between mb-3 text-xs font-industrial">
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
+                      <span className="font-black text-amber-600 dark:text-amber-400 tracking-wider uppercase">[ SOUND SYSTEM DECK STREAMING ]</span>
                     </div>
-
-                    {/* Footer Actions */}
-                    <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between font-industrial">
-                      <button
-                        onClick={() => setActiveEmbedUrl(mix.embed_url)}
-                        className="hardware-btn flex items-center gap-2 px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>STREAM MIX</span>
-                      </button>
-
-                      <a
-                        href={mix.stream_url || mix.embed_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold uppercase tracking-wider transition-colors"
-                      >
-                        <span>Open on {mix.platform}</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+                    <button
+                      onClick={() => setActiveEmbedUrl(null)}
+                      className="p-1 rounded text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                </ScrollReveal>
-              ))}
-            </div>
-          )}
+                  <div className="w-full rounded overflow-hidden bg-neutral-900 min-h-[130px] flex items-center justify-center border border-neutral-200 dark:border-white/10">
+                    {(() => {
+                      const clean = activeEmbedUrl.trim();
+                      if (clean.includes('mixcloud.com')) {
+                        return (
+                          <iframe
+                            width="100%"
+                            height="120"
+                            src={`https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=0&feed=${encodeURIComponent(clean)}`}
+                            frameBorder="0"
+                            allow="autoplay"
+                            className="w-full"
+                            title="Mixcloud Player"
+                          />
+                        );
+                      }
+                      if (clean.includes('youtube.com') || clean.includes('youtu.be')) {
+                        const ytId = clean.includes('v=')
+                          ? clean.split('v=')[1]?.split('&')[0]
+                          : clean.split('youtu.be/')[1]?.split('?')[0];
+                        return (
+                          <iframe
+                            width="100%"
+                            height="160"
+                            src={`https://www.youtube-nocookie.com/embed/${ytId || ''}?autoplay=1&rel=0`}
+                            frameBorder="0"
+                            allow="autoplay; encrypted-media"
+                            className="w-full"
+                            title="YouTube Player"
+                          />
+                        );
+                      }
+                      if (
+                        clean.match(/\.(mp3|aac|ogg|wav|m4a)(\?.*)?$/i) ||
+                        clean.includes('radioca.st') ||
+                        clean.endsWith('/;') ||
+                        clean.includes('/api/audio-proxy')
+                      ) {
+                        return (
+                          <div className="w-full p-4 flex flex-col items-center justify-center gap-2 bg-neutral-950 text-white">
+                            <div className="flex items-center gap-2 text-xs font-mono text-amber-400">
+                              <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
+                              <span>LIVE SOUND SYSTEM STREAM DECK</span>
+                            </div>
+                            <audio controls autoPlay src={clean} className="w-full max-w-xl" />
+                          </div>
+                        );
+                      }
+                      return (
+                        <iframe
+                          width="100%"
+                          height="120"
+                          scrolling="no"
+                          frameBorder="no"
+                          allow="autoplay"
+                          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(
+                            clean
+                          )}&color=%23f59e0b&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`}
+                          className="w-full h-full"
+                          title="SoundCloud Player"
+                        />
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Mixes Grid */}
+              {filteredMixes.length === 0 ? (
+                <div className="py-12 px-6 rounded sound-cabinet border border-dashed border-neutral-300 dark:border-white/20 text-center space-y-3">
+                  <Radio className="w-8 h-8 mx-auto text-amber-500 dark:text-amber-400 opacity-80" />
+                  <p className="text-base font-bold text-neutral-900 dark:text-white font-industrial">
+                    No recorded sets found in the "{selectedStyle}" category
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStyle('All')}
+                    className="hardware-btn inline-flex items-center gap-2 px-4 py-2 rounded bg-amber-400 text-neutral-950 font-industrial text-xs font-black hover:bg-amber-300 transition-colors cursor-pointer shadow-md mt-1"
+                  >
+                    <span>Reset to All Styles ({mixes.length})</span>
+                  </button>
+                </div>
+              ) : (
+                <div className={`grid ${filteredMixes.length === 1 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' : 'grid-cols-1 md:grid-cols-2'} gap-6 sm:gap-7 relative z-10`}>
+                  {filteredMixes.map((mix, idx) => (
+                    <ScrollReveal key={mix.id} variant="fade-up" delay={idx * 80}>
+                      <div className="p-6 sm:p-7 rounded sound-cabinet shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 h-full text-neutral-900 dark:text-white relative overflow-hidden">
+                        <div className="space-y-4">
+                          {/* Top Row: Platform & Style Tag */}
+                          <div className="flex items-center justify-between gap-3 text-xs font-industrial">
+                            <div className="flex items-center gap-2">
+                              <span className="sound-tag">
+                                {mix.style}
+                              </span>
+                              <span className="text-neutral-600 dark:text-white/80 font-bold uppercase tracking-wider">{mix.platform}</span>
+                            </div>
+                            {mix.duration && (
+                              <div className="flex items-center gap-1 text-neutral-700 dark:text-white text-[11px] font-bold">
+                                <Clock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                                <span>{mix.duration}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Title & Description */}
+                          <div className="space-y-2">
+                            <h3 className="text-xl sm:text-2xl font-display font-black text-neutral-950 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-snug">
+                              {mix.title}
+                            </h3>
+                            <p className="text-xs sm:text-sm text-neutral-700 dark:text-white/95 leading-relaxed font-normal">
+                              {mix.description}
+                            </p>
+                          </div>
+
+                          {/* MediaFire, Rinse FM & DejaVu FM Direct Station Links */}
+                          <div className="pt-2 flex items-center gap-2 flex-wrap">
+                            {mix.mediafire_url && (
+                              <a
+                                href={mix.mediafire_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 text-[10px] font-industrial font-black uppercase tracking-wider transition-all"
+                                title="Download or stream tape on MediaFire"
+                              >
+                                <ExternalLink className="w-3 h-3 text-blue-500" />
+                                <span>MediaFire Archive</span>
+                              </a>
+                            )}
+
+                            {mix.rinse_fm_url && (
+                              <a
+                                href={mix.rinse_fm_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-[10px] font-industrial font-black uppercase tracking-wider transition-all"
+                                title="Listen to Rinse FM broadcast archive"
+                              >
+                                <Radio className="w-3 h-3 text-rose-500" />
+                                <span>Rinse FM</span>
+                              </a>
+                            )}
+
+                            {mix.dejavu_fm_url && (
+                              <a
+                                href={mix.dejavu_fm_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-industrial font-black uppercase tracking-wider transition-all"
+                                title="Listen on DejaVu FM"
+                              >
+                                <Radio className="w-3 h-3 text-amber-500" />
+                                <span>DejaVu FM</span>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between font-industrial">
+                          <button
+                            onClick={() => setActiveEmbedUrl(mix.embed_url || mix.stream_url)}
+                            className="hardware-btn flex items-center gap-2 px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>STREAM MIX</span>
+                          </button>
+
+                          <a
+                            href={mix.stream_url || mix.embed_url || mix.mediafire_url || mix.rinse_fm_url || mix.dejavu_fm_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold uppercase tracking-wider transition-colors"
+                          >
+                            <span>Open on {mix.platform}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    </ScrollReveal>
+                  ))}
+                </div>
+              )}
         </div>
 
         {/* Section 2: Action Video Clips & Event Recaps */}

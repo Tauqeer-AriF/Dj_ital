@@ -6,6 +6,9 @@ import {
   ArrowUpRight,
   Sparkles,
   FileText,
+  VolumeX,
+  Radio,
+  X,
 } from 'lucide-react';
 import { ProfileData, StatData, EventData } from '../db/sqlite';
 import { ActiveTrack } from '../types';
@@ -34,6 +37,7 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenEpk,
 }) => {
   const [stepTick, setStepTick] = useState<number>(0);
+  const [showOffAirModal, setShowOffAirModal] = useState<boolean>(false);
   const resolvedHeroImage = normalizeImageUrl(heroImage);
 
   useEffect(() => {
@@ -55,6 +59,8 @@ export const Hero: React.FC<HeroProps> = ({
   const liveStreamUrl = (profile?.stream_url || 'https://dejavufm.radioca.st/;').trim();
   const hasStream = Boolean(liveStreamUrl);
   const isLiveOnAir = Boolean(profile?.is_live_on_air);
+  const signatureBpm = profile?.signature_bpm || 164;
+  const brandSlogan = profile?.brand_slogan || 'DjItal 164bpm';
   const logoSrc = profile?.logo_url || profile?.epk_logo_png || '/images/vital_fest_logo.png';
 
   return (
@@ -143,7 +149,7 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* Cinematic Dubplate Showcase Card */}
           <ScrollReveal variant="scale-up" delay={150}>
-            <div className={`relative rounded sound-cabinet overflow-hidden shadow-2xl transition-all duration-500 ${isPlaying ? 'ring-2 ring-amber-400/50 shadow-[0_0_40px_rgba(251,191,36,0.3)]' : ''}`}>
+            <div className={`relative rounded sound-cabinet overflow-hidden shadow-2xl transition-all duration-500 ${isPlaying && isLiveOnAir ? 'ring-2 ring-red-500/50 shadow-[0_0_40px_rgba(239,68,68,0.3)]' : ''}`}>
               <div className="relative aspect-[16/11] overflow-hidden group">
                 <img
                   src={resolvedHeroImage}
@@ -151,27 +157,29 @@ export const Hero: React.FC<HeroProps> = ({
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
                   }}
-                  className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying ? 'scale-105' : 'group-hover:scale-105'}`}
+                  className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover:scale-105'}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-transparent to-transparent pointer-events-none" />
 
                 {/* Status Badge */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1 rounded bg-black/90 backdrop-blur-md border border-white/20 text-[10px] font-industrial text-white font-bold uppercase">
-                  <span className={`w-2 h-2 ${isPlaying ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                  <span className={`w-2 h-2 rounded-full ${isLiveOnAir ? (isPlaying ? 'bg-red-500 animate-ping' : 'bg-red-500') : 'bg-neutral-500'}`} />
                   <span>
-                    {isPlaying
-                      ? (hasStream ? 'LIVE AUDIO STREAM ACTIVE' : '168 BPM LIVE AUDIO')
-                      : (hasStream ? 'LIVE STREAM READY' : 'TECHNICS 1210 MK2')}
+                    {isLiveOnAir
+                      ? (isPlaying ? '🔴 LIVE ON AIR BROADCAST' : '🔴 LIVE STREAM READY')
+                      : '⚪ STATION CURRENTLY OFF AIR'}
                   </span>
                 </div>
 
                 {/* Vital Fest Official Interactive Logo / Audio Trigger */}
                 <button
                   type="button"
-                  onClick={onPlayTrack}
-                  aria-label={isPlaying ? 'Pause audio' : 'Play dubplate'}
-                  className={`absolute right-4 bottom-4 w-28 h-28 rounded p-2 bg-neutral-950/95 border-2 border-amber-400 shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 group hover:scale-105 ${
-                    isPlaying ? 'shadow-[0_0_30px_rgba(251,191,36,0.6)] ring-2 ring-amber-400' : ''
+                  onClick={isLiveOnAir ? onPlayTrack : () => setShowOffAirModal(true)}
+                  aria-label={isLiveOnAir ? (isPlaying ? 'Pause audio stream' : 'Play live broadcast') : 'Station currently off air'}
+                  className={`absolute right-4 bottom-4 w-28 h-28 rounded p-2 bg-neutral-950/95 border-2 ${
+                    isLiveOnAir ? 'border-amber-400' : 'border-neutral-600'
+                  } shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 group hover:scale-105 ${
+                    isPlaying && isLiveOnAir ? 'shadow-[0_0_30px_rgba(251,191,36,0.6)] ring-2 ring-amber-400' : ''
                   }`}
                 >
                   <img
@@ -181,19 +189,28 @@ export const Hero: React.FC<HeroProps> = ({
                       (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
                     }}
                     className={`w-16 h-16 object-contain filter drop-shadow-[0_2px_10px_rgba(245,158,11,0.5)] ${
-                      isPlaying ? 'scale-105' : 'group-hover:scale-105'
-                    } transition-transform`}
+                      isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover:scale-105'
+                    } transition-transform ${!isLiveOnAir ? 'opacity-80' : ''}`}
                   />
-                  <div className="flex items-center gap-1 mt-1 text-[9px] font-industrial font-bold text-amber-400 uppercase tracking-widest">
-                    {isPlaying ? (
-                      <>
-                        <Pause className="w-2.5 h-2.5 fill-current" />
-                        <span>PAUSE</span>
-                      </>
+                  <div className={`flex items-center gap-1 mt-1 text-[9px] font-industrial font-bold uppercase tracking-widest ${
+                    isLiveOnAir ? 'text-amber-400' : 'text-neutral-400'
+                  }`}>
+                    {isLiveOnAir ? (
+                      isPlaying ? (
+                        <>
+                          <Pause className="w-2.5 h-2.5 fill-current" />
+                          <span>PAUSE</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>LISTEN LIVE</span>
+                        </>
+                      )
                     ) : (
                       <>
-                        <Play className="w-2.5 h-2.5 fill-current" />
-                        <span>{hasStream ? 'STREAM' : 'PLAY VIP'}</span>
+                        <VolumeX className="w-2.5 h-2.5" />
+                        <span>OFF AIR</span>
                       </>
                     )}
                   </div>
@@ -204,14 +221,16 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="p-4 space-y-2 border-t border-neutral-200 dark:border-white/15 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white">
                 <div className="flex items-center justify-between text-xs font-industrial">
                   <span className="text-neutral-600 dark:text-white/90 text-[10px] uppercase font-bold">
-                    {hasStream ? 'LIVE STREAM FEED:' : 'CURRENT DUBPLATE:'}
+                    {isLiveOnAir ? 'LIVE BROADCAST FEED:' : 'BROADCAST STATUS:'}
                   </span>
-                  <span className="text-amber-600 dark:text-amber-400 font-bold text-[10px]">
-                    {hasStream ? 'RADIO CAST' : '168 BPM'}
+                  <span className={`font-bold text-[10px] ${isLiveOnAir ? 'text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                    {isLiveOnAir ? '🔴 ON AIR' : '⚪ OFF AIR (SILENT)'}
                   </span>
                 </div>
                 <div className="font-display font-black text-sm truncate text-neutral-900 dark:text-white">
-                  {activeTrack ? activeTrack.title : (hasStream ? (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission') : 'Decibel (Original 1995 Dubplate)')}
+                  {isLiveOnAir
+                    ? (activeTrack?.title || (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission'))
+                    : 'Station Currently Off Air — No Live Stream Active'}
                 </div>
               </div>
             </div>
@@ -345,37 +364,50 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Action Hub */}
             <ScrollReveal variant="fade-up" delay={200}>
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={onPlayTrack}
-                  className="hardware-btn group relative flex items-center gap-3.5 px-6 py-4 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial font-black transition-all duration-200 shadow-xl active:scale-98 cursor-pointer overflow-hidden hover:scale-102"
-                >
-                  <div className={`w-8 h-8 rounded bg-neutral-950 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${isPlaying ? 'animate-subwoofer' : ''}`}>
-                    {isPlaying ? (
-                      <Pause className="w-4 h-4 fill-current" />
-                    ) : (
-                      <Play className="w-4 h-4 fill-current ml-0.5" />
-                    )}
-                  </div>
-                  <div className="text-left leading-tight">
-                    <div className="text-[10px] font-industrial font-black tracking-wider uppercase opacity-85 flex items-center gap-1.5">
-                      <span>
-                        {isPlaying
-                          ? 'NOW TRANSMITTING'
-                          : hasStream
-                          ? 'LIVE RADIO FEED'
-                          : 'INSTANT AUDITION'}
-                      </span>
+                {isLiveOnAir ? (
+                  <button
+                    type="button"
+                    onClick={onPlayTrack}
+                    className="hardware-btn group relative flex items-center gap-3.5 px-6 py-4 rounded bg-red-600 hover:bg-red-500 text-white font-industrial font-black transition-all duration-200 shadow-xl active:scale-98 cursor-pointer overflow-hidden hover:scale-102"
+                  >
+                    <div className={`w-8 h-8 rounded bg-neutral-950 text-red-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${isPlaying ? 'animate-subwoofer' : ''}`}>
+                      {isPlaying ? (
+                        <Pause className="w-4 h-4 fill-current" />
+                      ) : (
+                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      )}
                     </div>
-                    <div className="text-sm font-display font-black tracking-wide truncate max-w-[180px]">
-                      {activeTrack
-                        ? activeTrack.title
-                        : hasStream
-                        ? (profile?.live_show_title || 'DJ Ital Live Stream Transmission')
-                        : 'Play "Decibel" (1995)'}
+                    <div className="text-left leading-tight">
+                      <div className="text-[10px] font-industrial font-black tracking-wider uppercase opacity-85 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-300 animate-ping" />
+                        <span>{isPlaying ? 'STREAMING LIVE ON AIR' : '🔴 LIVE RADIO TRANSMISSION'}</span>
+                      </div>
+                      <div className="text-sm font-display font-black tracking-wide truncate max-w-[200px]">
+                        {activeTrack?.title || (profile?.live_show_title ? `${profile.live_show_title}` : 'DJ Ital Live Radio Stream Transmission')}
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowOffAirModal(true)}
+                    className="hardware-btn group relative flex items-center gap-3.5 px-6 py-4 rounded bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-industrial font-black transition-all duration-200 shadow-md active:scale-98 cursor-pointer border border-neutral-300 dark:border-white/10"
+                    title="Station currently off air — click for broadcast info"
+                  >
+                    <div className="w-8 h-8 rounded bg-neutral-300 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 flex items-center justify-center shrink-0">
+                      <VolumeX className="w-4 h-4" />
+                    </div>
+                    <div className="text-left leading-tight">
+                      <div className="text-[10px] font-industrial font-black tracking-wider uppercase text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                        <span>BROADCAST: OFF AIR</span>
+                      </div>
+                      <div className="text-sm font-display font-black tracking-wide truncate max-w-[200px]">
+                        STATION CURRENTLY OFF AIR
+                      </div>
+                    </div>
+                  </button>
+                )}
 
                 <a
                   href="#booking"
@@ -426,13 +458,15 @@ export const Hero: React.FC<HeroProps> = ({
                 {/* Console Header Bar */}
                 <div className="flex items-center justify-between pb-3.5 border-b border-neutral-200 dark:border-white/15 text-xs font-industrial">
                   <div className="flex items-center gap-2 text-neutral-900 dark:text-white font-black tracking-wider">
-                    <span className={`w-2 h-2 ${isPlaying ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${isPlaying && isLiveOnAir ? 'bg-red-500 animate-ping' : (isLiveOnAir ? 'bg-amber-400' : 'bg-neutral-500')}`} />
                     <span>[ TECHNICS SL-1210 MK2 ]</span>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-700 dark:text-white text-[11px] font-bold">
                     <span className="text-neutral-500 dark:text-white/80">33⅓ / 45 RPM</span>
                     <span aria-hidden="true">·</span>
-                    <span className="text-amber-600 dark:text-amber-400 font-bold">168 BPM</span>
+                    <span className={`${isLiveOnAir ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-500'} font-bold`}>
+                      {isLiveOnAir ? `${signatureBpm} BPM` : 'OFF AIR'}
+                    </span>
                   </div>
                 </div>
 
@@ -444,19 +478,21 @@ export const Hero: React.FC<HeroProps> = ({
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
                     }}
-                    className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying ? 'scale-105' : 'group-hover:scale-105'}`}
+                    className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover:scale-105'}`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-transparent to-transparent pointer-events-none" />
 
                   {/* Vital Fest Official Interactive Logo / Audio Trigger */}
                   <button
                     type="button"
-                    onClick={onPlayTrack}
-                    className={`absolute right-5 bottom-5 w-36 h-36 rounded p-3 bg-neutral-950/95 border-2 border-amber-400 shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer group/disc transition-transform hover:scale-105 active:scale-95 ${
-                      isPlaying ? 'shadow-[0_0_40px_rgba(251,191,36,0.7)] ring-2 ring-amber-400' : ''
+                    onClick={isLiveOnAir ? onPlayTrack : () => setShowOffAirModal(true)}
+                    className={`absolute right-5 bottom-5 w-36 h-36 rounded p-3 bg-neutral-950/95 border-2 ${
+                      isLiveOnAir ? 'border-amber-400' : 'border-neutral-600'
+                    } shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer group/disc transition-transform hover:scale-105 active:scale-95 ${
+                      isPlaying && isLiveOnAir ? 'shadow-[0_0_40px_rgba(251,191,36,0.7)] ring-2 ring-amber-400' : ''
                     }`}
-                    title={isPlaying ? 'Click to Pause' : 'Click to Play Vital Audio'}
-                    aria-label={isPlaying ? 'Pause audio' : 'Play dubplate'}
+                    title={isLiveOnAir ? (isPlaying ? 'Click to Pause Stream' : 'Click to Tune In Live') : 'Station is currently off air'}
+                    aria-label={isLiveOnAir ? (isPlaying ? 'Pause live stream' : 'Play live broadcast') : 'Station off air'}
                   >
                     <img
                       src={logoSrc}
@@ -465,20 +501,31 @@ export const Hero: React.FC<HeroProps> = ({
                         (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
                       }}
                       className={`w-20 h-20 object-contain filter drop-shadow-[0_4px_16px_rgba(245,158,11,0.6)] ${
-                        isPlaying ? 'scale-105' : 'group-hover/disc:scale-105'
-                      } transition-transform`}
+                        isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover/disc:scale-105'
+                      } transition-transform ${!isLiveOnAir ? 'opacity-80' : ''}`}
                     />
 
-                    <div className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-none bg-amber-400/20 border border-amber-400/50 text-[10px] font-industrial font-black text-amber-300 uppercase tracking-wider">
-                      {isPlaying ? (
-                        <>
-                          <Pause className="w-3 h-3 fill-current" />
-                          <span>PAUSE STREAM</span>
-                        </>
+                    <div className={`mt-2 flex items-center gap-1.5 px-3 py-1 rounded-none border text-[10px] font-industrial font-black uppercase tracking-wider ${
+                      isLiveOnAir
+                        ? 'bg-amber-400/20 border-amber-400/50 text-amber-300'
+                        : 'bg-neutral-800 border-neutral-700 text-neutral-400'
+                    }`}>
+                      {isLiveOnAir ? (
+                        isPlaying ? (
+                          <>
+                            <Pause className="w-3 h-3 fill-current" />
+                            <span>PAUSE</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3 fill-current ml-0.5" />
+                            <span>TUNE IN LIVE</span>
+                          </>
+                        )
                       ) : (
                         <>
-                          <Play className="w-3 h-3 fill-current ml-0.5" />
-                          <span>{hasStream ? 'PLAY STREAM' : 'PLAY VITAL'}</span>
+                          <VolumeX className="w-3 h-3" />
+                          <span>OFF AIR</span>
                         </>
                       )}
                     </div>
@@ -486,11 +533,11 @@ export const Hero: React.FC<HeroProps> = ({
 
                   {/* Strobe / Live Indicator */}
                   <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-industrial font-bold uppercase">
-                    <span className={`w-2 h-2 ${isPlaying ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${isLiveOnAir ? (isPlaying ? 'bg-red-500 animate-ping' : 'bg-red-500') : 'bg-neutral-500'}`} />
                     <span>
-                      {isPlaying
-                        ? (hasStream ? 'STREAM ACTIVE' : 'AUDIO LIVE')
-                        : (hasStream ? 'STREAM ONLINE' : 'TURNTABLE READY')}
+                      {isLiveOnAir
+                        ? (isPlaying ? '🔴 LIVE ON AIR NOW' : '🔴 BROADCAST ONLINE')
+                        : '⚪ STATION CURRENTLY OFF AIR'}
                     </span>
                   </div>
                 </div>
@@ -499,26 +546,34 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="space-y-3 font-industrial">
                   <div className="flex items-center justify-between text-xs">
                     <div className="space-y-0.5 min-w-0">
-                      <div className="text-[10px] text-amber-600 dark:text-amber-400 uppercase tracking-wider font-bold">
-                        {hasStream ? 'LIVE STREAM TRANSMISSION' : 'SELECTED ACETATE DUBPLATE'}
+                      <div className="text-[10px] uppercase tracking-wider font-bold text-neutral-500 dark:text-neutral-400">
+                        {isLiveOnAir ? '🔴 LIVE STREAM TRANSMISSION' : 'BROADCAST FEED STATUS:'}
                       </div>
                       <div className="text-sm font-display font-black text-neutral-950 dark:text-white truncate">
-                        {activeTrack
-                          ? activeTrack.title
-                          : hasStream
-                          ? (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission')
-                          : 'Decibel (Original 1995 Dubplate)'}
+                        {isLiveOnAir
+                          ? (activeTrack?.title || (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission'))
+                          : 'Station Currently Off Air — No Live Stream Active'}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={onPlayTrack}
-                        className="hardware-btn px-3.5 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-industrial font-black tracking-wider transition-colors cursor-pointer border border-neutral-300 dark:border-white/15"
-                      >
-                        {isPlaying ? 'PAUSE' : 'DROP NEEDLE'}
-                      </button>
+                      {isLiveOnAir ? (
+                        <button
+                          type="button"
+                          onClick={onPlayTrack}
+                          className="hardware-btn px-3.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-industrial font-black tracking-wider transition-colors cursor-pointer shadow-md"
+                        >
+                          {isPlaying ? 'PAUSE' : 'LISTEN LIVE'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowOffAirModal(true)}
+                          className="hardware-btn px-3.5 py-1.5 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-neutral-700 dark:text-neutral-300 text-xs font-industrial font-black tracking-wider transition-colors cursor-pointer border border-neutral-300 dark:border-white/15"
+                        >
+                          OFF AIR
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -530,6 +585,73 @@ export const Hero: React.FC<HeroProps> = ({
         </div>
 
       </div>
+
+      {/* Off Air Status Modal */}
+      {showOffAirModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-lg sound-cabinet rounded border border-neutral-300 dark:border-white/15 p-6 shadow-2xl space-y-5 text-neutral-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10 text-xs font-industrial uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                <span>BROADCAST TRANSMITTER STATUS: OFF AIR</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOffAirModal(false)}
+                className="hardware-btn p-1.5 rounded text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded bg-neutral-200 dark:bg-white/10 flex items-center justify-center shrink-0 text-amber-500">
+                  <VolumeX className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-display font-black uppercase text-neutral-950 dark:text-white">
+                    DJ Ital is Currently Off Air
+                  </h3>
+                  <p className="text-xs font-industrial text-amber-600 dark:text-amber-400 font-bold uppercase">
+                    Radio stream inactive · Studio transmitter silent
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                The live radio transmission only connects when DJ Ital is in session. When DJ Ital goes live on DejaVu FM or radio broadcasts, the live player will immediately illuminate with the live audio stream.
+              </p>
+
+              <div className="p-3.5 rounded bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs space-y-1">
+                <div className="font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
+                  What you can listen to right now:
+                </div>
+                <div className="text-neutral-600 dark:text-neutral-400 text-[11px]">
+                  Explore recorded pirate radio cassette tape archives, Rinse FM / DejaVu FM sets, and full documentary episodes below.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2">
+              <a
+                href="#audio-media"
+                onClick={() => setShowOffAirModal(false)}
+                className="hardware-btn w-full sm:w-auto px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial font-black text-xs uppercase tracking-wider text-center"
+              >
+                Explore Audio Mixes & Sets
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowOffAirModal(false)}
+                className="hardware-btn w-full sm:w-auto px-4 py-2.5 rounded bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-industrial font-bold text-xs uppercase tracking-wider cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
