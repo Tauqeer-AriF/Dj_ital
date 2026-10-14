@@ -120,7 +120,86 @@ export interface DocumentaryData {
   description: string;
   youtube_url: string;
   topics: string;
+  thumbnail_url?: string;
+  badge_label?: string;
+  action_button_text?: string;
+  order_index?: number;
 }
+
+export interface DocumentarySettingsData {
+  id: number;
+  badge_text: string;
+  subbadge_text: string;
+  heading: string;
+  description: string;
+  youtube_button_text: string;
+  youtube_series_url: string;
+  show_youtube_button: number;
+  is_section_visible: number;
+  updated_at: string;
+}
+
+export const DEFAULT_DOCUMENTARY_SETTINGS: Omit<DocumentarySettingsData, 'id' | 'updated_at'> = {
+  badge_text: '[ SOUND SYSTEM DOCUMENTARY // 4-PART SERIES ]',
+  subbadge_text: 'ORAL HISTORY & ARCHIVE FOOTAGE',
+  heading: '"DJ ITAL: THE JOURNEY"',
+  description: 'An intimate four-part documentary chronicling the Golden Era of UK jungle music, pirate radio operations, dubplate battles, and East London sound system heritage through first-hand accounts.',
+  youtube_button_text: 'OFFICIAL YOUTUBE SERIES',
+  youtube_series_url: 'https://www.youtube.com/channel/UC64ZsaP78f0DtLvyiD0KzgA?sub_confirmation=1',
+  show_youtube_button: 1,
+  is_section_visible: 1,
+};
+
+export const DEFAULT_DOCUMENTARY_EPISODES: Omit<DocumentaryData, 'id'>[] = [
+  {
+    episode_number: 1,
+    badge_label: 'EPISODE 01',
+    title: 'Rooftops & Airwaves: The Kool FM Inception',
+    duration: '22 MIN',
+    description: 'How a group of passionate East London music pioneers rigged aerials atop Hackney council towers to broadcast the revolutionary sounds of jungle drum and bass to thousands.',
+    youtube_url: 'https://www.youtube.com/@djital',
+    topics: 'Pirate Radio History, Hackney Towers, Transmitter Tech',
+    thumbnail_url: '/images/hackney_pirate_radio_1790113898507.jpg',
+    action_button_text: 'WATCH ARCHIVAL TAPE',
+    order_index: 1,
+  },
+  {
+    episode_number: 2,
+    badge_label: 'EPISODE 02',
+    title: 'The Dubplate Culture & Producing "Decibel"',
+    duration: '19 MIN',
+    description: 'First-hand breakdown of how "Decibel" was composed on vintage hardware samplers, cut onto fresh acetate, and road-tested at landmark raves.',
+    youtube_url: 'https://www.youtube.com/@djital',
+    topics: 'Music Production, Dubplate Cutting, Sound Clash',
+    thumbnail_url: '/images/vinyl_dubplate_acetate_1790113879360.jpg',
+    action_button_text: 'WATCH ARCHIVAL TAPE',
+    order_index: 2,
+  },
+  {
+    episode_number: 3,
+    badge_label: 'EPISODE 03',
+    title: 'Vital Fest: Protecting East London Sound Heritage',
+    duration: '26 MIN',
+    description: 'The genesis of Vital Fest, uniting original jungle originators with the next generation of ravers in grassroots East London venues.',
+    youtube_url: 'https://www.youtube.com/@djital',
+    topics: 'Vital Fest, Hackney Social, Community Culture',
+    thumbnail_url: '/images/vital_fest_crowd_1790112387611.jpg',
+    action_button_text: 'WATCH ARCHIVAL TAPE',
+    order_index: 3,
+  },
+  {
+    episode_number: 4,
+    badge_label: 'EPISODE 04',
+    title: 'From Underground Pirate to The V&A Museum',
+    duration: '18 MIN',
+    description: 'Reflections on 35 years of dedication to UK jungle, culminating in national cultural recognition at the Victoria and Albert Museum in 2026.',
+    youtube_url: 'https://www.youtube.com/@djital',
+    topics: 'V&A Museum Exhibition, Legacy, Cultural Preservation',
+    thumbnail_url: '/images/va_museum_exhibition_1790112416279.jpg',
+    action_button_text: 'WATCH ARCHIVAL TAPE',
+    order_index: 4,
+  },
+];
 
 export interface BookingData {
   id: number;
@@ -962,6 +1041,19 @@ function ensureSchemaMigrations(db: Database) {
         color TEXT NOT NULL DEFAULT 'amber',
         order_index INTEGER DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS documentary_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        badge_text TEXT,
+        subbadge_text TEXT,
+        heading TEXT,
+        description TEXT,
+        youtube_button_text TEXT,
+        youtube_series_url TEXT,
+        show_youtube_button INTEGER DEFAULT 1,
+        is_section_visible INTEGER DEFAULT 1,
+        updated_at TEXT
+      );
     `);
 
     try {
@@ -1055,6 +1147,62 @@ function ensureSchemaMigrations(db: Database) {
       }
     } catch (e) {
       console.warn('Error seeding heritage_milestones:', e);
+    }
+
+    // Documentary table migrations & settings seed
+    addColumnIfNotExists(db, 'documentary', 'thumbnail_url', 'TEXT');
+    addColumnIfNotExists(db, 'documentary', 'badge_label', 'TEXT');
+    addColumnIfNotExists(db, 'documentary', 'action_button_text', "TEXT DEFAULT 'WATCH ARCHIVAL TAPE'");
+    addColumnIfNotExists(db, 'documentary', 'order_index', 'INTEGER DEFAULT 0');
+
+    try {
+      const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
+      if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
+        db.run(
+          `INSERT OR REPLACE INTO documentary_settings (
+            id, badge_text, subbadge_text, heading, description,
+            youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
+          [
+            DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.heading,
+            DEFAULT_DOCUMENTARY_SETTINGS.description,
+            DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
+            new Date().toISOString(),
+          ]
+        );
+      }
+    } catch (e) {
+      console.warn('Error seeding documentary_settings:', e);
+    }
+
+    try {
+      const existingDocs = db.exec('SELECT id, episode_number, thumbnail_url FROM documentary');
+      if (existingDocs.length > 0 && existingDocs[0].values) {
+        const defaultThumbs: Record<number, string> = {
+          1: '/images/hackney_pirate_radio_1790113898507.jpg',
+          2: '/images/vinyl_dubplate_acetate_1790113879360.jpg',
+          3: '/images/vital_fest_crowd_1790112387611.jpg',
+          4: '/images/va_museum_exhibition_1790112416279.jpg',
+        };
+        for (const row of existingDocs[0].values) {
+          const id = row[0];
+          const epNum = Number(row[1]);
+          const currentThumb = row[2];
+          if (!currentThumb) {
+            const thumb = defaultThumbs[epNum] || '/images/dj_ital_hero_1790112374509.jpg';
+            const badge = `EPISODE 0${epNum}`;
+            db.run(
+              'UPDATE documentary SET thumbnail_url = ?, badge_label = COALESCE(badge_label, ?), action_button_text = COALESCE(action_button_text, ?), order_index = COALESCE(order_index, ?) WHERE id = ?',
+              [thumb, badge, 'WATCH ARCHIVAL TAPE', epNum, id]
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error backfilling documentary details:', e);
     }
 
     // Profile table column migrations
@@ -2280,9 +2428,92 @@ export async function deleteGalleryItem(id: number): Promise<void> {
   notifyListeners();
 }
 
+// ---------------------------------------------------------------------------
+// Documentary Section & Settings CRUD Methods
+// ---------------------------------------------------------------------------
+
+export async function getDocumentarySettings(): Promise<DocumentarySettingsData> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM documentary_settings WHERE id = 1');
+  if (res.length === 0 || res[0].values.length === 0) {
+    return {
+      id: 1,
+      ...DEFAULT_DOCUMENTARY_SETTINGS,
+      updated_at: new Date().toISOString(),
+    };
+  }
+  const cols = res[0].columns;
+  const obj: any = {};
+  cols.forEach((c, i) => (obj[c] = res[0].values[0][i]));
+  return obj as DocumentarySettingsData;
+}
+
+export async function updateDocumentarySettings(data: Partial<DocumentarySettingsData>): Promise<void> {
+  const db = await getDatabase();
+  const existing = await getDocumentarySettings();
+  const updated: DocumentarySettingsData = {
+    ...existing,
+    ...data,
+    updated_at: new Date().toISOString(),
+  };
+
+  db.run(
+    `INSERT OR REPLACE INTO documentary_settings (
+      id, badge_text, subbadge_text, heading, description,
+      youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+    ) VALUES (
+      1, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?
+    )`,
+    [
+      updated.badge_text,
+      updated.subbadge_text,
+      updated.heading,
+      updated.description,
+      updated.youtube_button_text,
+      updated.youtube_series_url,
+      updated.show_youtube_button !== undefined ? Number(updated.show_youtube_button) : 1,
+      updated.is_section_visible !== undefined ? Number(updated.is_section_visible) : 1,
+      updated.updated_at,
+    ]
+  );
+
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function resetDocumentarySettings(): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  db.run(
+    `INSERT OR REPLACE INTO documentary_settings (
+      id, badge_text, subbadge_text, heading, description,
+      youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+    ) VALUES (
+      1, ?, ?, ?, ?,
+      ?, ?, 1, 1, ?
+    )`,
+    [
+      DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
+      DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
+      DEFAULT_DOCUMENTARY_SETTINGS.heading,
+      DEFAULT_DOCUMENTARY_SETTINGS.description,
+      DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
+      DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
+      now,
+    ]
+  );
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
 export async function getDocumentaries(): Promise<DocumentaryData[]> {
   const db = await getDatabase();
-  const res = db.exec('SELECT * FROM documentary ORDER BY episode_number ASC');
+  const res = db.exec(
+    'SELECT * FROM documentary ORDER BY CASE WHEN order_index IS NOT NULL AND order_index > 0 THEN order_index ELSE episode_number END ASC, episode_number ASC, id ASC'
+  );
   if (res.length === 0) return [];
   const cols = res[0].columns;
   return res[0].values.map((row) => {
@@ -2290,6 +2521,129 @@ export async function getDocumentaries(): Promise<DocumentaryData[]> {
     cols.forEach((c, i) => (obj[c] = row[i]));
     return obj as DocumentaryData;
   });
+}
+
+export async function createDocumentary(doc: Omit<DocumentaryData, 'id'>): Promise<number> {
+  const db = await getDatabase();
+  const thumb = doc.thumbnail_url || '/images/dj_ital_hero_1790112374509.jpg';
+  const badge = doc.badge_label || `EPISODE 0${doc.episode_number}`;
+  const actionBtn = doc.action_button_text || 'WATCH ARCHIVAL TAPE';
+  const orderIdx = doc.order_index ?? doc.episode_number;
+
+  db.run(
+    `INSERT INTO documentary (episode_number, title, duration, description, youtube_url, topics, thumbnail_url, badge_label, action_button_text, order_index)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      doc.episode_number,
+      doc.title,
+      doc.duration,
+      doc.description,
+      doc.youtube_url,
+      doc.topics,
+      thumb,
+      badge,
+      actionBtn,
+      orderIdx,
+    ]
+  );
+
+  const res = db.exec('SELECT last_insert_rowid()');
+  const newId = res.length > 0 ? (res[0].values[0][0] as number) : 0;
+
+  if (doc.thumbnail_url) {
+    trackMediaUpload({
+      title: `Doc: ${doc.title}`,
+      url: doc.thumbnail_url,
+      source: 'Documentary Section',
+      category: 'Documentary Poster',
+    });
+  }
+
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+  return newId;
+}
+
+export async function updateDocumentary(id: number, doc: Partial<DocumentaryData>): Promise<void> {
+  const db = await getDatabase();
+  const res = db.exec('SELECT * FROM documentary WHERE id = ?', [id]);
+  if (res.length === 0 || res[0].values.length === 0) return;
+  const cols = res[0].columns;
+  const existing: any = {};
+  cols.forEach((c, i) => (existing[c] = res[0].values[0][i]));
+
+  const updated: DocumentaryData = {
+    ...existing,
+    ...doc,
+  };
+
+  db.run(
+    `UPDATE documentary
+     SET episode_number = ?, title = ?, duration = ?, description = ?, youtube_url = ?, topics = ?,
+         thumbnail_url = ?, badge_label = ?, action_button_text = ?, order_index = ?
+     WHERE id = ?`,
+    [
+      updated.episode_number,
+      updated.title,
+      updated.duration,
+      updated.description,
+      updated.youtube_url,
+      updated.topics,
+      updated.thumbnail_url || null,
+      updated.badge_label || null,
+      updated.action_button_text || 'WATCH ARCHIVAL TAPE',
+      updated.order_index ?? updated.episode_number,
+      id,
+    ]
+  );
+
+  if (doc.thumbnail_url && doc.thumbnail_url !== existing.thumbnail_url) {
+    trackMediaUpload({
+      title: `Doc: ${updated.title}`,
+      url: doc.thumbnail_url,
+      source: 'Documentary Section',
+      category: 'Documentary Poster',
+    });
+  }
+
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function deleteDocumentary(id: number): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM documentary WHERE id = ?', [id]);
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
+}
+
+export async function resetDocumentaries(): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM documentary');
+  for (const ep of DEFAULT_DOCUMENTARY_EPISODES) {
+    db.run(
+      `INSERT INTO documentary (episode_number, title, duration, description, youtube_url, topics, thumbnail_url, badge_label, action_button_text, order_index)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        ep.episode_number,
+        ep.title,
+        ep.duration,
+        ep.description,
+        ep.youtube_url,
+        ep.topics,
+        ep.thumbnail_url ?? null,
+        ep.badge_label ?? null,
+        ep.action_button_text ?? 'WATCH ARCHIVAL TAPE',
+        ep.order_index ?? ep.episode_number,
+      ]
+    );
+  }
+  saveDatabaseToStorage(db);
+  notifyListeners();
+  forcePushToServer().catch(() => {});
 }
 
 export async function getBookings(): Promise<BookingData[]> {

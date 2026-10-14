@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Server,
   Landmark,
+  Video,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -38,6 +39,7 @@ import {
   ReleaseData,
   GalleryData,
   BookingData,
+  DocumentaryData,
   downloadDatabaseFile,
   forcePushToServer,
   forcePullFromServer,
@@ -56,6 +58,7 @@ import { SocialProofManager } from './SocialProofManager';
 import { NewsletterManager } from './NewsletterManager';
 import { SecurityManager } from './SecurityManager';
 import { HeritageManager } from './HeritageManager';
+import { DocumentaryManager } from './DocumentaryManager';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -65,6 +68,7 @@ interface AdminDashboardProps {
   releases: ReleaseData[];
   gallery: GalleryData[];
   bookings: BookingData[];
+  documentaries?: DocumentaryData[];
   onRefreshData: () => void;
 }
 
@@ -72,6 +76,7 @@ type TabType =
   | 'overview'
   | 'security'
   | 'heritage'
+  | 'documentary'
   | 'events'
   | 'audio_media'
   | 'epk'
@@ -92,6 +97,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   releases,
   gallery,
   bookings,
+  documentaries = [],
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -190,6 +196,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
+    {
+      id: 'documentary',
+      label: 'Documentary Series',
+      icon: <Video className="w-4 h-4" />,
+      badge: documentaries ? documentaries.length : undefined,
+    },
     { id: 'media', label: 'Media & Documents', icon: <FolderArchive className="w-4 h-4" /> },
     { id: 'events', label: 'Vital Fest & Events', icon: <Calendar className="w-4 h-4" />, badge: events.length },
     { id: 'audio_media', label: 'Audio & Media Gallery', icon: <Music className="w-4 h-4" /> },
@@ -595,8 +607,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       Edit Heritage & V&A Archive
                     </button>
                     <button
+                      onClick={() => setActiveTab('documentary')}
+                      className="px-3 py-1.5 rounded bg-amber-400 text-neutral-950 hover:bg-amber-300 text-xs font-semibold cursor-pointer transition-colors shadow-sm"
+                    >
+                      Edit Documentary Series
+                    </button>
+                    <button
                       onClick={() => setActiveTab('media')}
-                      className="px-3 py-1.5 rounded bg-amber-400 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer hover:bg-amber-300 shadow-sm"
+                      className="px-3 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 text-xs font-semibold dark:text-white transition-colors cursor-pointer"
                     >
                       Manage Media & Documents
                     </button>
@@ -620,6 +638,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {activeTab === 'security' && <SecurityManager />}
           {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}
+          {activeTab === 'documentary' && <DocumentaryManager onRefresh={onRefreshData} />}
           {activeTab === 'media' && <MediaLibraryManager onRefresh={onRefreshData} />}
           {activeTab === 'events' && <EventsManager events={events} onRefresh={onRefreshData} />}
           {activeTab === 'audio_media' && <AudioMediaManager onRefresh={onRefreshData} />}

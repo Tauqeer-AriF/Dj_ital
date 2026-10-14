@@ -7,6 +7,7 @@ import {
   getReleases,
   getGallery,
   getDocumentaries,
+  getDocumentarySettings,
   getStats,
   getBookings,
   getSiteMedia,
@@ -20,6 +21,7 @@ import {
   ReleaseData,
   GalleryData,
   DocumentaryData,
+  DocumentarySettingsData,
   StatData,
   BookingData,
   TestimonialData,
@@ -74,6 +76,7 @@ export default function App() {
   const [releases, setReleases] = useState<ReleaseData[]>([]);
   const [gallery, setGallery] = useState<GalleryData[]>([]);
   const [documentaries, setDocumentaries] = useState<DocumentaryData[]>([]);
+  const [documentarySettings, setDocumentarySettings] = useState<DocumentarySettingsData | null>(null);
   const [stats, setStats] = useState<StatData[]>([]);
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [testimonials, setTestimonials] = useState<TestimonialData[]>([]);
@@ -161,12 +164,13 @@ export default function App() {
   const loadData = useCallback(async () => {
     const startTime = Date.now();
     try {
-      const [prof, evts, rels, gals, docs, st, bks, media, tests, vLogos, mixes, vids] = await Promise.all([
+      const [prof, evts, rels, gals, docs, docSett, st, bks, media, tests, vLogos, mixes, vids] = await Promise.all([
         getProfile(),
         getEvents(),
         getReleases(),
         getGallery(),
         getDocumentaries(),
+        getDocumentarySettings(),
         getStats(),
         getBookings(),
         getSiteMedia(),
@@ -181,6 +185,7 @@ export default function App() {
       setReleases(rels);
       setGallery(gals);
       setDocumentaries(docs);
+      setDocumentarySettings(docSett);
       setStats(st);
       setBookings(bks);
       setTestimonials(tests);
@@ -372,6 +377,7 @@ export default function App() {
           releases={releases}
           gallery={gallery}
           bookings={bookings}
+          documentaries={documentaries}
           onRefreshData={loadData}
         />
       ) : isAdminView && !isDashboardConfirmed ? (
@@ -457,6 +463,7 @@ export default function App() {
           {/* Documentary Series: "DJ Ital: The Journey" */}
           <DocumentarySection
             episodes={documentaries}
+            settings={documentarySettings}
             thumbnails={{
               1: siteMediaMap['doc_ep1_thumbnail'],
               2: siteMediaMap['doc_ep2_thumbnail'],
