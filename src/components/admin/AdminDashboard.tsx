@@ -30,6 +30,7 @@ import {
   Server,
   Landmark,
   Video,
+  HardDrive,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -59,6 +60,7 @@ import { NewsletterManager } from './NewsletterManager';
 import { SecurityManager } from './SecurityManager';
 import { HeritageManager } from './HeritageManager';
 import { DocumentaryManager } from './DocumentaryManager';
+import { StorageManager } from './StorageManager';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -75,6 +77,7 @@ interface AdminDashboardProps {
 type TabType =
   | 'overview'
   | 'security'
+  | 'storage'
   | 'heritage'
   | 'documentary'
   | 'events'
@@ -103,12 +106,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [storageStatus, setStorageStatus] = useState<{ isPersistent: boolean; resolvedDataDir: string; isWritable: boolean } | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { showSuccess, showError } = useToast();
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    fetch('/api/system/storage-status', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => setStorageStatus(data))
+      .catch(() => {});
+  }, []);
 
   const handleDownloadDb = async () => {
     try {
@@ -195,6 +206,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
+    { id: 'storage', label: 'Railway Volume & Storage', icon: <HardDrive className="w-4 h-4" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
     {
       id: 'documentary',
@@ -229,10 +241,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="text-sm font-display font-bold text-neutral-950 dark:text-white tracking-tight">
               DJ ITAL <span className="text-amber-500 dark:text-amber-400">ADMIN</span>
             </span>
-            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-              <CheckCircle className="w-3 h-3" />
-              SQLite Persistent DB Active
-            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('storage')}
+              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono border transition-all cursor-pointer ${
+                storageStatus?.isPersistent
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+              }`}
+              title="Click to view Railway volume persistence & storage diagnostics"
+            >
+              {storageStatus?.isPersistent ? (
+                <>
+                  <CheckCircle className="w-3 h-3 text-emerald-500" />
+                  <span>Railway Volume: Active</span>
+                </>
+              ) : (
+                <>
+                  <HardDrive className="w-3 h-3 text-amber-500" />
+                  <span>Storage: Ephemeral (Setup Volume)</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -601,6 +631,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="pt-2 flex flex-wrap gap-2">
                     <button
+                      onClick={() => setActiveTab('storage')}
+                      className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Railway Volume & Storage
+                    </button>
+                    <button
                       onClick={() => setActiveTab('heritage')}
                       className="px-3 py-1.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold cursor-pointer transition-colors"
                     >
@@ -637,6 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
 
           {activeTab === 'security' && <SecurityManager />}
+          {activeTab === 'storage' && <StorageManager onRefresh={onRefreshData} />}
           {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}
           {activeTab === 'documentary' && <DocumentaryManager onRefresh={onRefreshData} />}
           {activeTab === 'media' && <MediaLibraryManager onRefresh={onRefreshData} />}
