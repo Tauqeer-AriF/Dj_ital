@@ -21,6 +21,7 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
     '/images/kool_fm_vintage_1790112400005.jpg',
     '/images/va_museum_exhibition_1790112416279.jpg',
   ],
+  signatureBpm = 164,
 }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
@@ -48,40 +49,93 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
     fast: 0.6,
   }[speed] || 1.0;
 
+  const bpmCycleSeconds = Number((240 / (signatureBpm || 164)).toFixed(2));
+
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
-      {/* 1. Subtle Moving Gradient Mesh (for subtle-motion and ambient-glow) */}
+    <div
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
+      style={{
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        transform: 'translate3d(0, 0, 0)',
+      }}
+      aria-hidden="true"
+    >
+      {/* 1. Hardware Accelerated Moving Gradient Mesh (for subtle-motion and ambient-glow) */}
       {(style === 'subtle-motion' || style === 'ambient-glow') && (
         <>
+          {/* Amber Primary Tone Orb (Top Left - drifts across mobile & desktop) */}
           <div
-            className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[140px] dark:bg-amber-400/8 animate-float"
-            style={{ animationDuration: `${12 * speedMultiplier}s` }}
+            className="absolute -top-20 -left-20 sm:-top-40 sm:-left-40 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full bg-amber-500/18 sm:bg-amber-500/10 dark:bg-amber-400/15 dark:sm:bg-amber-400/8 blur-[70px] sm:blur-[140px] animate-ambient-1"
+            style={{
+              animationDuration: `${12 * speedMultiplier}s`,
+              WebkitTransform: 'translate3d(0, 0, 0)',
+              transform: 'translate3d(0, 0, 0)',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              willChange: 'transform',
+            }}
           />
+
+          {/* Cyan Sub-bass Tone Orb (Mid Right) */}
           <div
-            className="absolute top-1/3 -right-40 w-[550px] h-[550px] rounded-full bg-cyan-500/10 blur-[130px] dark:bg-cyan-400/7 animate-float-delayed"
-            style={{ animationDuration: `${15 * speedMultiplier}s` }}
+            className="absolute top-1/4 -right-20 sm:top-1/3 sm:-right-40 w-[320px] sm:w-[550px] h-[320px] sm:h-[550px] rounded-full bg-cyan-500/18 sm:bg-cyan-500/10 dark:bg-cyan-400/14 dark:sm:bg-cyan-400/7 blur-[65px] sm:blur-[130px] animate-ambient-2"
+            style={{
+              animationDuration: `${15 * speedMultiplier}s`,
+              WebkitTransform: 'translate3d(0, 0, 0)',
+              transform: 'translate3d(0, 0, 0)',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              willChange: 'transform',
+            }}
           />
+
+          {/* Deep Amber Sub-Frequency Orb (Bottom Center) */}
           <div
-            className="absolute -bottom-40 left-1/3 w-[650px] h-[650px] rounded-full bg-amber-600/8 blur-[160px] dark:bg-amber-500/6 animate-float"
-            style={{ animationDuration: `${18 * speedMultiplier}s` }}
+            className="absolute -bottom-20 left-10 sm:-bottom-40 sm:left-1/3 w-[360px] sm:w-[650px] h-[360px] sm:h-[650px] rounded-full bg-amber-600/16 sm:bg-amber-600/8 dark:bg-amber-500/12 dark:sm:bg-amber-500/6 blur-[75px] sm:blur-[150px] animate-ambient-1"
+            style={{
+              animationDuration: `${18 * speedMultiplier}s`,
+              WebkitTransform: 'translate3d(0, 0, 0)',
+              transform: 'translate3d(0, 0, 0)',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              willChange: 'transform',
+            }}
+          />
+
+          {/* Signature BPM Sound-System Subwoofer Breathing Pulse */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] sm:w-[480px] h-[280px] sm:h-[480px] rounded-full bg-amber-500/8 dark:bg-amber-400/6 blur-[60px] sm:blur-[110px] animate-subwoofer"
+            style={{
+              animationDuration: `${bpmCycleSeconds * speedMultiplier}s`,
+              WebkitTransform: 'translate3d(-50%, -50%, 0)',
+              transform: 'translate3d(-50%, -50%, 0)',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              willChange: 'transform',
+            }}
           />
         </>
       )}
 
       {/* 2. Bass Frequency Floating Particles */}
       {style === 'particles' && (
-        <div className="absolute inset-0 opacity-40 dark:opacity-60">
-          {[...Array(16)].map((_, i) => (
+        <div className="absolute inset-0 opacity-60 dark:opacity-75">
+          {[...Array(18)].map((_, i) => (
             <span
               key={i}
-              className="absolute rounded-full bg-amber-400/30 dark:bg-amber-400/40 animate-float"
+              className="absolute rounded-full bg-amber-400/50 dark:bg-amber-400/60 animate-particle-drift shadow-[0_0_8px_rgba(251,191,36,0.4)]"
               style={{
-                top: `${(i * 19) % 100}%`,
-                left: `${(i * 23) % 100}%`,
-                width: `${(i % 4) * 3 + 4}px`,
-                height: `${(i % 4) * 3 + 4}px`,
-                animationDuration: `${(8 + (i % 6) * 2) * speedMultiplier}s`,
-                animationDelay: `${(i % 4) * 0.8}s`,
+                top: `${(i * 17 + 5) % 95}%`,
+                left: `${(i * 21 + 7) % 95}%`,
+                width: `${(i % 3) * 3 + 4}px`,
+                height: `${(i % 3) * 3 + 4}px`,
+                animationDuration: `${(6 + (i % 5) * 2) * speedMultiplier}s`,
+                animationDelay: `${(i % 5) * 0.7}s`,
+                WebkitTransform: 'translate3d(0, 0, 0)',
+                transform: 'translate3d(0, 0, 0)',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden',
+                willChange: 'transform, opacity',
               }}
             />
           ))}
@@ -94,14 +148,21 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
           {validImages.map((img, idx) => (
             <div
               key={img + idx}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                idx === currentSlideIndex ? 'opacity-10 dark:opacity-15' : 'opacity-0'
+              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+                idx === currentSlideIndex
+                  ? 'opacity-15 dark:opacity-20 scale-100'
+                  : 'opacity-0 scale-105'
               }`}
+              style={{
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden',
+              }}
             >
               <img
                 src={img}
                 alt="Slideshow Background"
-                className="w-full h-full object-cover filter blur-[2px] scale-105"
+                className="w-full h-full object-cover filter blur-[2px]"
+                loading="lazy"
               />
             </div>
           ))}

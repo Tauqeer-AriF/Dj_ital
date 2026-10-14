@@ -328,14 +328,95 @@
 }
 
 /* Sound-system & Heritage Animations */
+@-webkit-keyframes float-slow {
+  0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { -webkit-transform: translate3d(0, -18px, 0) rotate(1deg); transform: translate3d(0, -18px, 0) rotate(1deg); }
+}
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-8px) rotate(0.5deg); }
+  0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { -webkit-transform: translate3d(0, -18px, 0) rotate(1deg); transform: translate3d(0, -18px, 0) rotate(1deg); }
 }
 
+@-webkit-keyframes float-reverse {
+  0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { -webkit-transform: translate3d(0, 18px, 0) rotate(-1deg); transform: translate3d(0, 18px, 0) rotate(-1deg); }
+}
 @keyframes float-reverse {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(8px) rotate(-0.5deg); }
+  0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { -webkit-transform: translate3d(0, 18px, 0) rotate(-1deg); transform: translate3d(0, 18px, 0) rotate(-1deg); }
+}
+
+@-webkit-keyframes ambient-drift-1 {
+  0% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+  33% { -webkit-transform: translate3d(45px, -35px, 0) scale(1.1); transform: translate3d(45px, -35px, 0) scale(1.1); }
+  66% { -webkit-transform: translate3d(-35px, 30px, 0) scale(0.92); transform: translate3d(-35px, 30px, 0) scale(0.92); }
+  100% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes ambient-drift-1 {
+  0% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+  33% { -webkit-transform: translate3d(45px, -35px, 0) scale(1.1); transform: translate3d(45px, -35px, 0) scale(1.1); }
+  66% { -webkit-transform: translate3d(-35px, 30px, 0) scale(0.92); transform: translate3d(-35px, 30px, 0) scale(0.92); }
+  100% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@-webkit-keyframes ambient-drift-2 {
+  0% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+  33% { -webkit-transform: translate3d(-50px, 40px, 0) scale(0.9); transform: translate3d(-50px, 40px, 0) scale(0.9); }
+  66% { -webkit-transform: translate3d(35px, -30px, 0) scale(1.12); transform: translate3d(35px, -30px, 0) scale(1.12); }
+  100% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes ambient-drift-2 {
+  0% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+  33% { -webkit-transform: translate3d(-50px, 40px, 0) scale(0.9); transform: translate3d(-50px, 40px, 0) scale(0.9); }
+  66% { -webkit-transform: translate3d(35px, -30px, 0) scale(1.12); transform: translate3d(35px, -30px, 0) scale(1.12); }
+  100% { -webkit-transform: translate3d(0, 0, 0) scale(1); transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@-webkit-keyframes particle-float {
+  0% { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); opacity: 0.3; }
+  50% { -webkit-transform: translate3d(18px, -45px, 0); transform: translate3d(18px, -45px, 0); opacity: 0.85; }
+  100% { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); opacity: 0.3; }
+}
+@keyframes particle-float {
+  0% { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); opacity: 0.3; }
+  50% { -webkit-transform: translate3d(18px, -45px, 0); transform: translate3d(18px, -45px, 0); opacity: 0.85; }
+  100% { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); opacity: 0.3; }
+}
+
+.animate-float {
+  -webkit-animation: float-slow 6s ease-in-out infinite;
+  animation: float-slow 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-delayed {
+  -webkit-animation: float-reverse 7s ease-in-out infinite 1s;
+  animation: float-reverse 7s ease-in-out infinite 1s;
+  will-change: transform;
+}
+
+.animate-ambient-1 {
+  -webkit-animation: ambient-drift-1 12s ease-in-out infinite;
+  animation: ambient-drift-1 12s ease-in-out infinite;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.animate-ambient-2 {
+  -webkit-animation: ambient-drift-2 15s ease-in-out infinite;
+  animation: ambient-drift-2 15s ease-in-out infinite;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.animate-particle-drift {
+  -webkit-animation: particle-float 7s ease-in-out infinite;
+  animation: particle-float 7s ease-in-out infinite;
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 @keyframes pulse-subwoofer {

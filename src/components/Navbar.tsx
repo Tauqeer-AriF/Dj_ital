@@ -76,13 +76,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
       style={{ position: 'fixed' }}
       className="!fixed top-0 left-0 right-0 z-50 w-full transition-colors duration-200 sound-cabinet rounded-none border-b border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white shadow-xl backdrop-blur-2xl"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1.5 sm:gap-4 relative z-10 w-full min-w-0">
         
         {/* Zone 1: Sound System Brand & Heritage Mark */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
           <a
             href="#"
-            className="group flex items-center gap-2.5 sm:gap-3 select-none"
+            className="group flex items-center gap-2 sm:gap-3 select-none min-w-0 flex-1 overflow-hidden"
           >
             <img
               src={logoSrc}
@@ -90,14 +90,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
               }}
-              className="h-9 sm:h-10 w-auto object-contain filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.35)] transition-transform group-hover:scale-105"
+              className="h-8 sm:h-10 w-8 sm:w-10 object-contain shrink-0 filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.35)] transition-transform group-hover:scale-105"
             />
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-1 text-xl sm:text-2xl font-display font-black tracking-wider text-neutral-950 dark:text-white uppercase leading-none">
+            <div className="flex flex-col justify-center min-w-0 flex-1 overflow-hidden">
+              <div className="flex items-center gap-1 text-lg sm:text-2xl font-display font-black tracking-wider text-neutral-950 dark:text-white uppercase leading-none truncate">
                 <span>DJ</span>
                 <span className="text-amber-500 dark:text-amber-400">ITAL</span>
               </div>
-              <span className="text-[9px] sm:text-[10px] font-industrial tracking-wide text-neutral-500 dark:text-neutral-400 font-bold uppercase mt-0.5 line-clamp-1 max-w-[200px] xs:max-w-[280px] sm:max-w-md md:max-w-lg">
+              <span
+                title={navbarSubtitle}
+                className="text-[9px] sm:text-[10px] font-industrial tracking-wide text-neutral-500 dark:text-neutral-400 font-bold uppercase mt-0.5 truncate block w-full min-w-0"
+              >
                 {navbarSubtitle}
               </span>
             </div>
@@ -142,11 +145,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
         </nav>
 
         {/* Zone 3: Hardware Controls (Distinct Rectangular Rocker Toggle & Actions) */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {onOpenEpk && (
             <button
               onClick={onOpenEpk}
-              className="hardware-btn hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-400 hover:text-neutral-950 dark:hover:text-neutral-950 text-xs font-industrial font-bold transition-all"
+              className="hardware-btn hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-400 hover:text-neutral-950 dark:hover:text-neutral-950 text-xs font-industrial font-bold transition-all shrink-0"
               title="View Electronic Press Kit"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -167,10 +170,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
             }}
             aria-label={`Toggle theme (currently ${theme})`}
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            className="hardware-btn flex items-center p-0.5 rounded bg-neutral-200 dark:bg-neutral-900 border border-neutral-300 dark:border-white/20 cursor-pointer shadow-inner"
+            className="hardware-btn flex items-center p-0.5 rounded bg-neutral-200 dark:bg-neutral-900 border border-neutral-300 dark:border-white/20 cursor-pointer shadow-inner shrink-0"
           >
             <span
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-industrial font-bold transition-all ${
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] font-industrial font-bold transition-all ${
                 theme === 'dark'
                   ? 'bg-neutral-800 text-amber-400 shadow-sm border border-white/10'
                   : 'text-neutral-500 hover:text-neutral-800'
@@ -180,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
               <span className="hidden sm:inline">DARK</span>
             </span>
             <span
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-industrial font-bold transition-all ${
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] font-industrial font-bold transition-all ${
                 theme === 'light'
                   ? 'bg-white text-neutral-950 shadow-sm border border-neutral-300'
                   : 'text-neutral-500 hover:text-neutral-200'
@@ -194,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
           {/* Machined Booking Button */}
           <a
             href="#booking"
-            className="hardware-btn hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded bg-amber-400 text-neutral-950 hover:bg-amber-300 font-industrial text-xs font-black transition-all shadow-md active:scale-95 whitespace-nowrap"
+            className="hardware-btn hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded bg-amber-400 text-neutral-950 hover:bg-amber-300 font-industrial text-xs font-black transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0"
           >
             <span>BOOK SELECTOR</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -203,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
           {/* Mobile / Tablet Menu Toggle with Smooth Morphing Bars */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`hardware-btn lg:hidden relative w-10 h-10 rounded border flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${
+            className={`hardware-btn lg:hidden relative w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded border flex flex-col items-center justify-center gap-1 sm:gap-1.5 transition-all duration-300 cursor-pointer ${
               mobileMenuOpen
                 ? 'border-amber-500 bg-amber-500/15 text-amber-500 dark:text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
                 : 'border-neutral-300 dark:border-white/20 text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-white/10'
@@ -212,18 +215,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
             aria-expanded={mobileMenuOpen}
           >
             <span
-              className={`block h-0.5 w-5 bg-current rounded-full transition-all duration-300 ease-out origin-center ${
-                mobileMenuOpen ? 'rotate-45 translate-y-2' : ''
+              className={`block h-0.5 w-4 sm:w-5 bg-current rounded-full transition-all duration-300 ease-out origin-center ${
+                mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
               }`}
             />
             <span
-              className={`block h-0.5 w-5 bg-current rounded-full transition-all duration-200 ease-out ${
+              className={`block h-0.5 w-4 sm:w-5 bg-current rounded-full transition-all duration-200 ease-out ${
                 mobileMenuOpen ? 'opacity-0 scale-x-0' : 'opacity-100'
               }`}
             />
             <span
-              className={`block h-0.5 w-5 bg-current rounded-full transition-all duration-300 ease-out origin-center ${
-                mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''
+              className={`block h-0.5 w-4 sm:w-5 bg-current rounded-full transition-all duration-300 ease-out origin-center ${
+                mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
               }`}
             />
           </button>
