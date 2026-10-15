@@ -76,24 +76,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
       style={{ position: 'fixed' }}
       className="!fixed top-0 left-0 right-0 z-50 w-full transition-colors duration-200 sound-cabinet rounded-none border-b border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white shadow-xl backdrop-blur-2xl"
     >
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1.5 sm:gap-4 relative z-10 w-full min-w-0">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4 relative z-10 w-full min-w-0">
         
         {/* Zone 1: Sound System Brand & Heritage Mark */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
           <a
             href="#"
-            className="group flex items-center gap-2 sm:gap-3 select-none min-w-0 flex-1 overflow-hidden"
+            className="group flex items-center gap-2 sm:gap-2.5 select-none min-w-0 flex-1 overflow-hidden py-1"
           >
-            <img
-              src={logoSrc}
-              alt="DJ Ital"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
-              }}
-              className="h-8 sm:h-10 w-8 sm:w-10 object-contain shrink-0 filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.35)] transition-transform group-hover:scale-105"
-            />
+            <div className="relative shrink-0 flex items-center justify-center">
+              <img
+                src={logoSrc}
+                alt="DJ Ital"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
+                }}
+                className="h-8 sm:h-9 md:h-10 w-auto max-w-[48px] sm:max-w-[58px] md:max-w-[64px] object-contain shrink-0 filter drop-shadow-[0_1px_6px_rgba(245,158,11,0.35)] transition-transform group-hover:scale-105"
+              />
+            </div>
             <div className="flex flex-col justify-center min-w-0 flex-1 overflow-hidden">
-              <div className="flex items-center gap-1 text-lg sm:text-2xl font-display font-black tracking-wider text-neutral-950 dark:text-white uppercase leading-none truncate">
+              <div className="flex items-center gap-1 text-lg sm:text-xl md:text-2xl font-display font-black tracking-wider text-neutral-950 dark:text-white uppercase leading-none truncate">
                 <span>DJ</span>
                 <span className="text-amber-500 dark:text-amber-400">ITAL</span>
               </div>
