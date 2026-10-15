@@ -1281,39 +1281,6 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-neutral-100 dark:border-white/10">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                Live Broadcast Status
-              </label>
-              <div className="flex items-center gap-3 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono font-bold">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(formData.is_live_on_air)}
-                    onChange={(e) =>
-                      setFormData({ ...formData, is_live_on_air: e.target.checked ? 1 : 0 })
-                    }
-                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
-                  />
-                  <span>Show "LIVE ON AIR" Banner on site</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                Live Show / Broadcast Title
-              </label>
-              <input
-                type="text"
-                value={formData.live_show_title || ''}
-                onChange={(e) => setFormData({ ...formData, live_show_title: e.target.value })}
-                placeholder="The Ital Show - Live Radio Broadcast"
-                className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
-              />
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -1340,6 +1307,9 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 placeholder="Official Vital Fest Merch & Vinyl Store"
                 className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                Displayed on the homepage Merch card badge (above "Vital Fest Apparel & Limited Dubplates") and in the Footer store link.
+              </p>
             </div>
           </div>
         </div>
