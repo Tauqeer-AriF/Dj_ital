@@ -170,15 +170,6 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
           <div className="absolute inset-0 bg-gradient-to-t from-neutral-50 dark:from-neutral-950 via-transparent to-neutral-50 dark:to-neutral-950" />
         </div>
       )}
-
-      {/* Subtle fine sound system scanline overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.015] dark:opacity-[0.03]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 2px, currentColor 2px, currentColor 4px)',
-        }}
-      />
     </div>
   );
 };
