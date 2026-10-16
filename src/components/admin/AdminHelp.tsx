@@ -113,7 +113,7 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Dashboard Header or Profile & Branding → Section 4</span>
+            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Dashboard Header or Profile & Branding → Section 5 (Audio Stream URL & Radio)</span>
             {onNavigateTab && (
               <button
                 type="button"
@@ -301,7 +301,7 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Profile and branding tab</span>
+            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Profile & Branding → Section 1 (Signature Tempo & Turntable Dub Clock)</span>
             {onNavigateTab && (
               <button
                 type="button"
@@ -357,7 +357,7 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Profile and branding → Section 5</span>
+            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Profile & Branding → Section 7</span>
             {onNavigateTab && (
               <button
                 type="button"

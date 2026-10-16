@@ -1251,6 +1251,8 @@ function ensureSchemaMigrations(db: Database) {
     addColumnIfNotExists(db, 'profile', 'stream_url', "TEXT DEFAULT ''");
     addColumnIfNotExists(db, 'profile', 'hero_stream_url', "TEXT DEFAULT ''");
     addColumnIfNotExists(db, 'profile', 'main_player_stream_url', "TEXT DEFAULT ''");
+    addColumnIfNotExists(db, 'profile', 'signature_bpm', "INTEGER DEFAULT 164");
+    addColumnIfNotExists(db, 'profile', 'brand_slogan', "TEXT DEFAULT 'DjItal 164bpm'");
 
     // Events table column migrations
     addColumnIfNotExists(db, 'events', 'flyer_image', "TEXT DEFAULT '/images/vital_fest_crowd_1790112387611.jpg'");
@@ -1725,7 +1727,9 @@ function initSchemaAndSeeds(db: Database) {
       hero_stream_url TEXT,
       main_player_stream_url TEXT,
       navbar_subtitle TEXT,
-      subtitle TEXT
+      subtitle TEXT,
+      signature_bpm INTEGER DEFAULT 164,
+      brand_slogan TEXT DEFAULT 'DjItal 164bpm'
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -2236,6 +2240,8 @@ export async function getProfile(): Promise<ProfileData> {
     obj.hero_stream_url = resolvedStream;
     obj.main_player_stream_url = resolvedStream;
     obj.dejavu_stream_url = resolvedStream;
+    obj.signature_bpm = obj.signature_bpm ? Number(obj.signature_bpm) : 164;
+    obj.brand_slogan = obj.brand_slogan || 'DjItal 164bpm';
     return obj as ProfileData;
   }
   throw new Error('Profile not found');
@@ -2247,6 +2253,12 @@ export async function updateProfile(data: Partial<ProfileData>): Promise<void> {
   const validCols = new Set(tableInfo[0]?.values.map((row) => row[1]) || []);
 
   const payload: any = { ...data };
+  if (payload.signature_bpm !== undefined) {
+    payload.signature_bpm = parseInt(String(payload.signature_bpm), 10) || 164;
+  }
+  if (payload.brand_slogan !== undefined) {
+    payload.brand_slogan = String(payload.brand_slogan).trim() || 'DjItal 164bpm';
+  }
   // If stream_url is set, keep backwards compatible columns synchronized
   if (payload.stream_url !== undefined) {
     if (validCols.has('hero_stream_url')) payload.hero_stream_url = payload.stream_url;

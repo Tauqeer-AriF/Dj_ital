@@ -30,7 +30,9 @@ import {
   RefreshCw,
   KeyRound,
   Lock,
+  Clock,
 } from 'lucide-react';
+import { audioEngine } from '../../audio/audioEngine';
 import { ProfileData, updateProfile, trackMediaUpload } from '../../db/sqlite';
 import { optimizeImageFile, normalizeImageUrl } from '../../utils/imageOptimization';
 import { MediaPickerModal } from './MediaPickerModal';
@@ -58,6 +60,13 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   const [logoError, setLogoError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Turntable Dub Clock & BPM Synthesiser Audition State
+  const [isDubClockPlaying, setIsDubClockPlaying] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [dubTrackType, setDubTrackType] = useState<'decibel' | 'vital' | 'hackney' | 'transmission'>('decibel');
+  const [dubFilterCutoff, setDubFilterCutoff] = useState(18000);
+  const [dubVolume, setDubVolume] = useState(0.75);
+
   // In-dashboard live radio stream testing
   const [testPlayingUrl, setTestPlayingUrl] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState<string | null>(null);
@@ -70,6 +79,8 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         testAudioRef.current.pause();
         testAudioRef.current.removeAttribute('src');
       }
+      audioEngine.stop();
+      audioEngine.setOnTick(null);
     };
   }, []);
 
@@ -132,6 +143,47 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
     }
   };
 
+  const handleBpmChange = (newBpm: number) => {
+    const clamped = Math.max(140, Math.min(185, Math.round(newBpm)));
+    setFormData((prev) => ({ ...prev, signature_bpm: clamped }));
+    audioEngine.setBpm(clamped);
+  };
+
+  const handleToggleDubClock = () => {
+    if (isDubClockPlaying) {
+      audioEngine.stop();
+      audioEngine.setOnTick(null);
+      setIsDubClockPlaying(false);
+      setActiveStep(0);
+    } else {
+      const currentBpm = formData.signature_bpm || 164;
+      audioEngine.setVolume(dubVolume);
+      audioEngine.setFilterCutoff(dubFilterCutoff);
+      audioEngine.setOnTick((step) => {
+        setActiveStep(step);
+      });
+      audioEngine.play(currentBpm, dubTrackType);
+      setIsDubClockPlaying(true);
+    }
+  };
+
+  const handleTrackTypeChange = (type: 'decibel' | 'vital' | 'hackney' | 'transmission') => {
+    setDubTrackType(type);
+    if (isDubClockPlaying) {
+      const currentBpm = formData.signature_bpm || 164;
+      audioEngine.play(currentBpm, type);
+    }
+  };
+
+  const handleFilterChange = (hz: number) => {
+    setDubFilterCutoff(hz);
+    audioEngine.setFilterCutoff(hz);
+  };
+
+  const handleTriggerSubDrop = () => {
+    audioEngine.triggerSubDrop();
+  };
+
   useEffect(() => {
     if (profile) {
       const unifiedStream = (profile.stream_url || 'https://dejavufm.radioca.st/;').trim();
@@ -140,6 +192,8 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         direct_email: profile.direct_email || profile.booking_email || '',
         booking_email: profile.booking_email || profile.direct_email || '',
         stream_url: unifiedStream,
+        signature_bpm: profile.signature_bpm ? Number(profile.signature_bpm) : 164,
+        brand_slogan: profile.brand_slogan || 'DjItal 164bpm',
       });
     }
   }, [profile]);
@@ -225,6 +279,12 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         payload.hero_stream_url = payload.stream_url;
         payload.main_player_stream_url = payload.stream_url;
         payload.dejavu_stream_url = payload.stream_url;
+      }
+      if (payload.signature_bpm !== undefined) {
+        payload.signature_bpm = parseInt(String(payload.signature_bpm), 10) || 164;
+      }
+      if (payload.brand_slogan !== undefined) {
+        payload.brand_slogan = String(payload.brand_slogan).trim() || 'DjItal 164bpm';
       }
       await updateProfile(payload);
       const activeHex = resolveColorHex(payload.color_scheme, payload.custom_accent_color);
@@ -968,11 +1028,359 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 1: Upfront Tagline & Identity */}
+        {/* Section 1: Signature Tempo Clock (BPM), Turntable Dub Engine & Brand Slogan */}
+        <div className="p-6 rounded border border-amber-500/30 bg-amber-500/[0.03] dark:border-amber-400/30 dark:bg-amber-400/[0.03] shadow-sm backdrop-blur-xl space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-amber-500/20 dark:border-amber-400/20">
+            <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span>1. Signature Tempo (BPM), Turntable Dub Clock & Slogan</span>
+            </div>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 self-start sm:self-auto">
+              Live Sound System Clock: {formData.signature_bpm || 164} BPM
+            </span>
+          </div>
+
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            Configure DJ Ital's master tempo clock and signature brand slogan. Changes here automatically synchronize the interactive Web Audio turntable engine, ambient breathing pulse, marquee ribbons, dubplate catalog badges, and application loader.
+          </p>
+
+          {/* 1. Signature Master Tempo (BPM) Controls with Quick Presets */}
+          <div className="p-5 rounded bg-white dark:bg-neutral-950/70 border border-neutral-200 dark:border-white/10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white flex items-center gap-1.5 font-mono">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                  <span>Signature Master Tempo Clock (BPM)</span>
+                </label>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Adjust master tempo clock (default 164 BPM) with 1-click quick presets: 160, 164, 168, 172, or 175 BPM.
+                </p>
+              </div>
+
+              {/* Live BPM Badge with -1 / +1 step buttons */}
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handleBpmChange((formData.signature_bpm || 164) - 1)}
+                  className="w-8 h-8 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-mono font-bold text-sm hover:bg-amber-400 hover:text-neutral-950 transition-colors flex items-center justify-center cursor-pointer border border-neutral-300 dark:border-white/10"
+                  title="Decrease 1 BPM"
+                >
+                  -
+                </button>
+                <div className="px-4 py-1.5 rounded bg-amber-400/15 border-2 border-amber-400/50 text-neutral-950 dark:text-amber-300 font-mono font-black text-lg tracking-wider tabular-nums min-w-[100px] text-center shadow-inner">
+                  {formData.signature_bpm || 164} <span className="text-xs font-bold opacity-80">BPM</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleBpmChange((formData.signature_bpm || 164) + 1)}
+                  className="w-8 h-8 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-mono font-bold text-sm hover:bg-amber-400 hover:text-neutral-950 transition-colors flex items-center justify-center cursor-pointer border border-neutral-300 dark:border-white/10"
+                  title="Increase 1 BPM"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* BPM Range Slider */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+                <span>140 BPM (Downbeat Dub)</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400">Smooth Tempo Slider (140—185 BPM)</span>
+                <span>185 BPM (High Velocity)</span>
+              </div>
+              <input
+                type="range"
+                min={140}
+                max={185}
+                step={1}
+                value={formData.signature_bpm || 164}
+                onChange={(e) => handleBpmChange(Number(e.target.value))}
+                className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
+
+            {/* 1-Click Quick Presets */}
+            <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-white/10">
+              <span className="text-[11px] font-mono uppercase font-bold text-neutral-700 dark:text-neutral-300 block">
+                1-Click Quick Tempo Presets:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                {[
+                  { bpm: 160, label: '160 BPM', style: 'Deep Ragga Jungle' },
+                  { bpm: 164, label: '164 BPM', style: 'DJ Ital Master (Default)' },
+                  { bpm: 168, label: '168 BPM', style: 'Kool FM Rollers' },
+                  { bpm: 172, label: '172 BPM', style: 'Clash & Sub Pressure' },
+                  { bpm: 175, label: '175 BPM', style: 'Fast Tech-Step / DnB' },
+                ].map((preset) => {
+                  const isSelected = (formData.signature_bpm || 164) === preset.bpm;
+                  return (
+                    <button
+                      key={preset.bpm}
+                      type="button"
+                      onClick={() => handleBpmChange(preset.bpm)}
+                      className={`p-2.5 rounded border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-amber-400 bg-amber-400 text-neutral-950 shadow-md ring-2 ring-amber-400/50'
+                          : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900/60 text-neutral-800 dark:text-neutral-200 hover:border-amber-400/60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-sm">{preset.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                      <span className={`text-[9px] font-mono font-semibold truncate mt-1 ${isSelected ? 'text-neutral-900' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                        {preset.style}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Turntable Dub Clock & Real-time Synthesiser Sync */}
+          <div className="p-5 rounded sound-card bg-neutral-950 text-white border border-amber-500/30 space-y-4 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <Disc3 className={`w-5 h-5 text-amber-400 shrink-0 ${isDubClockPlaying ? 'animate-spin' : ''}`} />
+                <div>
+                  <h4 className="text-xs font-mono font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <span>Turntable Dub Clock (Real-time Audio Engine Sync)</span>
+                    <span className={`w-2 h-2 rounded-full ${isDubClockPlaying ? 'bg-red-500 animate-ping' : 'bg-neutral-600'}`} />
+                  </h4>
+                  <p className="text-[10px] font-mono text-neutral-400">
+                    The real-time interactive audio engine automatically syncs its beat triggers and synthesizer clocks to your selected BPM.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleToggleDubClock}
+                  className={`px-4 py-2 rounded font-mono text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg ${
+                    isDubClockPlaying
+                      ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse'
+                      : 'bg-amber-400 hover:bg-amber-300 text-neutral-950'
+                  }`}
+                >
+                  {isDubClockPlaying ? (
+                    <>
+                      <Pause className="w-4 h-4 fill-current" />
+                      <span>Stop Audition</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Audition Dub Clock</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTriggerSubDrop}
+                  className="px-3 py-2 rounded bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-mono text-xs font-bold border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Trigger Heavy Sub-Bass 808 Drop"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Sub Drop</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 32-Step Live Sequencer Grid */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                <span className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${isDubClockPlaying ? 'bg-amber-400 animate-pulse' : 'bg-neutral-600'}`} />
+                  <span>32-STEP REAL-TIME SEQUENCER // STEP {(activeStep + 1).toString().padStart(2, '0')}/32</span>
+                </span>
+                <span className="text-amber-400 font-bold tabular-nums">
+                  {((60 / (formData.signature_bpm || 164)) / 4 * 1000).toFixed(1)} ms / step
+                </span>
+              </div>
+              <div className="grid grid-cols-8 sm:grid-cols-16 gap-1 p-2 rounded bg-black/60 border border-white/10">
+                {Array.from({ length: 32 }).map((_, stepIdx) => {
+                  const isCurrent = isDubClockPlaying && activeStep === stepIdx;
+                  const isDownbeat = stepIdx % 4 === 0;
+                  const isKick = stepIdx === 0 || stepIdx === 10 || stepIdx === 18 || stepIdx === 24;
+                  return (
+                    <div
+                      key={stepIdx}
+                      className={`h-6 rounded-xs flex items-center justify-center text-[9px] font-mono font-bold transition-all ${
+                        isCurrent
+                          ? 'bg-amber-400 text-neutral-950 scale-110 shadow-[0_0_12px_rgba(251,191,36,0.9)] z-10'
+                          : isDownbeat
+                          ? 'bg-neutral-700/80 text-white/90 border-t-2 border-amber-500/60'
+                          : 'bg-neutral-800/60 text-white/50'
+                      }`}
+                      title={`Step ${stepIdx + 1}${isKick ? ' (Kick/Sub)' : ''}`}
+                    >
+                      {stepIdx + 1}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Audio Engine Live Parameters: Stem Style & DJ Isolator Filter */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono text-neutral-400 uppercase font-bold block">
+                  Procedural Track Style:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'decibel', label: 'Decibel Dub (1995)' },
+                    { id: 'vital', label: 'Vital Rhythm' },
+                    { id: 'hackney', label: 'Hackney Roller' },
+                    { id: 'transmission', label: 'Pirate Transmission' },
+                  ].map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => handleTrackTypeChange(track.id as any)}
+                      className={`px-2.5 py-1.5 rounded text-[11px] font-mono text-left truncate transition-colors cursor-pointer border ${
+                        dubTrackType === track.id
+                          ? 'border-amber-400 bg-amber-400/20 text-amber-300 font-bold'
+                          : 'border-white/10 bg-neutral-900 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {track.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                  <span className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Lowpass Cutoff (DJ Filter)</span>
+                  </span>
+                  <span className="text-amber-400 font-bold tabular-nums">
+                    {dubFilterCutoff >= 18000 ? 'OPEN (Flat)' : `${dubFilterCutoff} Hz`}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={300}
+                  max={20000}
+                  step={100}
+                  value={dubFilterCutoff}
+                  onChange={(e) => handleFilterChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-neutral-800 rounded appearance-none cursor-pointer accent-amber-500"
+                />
+                <div className="flex items-center justify-between text-[9px] font-mono text-neutral-500">
+                  <span>Sub Only (300Hz)</span>
+                  <span>Mid Resonance</span>
+                  <span>Full Range (20kHz)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dub Clock Live Synchronisation Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/10 text-center font-mono text-xs">
+              <div className="p-2 rounded bg-neutral-900/90 border border-white/5">
+                <span className="text-[10px] text-neutral-500 block uppercase">Master Clock</span>
+                <span className="font-bold text-amber-400 tabular-nums">{formData.signature_bpm || 164} BPM</span>
+              </div>
+              <div className="p-2 rounded bg-neutral-900/90 border border-white/5">
+                <span className="text-[10px] text-neutral-500 block uppercase">16th Note Step</span>
+                <span className="font-bold text-neutral-200 tabular-nums">
+                  {((60 / (formData.signature_bpm || 164)) / 4 * 1000).toFixed(1)} ms
+                </span>
+              </div>
+              <div className="p-2 rounded bg-neutral-900/90 border border-white/5">
+                <span className="text-[10px] text-neutral-500 block uppercase">Sub Breathing Cycle</span>
+                <span className="font-bold text-cyan-400 tabular-nums">
+                  {(240 / (formData.signature_bpm || 164)).toFixed(2)}s
+                </span>
+              </div>
+              <div className="p-2 rounded bg-neutral-900/90 border border-white/5">
+                <span className="text-[10px] text-neutral-500 block uppercase">4-Bar Loop Length</span>
+                <span className="font-bold text-emerald-400 tabular-nums">
+                  {((60 / (formData.signature_bpm || 164)) * 16).toFixed(2)}s
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Brand Name / Signature Slogan ("DjItal 164bpm") */}
+          <div className="p-5 rounded bg-white dark:bg-neutral-950/70 border border-neutral-200 dark:border-white/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white flex items-center gap-1.5 font-mono">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Brand Name / Signature Slogan ("DjItal 164bpm")</span>
+                </label>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Change to any custom brand text (e.g. <em>"DjItal 164bpm"</em>, <em>"DJ ITAL SOUND SYSTEM 164"</em>). Used on marquee ribbons, the hero dub console, and loading screens.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
+                Default: <code className="text-amber-600 dark:text-amber-400 font-bold">DjItal 164bpm</code>
+              </span>
+            </div>
+
+            <input
+              type="text"
+              value={formData.brand_slogan || ''}
+              onChange={(e) => setFormData({ ...formData, brand_slogan: e.target.value })}
+              placeholder="e.g. DjItal 164bpm"
+              className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm font-mono font-bold tracking-wide"
+            />
+
+            {/* Quick Slogan Suggestions */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400 uppercase font-bold">
+                Quick Suggestions:
+              </span>
+              {[
+                'DjItal 164bpm',
+                'DJ ITAL 164',
+                'DJ ITAL SOUND SYSTEM 164',
+                'VITAL FEST 164 BPM',
+                'KOOL FM 94.5 DUB // 164 BPM',
+              ].map((slogan) => (
+                <button
+                  key={slogan}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, brand_slogan: slogan })}
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer border ${
+                    formData.brand_slogan === slogan
+                      ? 'border-amber-400 bg-amber-400 text-neutral-950 font-bold'
+                      : 'border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:border-amber-400/50'
+                  }`}
+                >
+                  {slogan}
+                </button>
+              ))}
+            </div>
+
+            {/* Live Marquee Ribbon Simulation Preview */}
+            <div className="mt-2 p-3 rounded bg-neutral-950 border border-neutral-800 flex items-center justify-between overflow-hidden shadow-inner">
+              <span className="text-[10px] font-mono uppercase text-neutral-400 font-bold shrink-0 mr-3">
+                Live Marquee Preview:
+              </span>
+              <div className="flex items-center gap-3 font-industrial font-black text-xs text-amber-400 uppercase tracking-widest truncate">
+                <span className="bg-amber-400/20 px-2 py-0.5 rounded text-amber-300 border border-amber-400/40">
+                  {(formData.brand_slogan || 'DJITAL 164BPM').toUpperCase()}
+                </span>
+                <span className="text-white/40">·</span>
+                <span className="text-neutral-300">FOUNDATION JUNGLE</span>
+                <span className="text-white/40">·</span>
+                <span className="text-amber-400">{formData.signature_bpm || 164} BPM SOUND SYSTEM CLOCK</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Upfront Tagline & Identity */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
             <User className="w-4 h-4" />
-            <span>1. Core Tagline & Upfront Branding</span>
+            <span>2. Core Tagline & Upfront Branding</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1063,11 +1471,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 2: Biography & Highlights */}
+        {/* Section 3: Biography & Highlights */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4" />
-            <span>2. Skimmable Biography & Archival Credentials</span>
+            <span>3. Skimmable Biography & Archival Credentials</span>
           </div>
 
           <div className="space-y-1">
@@ -1124,11 +1532,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 3: Direct Promoter Contact & WhatsApp */}
+        {/* Section 4: Direct Promoter Contact & WhatsApp */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" />
-            <span>3. Direct Booking & WhatsApp Quick Contact</span>
+            <span>4. Direct Booking & WhatsApp Quick Contact</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1199,12 +1607,12 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 4: Live Audio Stream, Player & Radio Broadcasting */}
+        {/* Section 5: Live Audio Stream, Player & Radio Broadcasting */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center gap-2 text-xs font-mono text-red-500 font-bold uppercase tracking-wider">
               <Radio className="w-4 h-4" />
-              <span>4. Audio Stream URL, Radio & Merch</span>
+              <span>5. Audio Stream URL, Radio & Merch</span>
             </div>
             <span className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold">
               Audio & Radio Settings
@@ -1314,11 +1722,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 5: Official Social Links */}
+        {/* Section 6: Official Social Links */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-neutral-700 dark:text-neutral-300 font-bold uppercase tracking-wider">
             <Share2 className="w-4 h-4 text-amber-500" />
-            <span>5. Official Social & Platform Links</span>
+            <span>6. Official Social & Platform Links</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
@@ -1390,11 +1798,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 6: Background Motion & Slideshow Options */}
+        {/* Section 7: Background Motion & Slideshow Options */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
           <div className="flex items-center gap-2 text-xs font-mono text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">
             <Sliders className="w-4 h-4" />
-            <span>6. Subtle Moving Backgrounds & Slideshow Controls</span>
+            <span>7. Subtle Moving Backgrounds & Slideshow Controls</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1448,12 +1856,12 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
         </div>
 
-        {/* Section 7: Administrative Security & Dashboard Access Password */}
+        {/* Section 8: Administrative Security & Dashboard Access Password */}
         <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
               <KeyRound className="w-4 h-4" />
-              <span>7. Administrative Security & Dashboard Access Password</span>
+              <span>8. Administrative Security & Dashboard Access Password</span>
             </div>
             <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
               WebCrypto Protected
@@ -1561,7 +1969,9 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             colorScheme={selectedColorScheme}
             accentColor={currentCustomColor}
             logoUrl={currentLogo}
-            statusText="PREVIEWING SELECTED COLOR SCHEME..."
+            signatureBpm={formData.signature_bpm || 164}
+            brandSlogan={formData.brand_slogan || 'DjItal 164bpm'}
+            statusText={`PREVIEWING THEME (${formData.signature_bpm || 164} BPM CLOCK)...`}
           />
         </div>
       )}

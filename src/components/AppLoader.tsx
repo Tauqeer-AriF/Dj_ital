@@ -7,6 +7,8 @@ interface AppLoaderProps {
   logoUrl?: string;
   colorScheme?: string;
   accentColor?: string;
+  signatureBpm?: number;
+  brandSlogan?: string;
 }
 
 export const AppLoader: React.FC<AppLoaderProps> = ({
@@ -14,6 +16,8 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
   logoUrl,
   colorScheme,
   accentColor,
+  signatureBpm = 164,
+  brandSlogan = 'DjItal 164bpm',
 }) => {
   const [progress, setProgress] = useState(12);
   const activeLogo = logoUrl || '/images/vital_fest_logo.png';
@@ -29,7 +33,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
     { threshold: 0, text: 'LOADING VITAL FEST AUDIO ARCHIVES...' },
     { threshold: 28, text: 'INITIALISING SQLITE DUB ARCHIVE...' },
     { threshold: 58, text: 'SYNCING KOOL FM 94.5 BROADCAST MASTERS...' },
-    { threshold: 82, text: 'ENGAGING 168 BPM JUNGLE AUDIO ENGINE...' },
+    { threshold: 82, text: `ENGAGING ${signatureBpm} BPM JUNGLE AUDIO ENGINE...` },
   ];
 
   // Smooth active progress progression
@@ -143,7 +147,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
           </h1>
 
           <p className="text-xs sm:text-sm font-medium text-white/90 max-w-xs mx-auto">
-            Sound System Culture & 168 BPM Jungle Sub-Bass Heritage
+            Sound System Culture & {signatureBpm} BPM Jungle Sub-Bass Heritage
           </p>
         </div>
 

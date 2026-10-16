@@ -21,6 +21,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
   onPlayTrack,
   onTogglePlay,
   logoUrl,
+  signatureBpm = 164,
 }) => {
   const activeLogo = logoUrl || '/images/vital_fest_logo.png';
   return (
@@ -32,7 +33,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
             <div className="space-y-3 max-w-2xl">
               <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
-                <span className="sound-badge">[ DUBPLATE CATALOGUE // 168 BPM ACETATE ]</span>
+                <span className="sound-badge">[ DUBPLATE CATALOGUE // {signatureBpm || 164} BPM ACETATE ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
                 <span className="text-amber-600 dark:text-amber-400 font-bold">HISTORIC PRESSINGS & VIP DUBS</span>
               </div>
@@ -46,7 +47,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
 
             <div className="flex items-center gap-2 px-3.5 py-2 rounded sound-card text-xs font-industrial text-neutral-900 dark:text-white font-black uppercase tracking-wider shrink-0 shadow-sm self-start md:self-auto">
               <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
-              <span>160 — 172 BPM JUNGLE CLOCK</span>
+              <span>{signatureBpm ? `${signatureBpm} BPM JUNGLE CLOCK` : '160 — 172 BPM JUNGLE CLOCK'}</span>
             </div>
           </div>
         </ScrollReveal>
