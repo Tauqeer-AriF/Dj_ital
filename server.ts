@@ -1011,6 +1011,17 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Full codebase export archive (.zip)
+app.get('/api/export-codebase', (_req, res) => {
+  const zipPath = path.resolve(__dirname, 'public', 'djital_project_full_source.zip');
+  if (fs.existsSync(zipPath)) {
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="djital-sound-system-source.zip"');
+    return res.sendFile(zipPath);
+  }
+  return res.status(404).json({ error: 'Codebase archive not found' });
+});
+
 // ----------------------------------------------------
 // Vite Dev Server / Static Production Server
 // ----------------------------------------------------
