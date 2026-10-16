@@ -345,8 +345,73 @@ function ensureDatabaseSeeded(): void {
   }
 }
 
-// Run initial seed check on startup
+// Ensure uploaded video and media files persist across code rebuilds, container restarts & volume mounts
+function syncUploadDirectories(): void {
+  try {
+    const storage = getStorageDetails();
+    const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
+    const persistUploadDir = path.join(storage.resolvedDataDir, 'uploads');
+    const localDataUploadDir = path.resolve(LOCAL_DATA_DIR, 'uploads');
+
+    const dirsToSync = [publicUploadDir, persistUploadDir, localDataUploadDir];
+    const categories = ['videos', 'images', 'audio'];
+
+    for (const base of dirsToSync) {
+      for (const cat of categories) {
+        const catDir = path.join(base, cat);
+        if (!fs.existsSync(catDir)) {
+          fs.mkdirSync(catDir, { recursive: true });
+        }
+      }
+    }
+
+    const syncDirs = (src: string, dest: string) => {
+      if (!fs.existsSync(src)) return;
+      for (const cat of categories) {
+        const srcCat = path.join(src, cat);
+        const destCat = path.join(dest, cat);
+        if (!fs.existsSync(srcCat)) continue;
+        if (!fs.existsSync(destCat)) fs.mkdirSync(destCat, { recursive: true });
+
+        const files = fs.readdirSync(srcCat);
+        for (const file of files) {
+          if (file.startsWith('.')) continue;
+          const srcFile = path.join(srcCat, file);
+          const destFile = path.join(destCat, file);
+          try {
+            if (!fs.existsSync(destFile)) {
+              fs.copyFileSync(srcFile, destFile);
+              console.log(`[Storage Sync] Restored uploaded asset to ${destFile}`);
+            } else {
+              const srcStat = fs.statSync(srcFile);
+              const destStat = fs.statSync(destFile);
+              if (srcStat.size > 0 && (destStat.size === 0 || (srcStat.size !== destStat.size && srcStat.mtimeMs > destStat.mtimeMs))) {
+                fs.copyFileSync(srcFile, destFile);
+              }
+            }
+          } catch (e: any) {
+            console.warn(`[Storage Sync] Warning syncing ${srcFile} -> ${destFile}:`, e.message);
+          }
+        }
+      }
+    };
+
+    // 1. Restore persistent storage uploads into public directory
+    syncDirs(persistUploadDir, publicUploadDir);
+    // 2. Restore local data uploads into public directory
+    syncDirs(localDataUploadDir, publicUploadDir);
+    // 3. Backup public uploads to persistent storage
+    syncDirs(publicUploadDir, persistUploadDir);
+    // 4. Backup public uploads to local data directory
+    syncDirs(publicUploadDir, localDataUploadDir);
+  } catch (err: any) {
+    console.warn('[Storage Sync] Warning during upload synchronization:', err.message);
+  }
+}
+
+// Run initial seed and upload sync on startup
 ensureDatabaseSeeded();
+syncUploadDirectories();
 
 // Support large payloads for base64 SQLite snapshots, audio stems & short video clips
 app.use(express.json({ limit: '100mb' }));
@@ -379,6 +444,60 @@ app.get('/sitemap.xml', (_req, res) => {
   } else {
     res.status(404).end();
   }
+});
+
+// Dedicated streaming endpoint for uploaded media with HTTP 206 Range support and multi-path fallback
+app.get('/uploads/:category/:filename', (req, res) => {
+  const { category, filename } = req.params;
+  const safeCategory = ['videos', 'images', 'audio'].includes(category) ? category : 'videos';
+  const safeFilename = path.basename(filename);
+
+  const storage = getStorageDetails();
+  const candidatePaths = [
+    path.resolve(__dirname, 'public', 'uploads', safeCategory, safeFilename),
+    path.join(storage.resolvedDataDir, 'uploads', safeCategory, safeFilename),
+    path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory, safeFilename),
+    path.resolve(PROTECTED_SEED_DIR, 'uploads', safeCategory, safeFilename),
+  ];
+
+  let foundPath: string | null = null;
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      foundPath = p;
+      break;
+    }
+  }
+
+  if (!foundPath) {
+    // CRITICAL: Return 404 immediately!
+    // Never fall through to SPA fallback or Vite, which would send index.html (causing corrupted video errors)
+    return res.status(404).json({ error: `Uploaded asset ${safeFilename} not found` });
+  }
+
+  const ext = path.extname(safeFilename).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.webm': 'video/webm',
+    '.ogv': 'video/ogg',
+    '.m4v': 'video/mp4',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+  };
+
+  if (mimeMap[ext]) {
+    res.setHeader('Content-Type', mimeMap[ext]);
+  }
+
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+  return res.sendFile(foundPath);
 });
 
 // Serve static public folder (images, wasm, etc.)
@@ -908,21 +1027,23 @@ app.post('/api/upload-media', (req, res) => {
     }
 
     const safeCategory = ['videos', 'images', 'audio'].includes(category) ? category : 'videos';
-    const uploadDir = path.resolve(__dirname, 'public', 'uploads', safeCategory);
-    fs.mkdirSync(uploadDir, { recursive: true });
 
-    // Extract base64 payload & determine file extension
-    const matches = dataUrl.match(/^data:([A-Za-z-+\/0-9]+);base64,(.+)$/);
+    // Robust extraction of base64 payload without fragile regex
     let buffer: Buffer;
     let ext = 'mp4';
 
-    if (matches && matches.length === 3) {
-      const mime = matches[1].toLowerCase();
-      buffer = Buffer.from(matches[2], 'base64');
+    const base64Marker = ';base64,';
+    const markerIdx = dataUrl.indexOf(base64Marker);
+
+    if (markerIdx !== -1 && dataUrl.startsWith('data:')) {
+      const mime = dataUrl.substring(5, markerIdx).toLowerCase();
+      const rawBase64 = dataUrl.substring(markerIdx + base64Marker.length);
+      buffer = Buffer.from(rawBase64, 'base64');
+
       if (mime.includes('quicktime') || mime.includes('mov')) ext = 'mov';
       else if (mime.includes('webm')) ext = 'webm';
       else if (mime.includes('mp4') || mime.includes('m4v')) ext = 'mp4';
-      else if (mime.includes('ogg')) ext = 'ogg';
+      else if (mime.includes('ogg') || mime.includes('ogv')) ext = 'ogv';
       else if (mime.includes('jpeg') || mime.includes('jpg')) ext = 'jpg';
       else if (mime.includes('png')) ext = 'png';
       else if (mime.includes('webp')) ext = 'webp';
@@ -936,24 +1057,27 @@ app.post('/api/upload-media', (req, res) => {
     const baseName = originalName.replace(/\.[^/.]+$/, '');
     const cleanExt = path.extname(originalName).replace('.', '') || ext;
     const finalFilename = `${baseName}_${Date.now()}.${cleanExt}`;
-    const filePath = path.join(uploadDir, finalFilename);
 
-    fs.writeFileSync(filePath, buffer);
+    // Target destinations to guarantee media survives code rebuilds & volume changes
+    const storage = getStorageDetails();
+    const destDirs = [
+      path.resolve(__dirname, 'public', 'uploads', safeCategory),
+      path.join(storage.resolvedDataDir, 'uploads', safeCategory),
+      path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory),
+    ];
+
+    for (const dir of destDirs) {
+      try {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const filePath = path.join(dir, finalFilename);
+        fs.writeFileSync(filePath, buffer);
+      } catch (err: any) {
+        console.warn(`[Upload] Notice: Could not write to ${dir}:`, err.message);
+      }
+    }
 
     const publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
-    console.log(`[Upload] Saved media clip to ${filePath} (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
-
-    // If persistent storage is configured (Railway volume), mirror to persistent volume
-    try {
-      const storage = getStorageDetails();
-      if (storage.isPersistent) {
-        const persistUploadDir = path.join(storage.resolvedDataDir, 'uploads', safeCategory);
-        fs.mkdirSync(persistUploadDir, { recursive: true });
-        fs.copyFileSync(filePath, path.join(persistUploadDir, finalFilename));
-      }
-    } catch (err: any) {
-      console.warn('[Upload] Notice: Could not mirror to persistent volume:', err.message);
-    }
+    console.log(`[Upload] Saved media clip to all storage targets (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
 
     return res.json({
       success: true,
@@ -965,6 +1089,48 @@ app.post('/api/upload-media', (req, res) => {
   } catch (error: any) {
     console.error('Error handling media upload:', error);
     return res.status(500).json({ error: error.message || 'Failed to upload media file' });
+  }
+});
+
+// Delete uploaded media file from disk across all storage targets
+app.post('/api/delete-media', (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid url parameter' });
+    }
+
+    const cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('/uploads/')) {
+      return res.json({ success: true, message: 'Non-uploaded asset skipped from disk deletion' });
+    }
+
+    const relativeSubPath = cleanUrl.replace(/^\/uploads\//, '');
+    const safeSubPath = path.normalize(relativeSubPath).replace(/^(\.\.[\/\\])+/, '');
+
+    const storage = getStorageDetails();
+    const targetDirs = [
+      path.resolve(__dirname, 'public', 'uploads'),
+      path.join(storage.resolvedDataDir, 'uploads'),
+      path.resolve(LOCAL_DATA_DIR, 'uploads'),
+    ];
+
+    for (const base of targetDirs) {
+      const filePath = path.resolve(base, safeSubPath);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`[Delete] Deleted media file from ${filePath}`);
+        } catch (unlinkErr: any) {
+          console.warn(`[Delete] Warning unlinking ${filePath}:`, unlinkErr.message);
+        }
+      }
+    }
+
+    return res.json({ success: true, deleted: safeSubPath });
+  } catch (error: any) {
+    console.error('Error handling media delete:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete media file' });
   }
 });
 

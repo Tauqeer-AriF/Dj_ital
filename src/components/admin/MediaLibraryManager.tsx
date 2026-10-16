@@ -47,6 +47,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 import { ImageInput } from './ImageInput';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { extractYouTubeEmbedUrl } from '../DocumentarySection';
 
 interface MediaLibraryManagerProps {
   onRefresh: () => void;
@@ -306,15 +307,19 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   // Delete item
   const handleConfirmDelete = async () => {
     if (deleteCandidateId === null) return;
+    const targetId = deleteCandidateId;
     try {
-      await deleteMediaLibraryItem(deleteCandidateId);
-      showSuccess('Media Item Deleted', 'Asset removed from library.');
       setDeleteCandidateId(null);
+      // Optimistically remove from state for immediate UI feedback
+      setItems((prev) => prev.filter((i) => i.id !== targetId));
+      await deleteMediaLibraryItem(targetId);
+      showSuccess('Media Item Deleted', 'Asset removed from library.');
       await loadLibrary();
       onRefresh();
     } catch (err: any) {
       console.error('Failed to delete media item:', err);
       showError('Failed to Delete Media', err?.message || 'A database error occurred.');
+      await loadLibrary();
     }
   };
 
@@ -828,20 +833,26 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                         </div>
                       ) : item.file_type === 'video' ? (
                         <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-                          <video
-                            src={item.url}
-                            preload="metadata"
-                            muted
-                            playsInline
-                            className="w-full h-full object-cover opacity-80 group-hover/thumb:opacity-100 transition-opacity"
-                          />
+                          {!(item.url.includes('youtube.com') || item.url.includes('youtu.be') || item.url.includes('vimeo.com')) ? (
+                            <video
+                              src={item.url}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover opacity-80 group-hover/thumb:opacity-100 transition-opacity"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-neutral-900 flex items-center justify-center text-rose-500/80">
+                              <Film className="w-8 h-8" />
+                            </div>
+                          )}
                           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                             <div className="w-10 h-10 rounded-full bg-black/80 border border-white/30 flex items-center justify-center text-amber-400 group-hover/thumb:scale-110 transition-transform shadow-lg">
                               <Play className="w-4 h-4 fill-current ml-0.5" />
                             </div>
                           </div>
                           <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/85 text-[9px] font-mono font-bold text-rose-400 border border-rose-500/30">
-                            VIDEO CLIP
+                            {item.url.includes('youtube') || item.url.includes('youtu.be') ? 'YOUTUBE' : 'VIDEO CLIP'}
                           </span>
                         </div>
                       ) : (
@@ -1191,14 +1202,26 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   className="max-h-[60vh] w-auto object-contain rounded shadow-2xl filter drop-shadow-lg"
                 />
               ) : previewItem.file_type === 'video' ? (
-                <div className="w-full max-w-3xl aspect-video rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl">
-                  <video
-                    src={previewItem.url}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
+                <div className="w-full max-w-3xl aspect-video rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl relative">
+                  {(previewItem.url.includes('youtube.com') || previewItem.url.includes('youtu.be') || previewItem.url.includes('vimeo.com')) ? (
+                    <iframe
+                      src={extractYouTubeEmbedUrl(previewItem.url)}
+                      title={previewItem.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      key={previewItem.url}
+                      src={previewItem.url}
+                      controls
+                      autoPlay
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-contain"
+                    />
+                  )}
                 </div>
               ) : previewItem.file_type === 'document' ? (
                 <div className="p-8 text-center space-y-4 max-w-md">

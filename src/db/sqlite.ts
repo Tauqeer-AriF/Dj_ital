@@ -633,8 +633,9 @@ export function saveDatabaseToStorage(db: Database, customTimestamp?: string) {
 async function loadSqlWasmBinary(): Promise<ArrayBuffer | undefined> {
   const sources = [
     '/sql-wasm.wasm',
-    'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm',
-    'https://unpkg.com/sql.js@1.12.0/dist/sql-wasm.wasm',
+    'https://cdn.jsdelivr.net/npm/sql.js@1.15.0/dist/sql-wasm.wasm',
+    'https://unpkg.com/sql.js@1.15.0/dist/sql-wasm.wasm',
+    'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.15.0/sql-wasm.wasm',
   ];
 
   for (const src of sources) {
@@ -989,6 +990,11 @@ function ensureSchemaMigrations(db: Database) {
         description TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS deleted_media_urls (
+        url TEXT PRIMARY KEY,
+        deleted_at TEXT NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS admin_auth (
@@ -1527,6 +1533,14 @@ function insertMediaIfNotExists(
   try {
     const normUrl = item.file_type === 'image' ? normalizeImageUrl(item.url) : item.url;
     if (!normUrl) return;
+
+    // Check if the user previously deleted this asset from the media library
+    db.run(`CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT)`);
+    const isDeleted = db.exec(`SELECT url FROM deleted_media_urls WHERE url = '${normUrl.replace(/'/g, "''")}'`);
+    if (isDeleted.length > 0 && isDeleted[0].values.length > 0) {
+      return; // Do not resurrect user-deleted media assets
+    }
+
     const exists = db.exec(`SELECT id FROM media_library WHERE url = '${normUrl.replace(/'/g, "''")}'`);
     if (exists.length === 0 || exists[0].values.length === 0) {
       const now = new Date().toISOString();
@@ -3025,7 +3039,6 @@ export async function resetAllSiteMedia(): Promise<void> {
 // Media Library Unified Management Methods
 export async function getMediaLibraryItems(): Promise<MediaLibraryItem[]> {
   const db = await getDatabase();
-  syncAppMediaToLibrary(db);
   const res = db.exec('SELECT * FROM media_library ORDER BY id DESC');
   if (res.length === 0) return [];
   const cols = res[0].columns;
@@ -3044,6 +3057,13 @@ export async function createMediaLibraryItem(
 ): Promise<number> {
   const db = await getDatabase();
   const now = new Date().toISOString();
+
+  // If this URL was previously deleted, unblock it since user is re-adding it
+  if (item.url) {
+    db.run(`CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT)`);
+    db.run('DELETE FROM deleted_media_urls WHERE url = ?', [item.url]);
+  }
+
   db.run(
     `INSERT INTO media_library (title, file_name, file_type, mime_type, url, source, size_text, category, description, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -3084,6 +3104,32 @@ export async function updateMediaLibraryItem(
 
 export async function deleteMediaLibraryItem(id: number): Promise<void> {
   const db = await getDatabase();
+
+  // 1. Get the URL of the item to be deleted
+  const query = db.exec('SELECT url FROM media_library WHERE id = ?', [id]);
+  const url = query.length > 0 && query[0].values.length > 0 ? String(query[0].values[0][0]) : null;
+
+  // 2. Record URL in deleted_media_urls so syncAppMediaToLibrary will never resurrect it
+  db.run(`CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT)`);
+  if (url) {
+    const now = new Date().toISOString();
+    db.run('INSERT OR REPLACE INTO deleted_media_urls (url, deleted_at) VALUES (?, ?)', [url, now]);
+
+    // 3. If file was an uploaded asset on server disk, delete physical file
+    if (url.startsWith('/uploads/')) {
+      try {
+        await fetch('/api/delete-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+      } catch (err) {
+        console.warn('Notice: Server delete-media failed:', err);
+      }
+    }
+  }
+
+  // 4. Remove from media_library table
   db.run('DELETE FROM media_library WHERE id = ?', [id]);
   saveDatabaseToStorage(db);
   notifyListeners();
@@ -3105,6 +3151,10 @@ export async function trackMediaUpload(item: {
     const now = new Date().toISOString();
     const normUrl = item.url;
     if (!normUrl) return;
+
+    // Unblock URL from deleted_media_urls if it was previously removed
+    db.run(`CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT)`);
+    db.run('DELETE FROM deleted_media_urls WHERE url = ?', [normUrl]);
 
     // Check if item already exists by URL
     const check = db.exec(`SELECT id FROM media_library WHERE url = ?`, [normUrl]);
