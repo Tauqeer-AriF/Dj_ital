@@ -13,6 +13,7 @@ import {
 import { AudioMixData, VideoData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../utils/imageOptimization';
+import { isVideoFile, extractYouTubeEmbedUrl } from './DocumentarySection';
 
 interface AudioMixesGalleryProps {
   mixes: AudioMixData[];
@@ -234,6 +235,8 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                       }
                       if (
                         clean.match(/\.(mp3|aac|ogg|wav|m4a)(\?.*)?$/i) ||
+                        clean.includes('/uploads/audio/') ||
+                        clean.startsWith('data:audio/') ||
                         clean.includes('radioca.st') ||
                         clean.endsWith('/;') ||
                         clean.includes('/api/audio-proxy')
@@ -477,18 +480,24 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
               </button>
             </div>
 
-            <div className="relative aspect-video bg-black">
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${
-                  activeVideo.video_url.includes('v=')
-                    ? activeVideo.video_url.split('v=')[1]?.split('&')[0]
-                    : 'dQw4w9WgXcQ'
-                }?autoplay=1&modestbranding=1&rel=0`}
-                title={activeVideo.title}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="relative aspect-video bg-black flex items-center justify-center">
+              {isVideoFile(activeVideo.video_url) ? (
+                <video
+                  src={activeVideo.video_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <iframe
+                  src={extractYouTubeEmbedUrl(activeVideo.video_url)}
+                  title={activeVideo.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
             </div>
           </div>
         </div>
