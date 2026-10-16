@@ -16,6 +16,7 @@ import {
   Filter,
   RotateCcw,
   Plus,
+  Play,
   X,
   Layers,
   AlertCircle,
@@ -141,7 +142,13 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
       const isImage = file.type.startsWith('image/');
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const isAudio = file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3') || file.name.toLowerCase().endsWith('.wav');
-      const isVideo = file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.mp4');
+      const isVideo =
+        file.type.startsWith('video/') ||
+        file.name.toLowerCase().endsWith('.mp4') ||
+        file.name.toLowerCase().endsWith('.mov') ||
+        file.name.toLowerCase().endsWith('.webm') ||
+        file.name.toLowerCase().endsWith('.m4v') ||
+        file.name.toLowerCase().endsWith('.ogv');
 
       let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'other';
       if (isImage) fileType = 'image';
@@ -151,7 +158,33 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
       else if (isVideo) fileType = 'video';
 
       let fileUrl = '';
-      if (isImage) {
+      if (isVideo) {
+        // Read file as base64 to send to backend upload API (prevents localStorage quota overflow)
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read video file'));
+          reader.readAsDataURL(file);
+        });
+
+        const uploadRes = await fetch('/api/upload-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name,
+            dataUrl: base64Data,
+            category: 'videos',
+          }),
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Server failed to store uploaded video file');
+        }
+
+        const uploadJson = await uploadRes.json();
+        fileUrl = uploadJson.url;
+      } else if (isImage) {
         // Optimize image
         fileUrl = await optimizeImageFile(file, 1600, 0.9);
       } else {
@@ -575,6 +608,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                     <option value="Event Flyers">Event Flyers</option>
                     <option value="Gallery Archives">Gallery Archives</option>
                     <option value="Press Photos">Press Photos</option>
+                    <option value="Video Clips">Video Clips & Documentaries</option>
                     <option value="Audio Broadcasts">Audio Broadcasts</option>
                   </select>
                 </div>
@@ -585,7 +619,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*"
+                    accept="image/*,video/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,.mp4,.mov,.webm,.m4v"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="media-center-file-input"
@@ -600,10 +634,10 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                       }`}
                     />
                     <span className="text-sm font-bold text-neutral-900 dark:text-white">
-                      {isUploading ? 'Encoding & storing file into database...' : 'Click to Browse or Drag Files Here'}
+                      {isUploading ? 'Uploading & saving media file...' : 'Click to Browse or Drag Files Here'}
                     </span>
                     <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 max-w-md">
-                      Supports images (PNG, SVG, JPG, WebP), documents (PDF, DOC, TXT), and audio. Automatically encoded & saved to persistent SQLite.
+                      Supports videos (MP4, MOV, WebM), images (PNG, SVG, JPG, WebP), documents (PDF, DOC), and audio. Videos and large media files are automatically saved to persistent storage.
                     </span>
                   </label>
                 </div>
@@ -792,13 +826,31 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                             AUDIO TRACK / DUB
                           </span>
                         </div>
+                      ) : item.file_type === 'video' ? (
+                        <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+                          <video
+                            src={item.url}
+                            preload="metadata"
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover opacity-80 group-hover/thumb:opacity-100 transition-opacity"
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-black/80 border border-white/30 flex items-center justify-center text-amber-400 group-hover/thumb:scale-110 transition-transform shadow-lg">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
+                          </div>
+                          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/85 text-[9px] font-mono font-bold text-rose-400 border border-rose-500/30">
+                            VIDEO CLIP
+                          </span>
+                        </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center p-4 text-center space-y-2">
-                          <div className="w-12 h-12 rounded bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                            <Film className="w-6 h-6" />
+                          <div className="w-12 h-12 rounded bg-neutral-500/15 border border-neutral-500/30 flex items-center justify-center text-neutral-400">
+                            <File className="w-6 h-6" />
                           </div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300 font-bold">
-                            VIDEO MEDIA
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-300 font-bold">
+                            MEDIA FILE
                           </span>
                         </div>
                       )}
@@ -1138,6 +1190,16 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   alt={previewItem.title}
                   className="max-h-[60vh] w-auto object-contain rounded shadow-2xl filter drop-shadow-lg"
                 />
+              ) : previewItem.file_type === 'video' ? (
+                <div className="w-full max-w-3xl aspect-video rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl">
+                  <video
+                    src={previewItem.url}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                </div>
               ) : previewItem.file_type === 'document' ? (
                 <div className="p-8 text-center space-y-4 max-w-md">
                   <div className="w-20 h-20 rounded bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto shadow-inner">

@@ -11,6 +11,8 @@ import {
   Filter,
   Eye,
   AlertCircle,
+  Play,
+  Film,
 } from 'lucide-react';
 import { MediaLibraryItem, getMediaLibraryItems, createMediaLibraryItem } from '../../db/sqlite';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
@@ -113,8 +115,44 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       setUploadError(null);
 
       const isImage = file.type.startsWith('image/');
+      const isVideo =
+        file.type.startsWith('video/') ||
+        file.name.toLowerCase().endsWith('.mp4') ||
+        file.name.toLowerCase().endsWith('.mov') ||
+        file.name.toLowerCase().endsWith('.webm');
+
+      let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'other';
+      if (isImage) fileType = 'image';
+      else if (isVideo) fileType = 'video';
+      else fileType = 'document';
+
       let fileUrl = '';
-      if (isImage) {
+      if (isVideo) {
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read video file'));
+          reader.readAsDataURL(file);
+        });
+
+        const uploadRes = await fetch('/api/upload-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name,
+            dataUrl: base64Data,
+            category: 'videos',
+          }),
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Server failed to store uploaded video');
+        }
+
+        const uploadJson = await uploadRes.json();
+        fileUrl = uploadJson.url;
+      } else if (isImage) {
         fileUrl = await optimizeImageFile(file, 1600, 0.9);
       } else {
         fileUrl = await new Promise<string>((resolve, reject) => {
@@ -129,15 +167,17 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
       const titleClean = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
 
+      const categoryName = isImage ? 'Uploaded Images' : isVideo ? 'Video Clips' : 'Documents';
+
       const newId = await createMediaLibraryItem({
         title: titleClean,
         file_name: file.name,
-        file_type: isImage ? 'image' : 'document',
-        mime_type: file.type || 'image/jpeg',
+        file_type: fileType,
+        mime_type: file.type || (isVideo ? 'video/mp4' : 'application/octet-stream'),
         url: fileUrl,
         source: 'Quick Picker Upload',
         size_text: sizeText,
-        category: isImage ? 'Uploaded Images' : 'Documents',
+        category: categoryName,
         description: `Direct upload into picker modal on ${new Date().toLocaleDateString()}`,
       });
 
@@ -146,12 +186,12 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         id: newId,
         title: titleClean,
         file_name: file.name,
-        file_type: isImage ? 'image' : 'document',
-        mime_type: file.type || 'image/jpeg',
+        file_type: fileType,
+        mime_type: file.type || (isVideo ? 'video/mp4' : 'application/octet-stream'),
         url: fileUrl,
         source: 'Quick Picker Upload',
         size_text: sizeText,
-        category: isImage ? 'Uploaded Images' : 'Documents',
+        category: categoryName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
@@ -334,6 +374,21 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                                 (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
                               }}
                             />
+                          ) : item.file_type === 'video' ? (
+                            <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+                              <video
+                                src={item.url}
+                                preload="metadata"
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover opacity-80"
+                              />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-black/80 border border-white/30 flex items-center justify-center text-amber-400">
+                                  <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center p-3 text-center space-y-1">
                               <FileText className="w-8 h-8 text-cyan-400" />

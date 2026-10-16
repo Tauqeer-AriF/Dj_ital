@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, X, Maximize2, MapPin, ChevronDown, Filter, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Image as ImageIcon, X, Maximize2, MapPin, ChevronDown, Filter, Check, Play, Film, Video } from 'lucide-react';
 import { GalleryData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../utils/imageOptimization';
+import { isVideoFile } from './DocumentarySection';
 
 interface GallerySectionProps {
   gallery: GalleryData[];
@@ -14,7 +15,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const categories = ['All', 'Vital Fest', 'Kool FM Archive', 'V&A Museum', 'Studio'];
+  const categories = useMemo(() => {
+    const defaultCats = ['All', 'Vital Fest', 'Kool FM Archive', 'V&A Museum', 'Studio', 'Video Clips'];
+    const itemCats = Array.from(new Set(gallery.map((i) => i.category).filter(Boolean)));
+    return Array.from(new Set([...defaultCats, ...itemCats]));
+  }, [gallery]);
 
   const filteredGallery = gallery.filter((item) => {
     if (selectedCategory === 'All') return true;
@@ -197,18 +202,37 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                   className="group relative rounded sound-card overflow-hidden bg-neutral-950 shadow-md cursor-pointer hover:shadow-2xl hover:border-amber-400/60 dark:hover:border-amber-400/60 transition-all duration-300 hover:-translate-y-1 h-full"
                 >
                   <div className="aspect-[4/3] w-full overflow-hidden relative">
-                    <img
-                      src={imgUrl}
-                      alt={item.title}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
-                      }}
-                      className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 filter brightness-95 group-hover:brightness-105"
-                      loading="lazy"
-                    />
+                    {isVideoFile(item.image_url) ? (
+                      <div className="w-full h-full relative bg-neutral-950 flex items-center justify-center">
+                        <video
+                          src={item.image_url}
+                          muted
+                          playsInline
+                          loop
+                          preload="metadata"
+                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+                        />
+                        {/* Play button overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-12 h-12 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                            <Play className="w-5 h-5 fill-current ml-0.5" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={imgUrl}
+                        alt={item.title}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
+                        }}
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 filter brightness-95 group-hover:brightness-105"
+                        loading="lazy"
+                      />
+                    )}
 
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity pointer-events-none" />
 
                     {/* Hover focus frame indicator */}
                     <div className="absolute inset-2 rounded border border-amber-400/0 group-hover:border-amber-400/40 transition-colors pointer-events-none" />
@@ -219,8 +243,9 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                     </div>
 
                     {/* Metadata Badge */}
-                    <div className="absolute top-4 left-4 sound-tag bg-black/80">
-                      {item.category}
+                    <div className="absolute top-4 left-4 sound-tag bg-black/80 flex items-center gap-1.5">
+                      {isVideoFile(item.image_url) && <Film className="w-3.5 h-3.5 text-amber-400" />}
+                      <span>{item.category}</span>
                     </div>
 
                     {/* Bottom Caption */}
@@ -274,14 +299,24 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
             </button>
 
             <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded overflow-hidden bg-black flex items-center justify-center border border-white/10">
-              <img
-                src={normalizeImageUrl(lightboxItem.image_url)}
-                alt={lightboxItem.title}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
-                }}
-                className="max-h-full max-w-full object-contain"
-              />
+              {isVideoFile(lightboxItem.image_url) ? (
+                <video
+                  src={lightboxItem.image_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <img
+                  src={normalizeImageUrl(lightboxItem.image_url)}
+                  alt={lightboxItem.title}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
+                  }}
+                  className="max-h-full max-w-full object-contain"
+                />
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white pt-2 border-t border-white/10">

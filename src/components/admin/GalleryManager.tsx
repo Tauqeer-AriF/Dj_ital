@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
-import { GalleryData, createGalleryItem, updateGalleryItem, deleteGalleryItem } from '../../db/sqlite';
+import React, { useState, useRef } from 'react';
+import {
+  Plus,
+  X,
+  Upload,
+  FolderArchive,
+  Film,
+  Image as ImageIcon,
+  Play,
+  Check,
+  Trash2,
+  Edit2,
+  Video,
+} from 'lucide-react';
+import {
+  GalleryData,
+  createGalleryItem,
+  updateGalleryItem,
+  deleteGalleryItem,
+  createMediaLibraryItem,
+} from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
-import { ImageInput } from './ImageInput';
-import { FALLBACK_IMAGE, normalizeImageUrl } from '../../utils/imageOptimization';
+import { MediaPickerModal } from './MediaPickerModal';
+import { FALLBACK_IMAGE, normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { isVideoFile } from '../DocumentarySection';
 import { useToast } from '../../context/ToastContext';
 
 interface GalleryManagerProps {
@@ -16,6 +35,11 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+
+  // Video/Media upload & picker states
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const fileUploadRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -55,15 +79,112 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
     setIsModalOpen(true);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingMedia(true);
+      const isVideo =
+        file.type.startsWith('video/') ||
+        file.name.toLowerCase().endsWith('.mp4') ||
+        file.name.toLowerCase().endsWith('.mov') ||
+        file.name.toLowerCase().endsWith('.webm') ||
+        file.name.toLowerCase().endsWith('.m4v');
+
+      let finalUrl = '';
+      const sizeKb = Math.round(file.size / 1024);
+      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+      if (isVideo) {
+        // Upload video file via backend storage API
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read video file'));
+          reader.readAsDataURL(file);
+        });
+
+        const uploadRes = await fetch('/api/upload-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name,
+            dataUrl: base64Data,
+            category: 'videos',
+          }),
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Server failed to save uploaded video file');
+        }
+
+        const uploadJson = await uploadRes.json();
+        finalUrl = uploadJson.url;
+
+        // Auto-register in SQLite Media Library
+        await createMediaLibraryItem({
+          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          file_name: file.name,
+          file_type: 'video',
+          mime_type: file.type || 'video/mp4',
+          url: finalUrl,
+          source: 'Gallery Manager Upload',
+          size_text: sizeText,
+          category: 'Video Clips',
+          description: `Uploaded for visual gallery on ${new Date().toLocaleDateString()}`,
+        });
+
+        setFormData((prev) => ({
+          ...prev,
+          image_url: finalUrl,
+          category: prev.category === 'Vital Fest' ? 'Video Clips & Visuals' : prev.category,
+        }));
+
+        showSuccess('Video Clip Uploaded', `"${file.name}" saved and assigned to this gallery item.`);
+      } else {
+        // Optimize image
+        finalUrl = await optimizeImageFile(file, 1600, 0.9);
+
+        // Auto-register in SQLite Media Library
+        await createMediaLibraryItem({
+          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          file_name: file.name,
+          file_type: 'image',
+          mime_type: file.type || 'image/jpeg',
+          url: finalUrl,
+          source: 'Gallery Manager Upload',
+          size_text: sizeText,
+          category: 'Gallery Archives',
+          description: `Uploaded for visual gallery on ${new Date().toLocaleDateString()}`,
+        });
+
+        setFormData((prev) => ({
+          ...prev,
+          image_url: finalUrl,
+        }));
+
+        showSuccess('Photo Uploaded', `"${file.name}" processed and assigned.`);
+      }
+    } catch (err: any) {
+      console.error('Failed to upload file for gallery:', err);
+      showError('Upload Failed', err?.message || 'Could not upload media file.');
+    } finally {
+      setIsUploadingMedia(false);
+      if (fileUploadRef.current) fileUploadRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingItem) {
         await updateGalleryItem(editingItem.id, formData);
-        showSuccess('Gallery Item Updated', `"${formData.title || 'Photo'}" was saved successfully.`);
+        showSuccess('Gallery Item Updated', `"${formData.title || 'Archive Item'}" was saved successfully.`);
       } else {
         await createGalleryItem(formData);
-        showSuccess('New Photo Added', `"${formData.title || 'New image'}" was added to the gallery.`);
+        showSuccess('New Record Added', `"${formData.title || 'New media'}" was added to the gallery.`);
       }
       setIsModalOpen(false);
       onRefresh();
@@ -77,7 +198,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
     if (deleteCandidateId !== null) {
       try {
         await deleteGalleryItem(deleteCandidateId);
-        showSuccess('Item Deleted', 'The photo was removed from the gallery.');
+        showSuccess('Item Deleted', 'The item was removed from the gallery.');
         setDeleteCandidateId(null);
         onRefresh();
       } catch (err: any) {
@@ -96,9 +217,11 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">Visual Gallery Manager</h3>
+          <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">
+            Visual & Video Gallery Manager
+          </h3>
           <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-            Manage photo items, archive artifacts, and festival moments in the public gallery.
+            Manage photos, archival videos, rave moments, and festival clips in the public gallery.
           </p>
         </div>
         <button
@@ -106,7 +229,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer shrink-0 shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Photo Record</span>
+          <span>Add Photo or Video Record</span>
         </button>
       </div>
 
@@ -114,22 +237,42 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {gallery.map((item) => {
           const imgUrl = normalizeImageUrl(item.image_url);
+          const isItemVideo = isVideoFile(item.image_url);
+
           return (
             <div
               key={item.id}
               className="rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 overflow-hidden flex flex-col justify-between"
             >
               <div className="relative aspect-[16/10] bg-neutral-950 overflow-hidden">
-                <img
-                  src={imgUrl}
-                  alt={item.title}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
-                  }}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-amber-400">
-                  {item.category}
+                {isItemVideo ? (
+                  <div className="w-full h-full relative bg-neutral-950 flex items-center justify-center">
+                    <video
+                      src={item.image_url}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-10 h-10 rounded-full bg-amber-400 text-neutral-950 flex items-center justify-center shadow-lg">
+                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={imgUrl}
+                    alt={item.title}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+                <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-md text-[10px] font-mono font-bold text-amber-400 flex items-center gap-1">
+                  {isItemVideo && <Film className="w-3 h-3 text-amber-400" />}
+                  <span>{item.category}</span>
                 </div>
               </div>
 
@@ -138,7 +281,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   {item.title}
                 </h4>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
-                  {item.caption}
+                  {item.caption || 'No caption provided.'}
                 </p>
                 <div className="text-[11px] font-mono text-neutral-500">
                   {item.location} · {item.year}
@@ -174,10 +317,10 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
             <div className="p-6 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-display font-bold text-neutral-950 dark:text-white">
-                  {editingItem ? 'Edit Visual Archive Item' : 'Add New Photo Record'}
+                  {editingItem ? 'Edit Visual Archive / Video Item' : 'Add New Photo or Video Record'}
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Update image asset, venue details, and description.
+                  Upload video clips or photos, select from Media Library, and specify venue details.
                 </p>
               </div>
               <button
@@ -190,26 +333,103 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Photo Title</label>
+                <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                  Record Title *
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. Vital Fest Sound Clash Crowd"
+                  placeholder="e.g. Vital Fest Sound Clash Crowd (or 1994 Dubplate Reel)"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
               </div>
 
-              {/* Advanced Image Input with Upload, URL and Preset selector */}
-              <ImageInput
-                value={formData.image_url}
-                onChange={(newUrl) => setFormData({ ...formData, image_url: newUrl })}
-                defaultUrl="/images/vital_fest_crowd_1790112387611.jpg"
-                label="Photo Image File / Source"
-                helperText="Upload custom picture from your device or select from archive presets."
-                aspectRatio="landscape"
-              />
+              {/* Media Asset Picker & Upload Box (Supports Photos and Videos) */}
+              <div className="space-y-2.5 p-3.5 rounded sound-cabinet border border-neutral-300 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-950/60">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="text-xs font-bold text-neutral-800 dark:text-white flex items-center gap-1.5">
+                    {isVideoFile(formData.image_url) ? (
+                      <Film className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-amber-500" />
+                    )}
+                    <span>Media Asset (Photo or Video Clip) *</span>
+                  </label>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setIsMediaPickerOpen(true)}
+                      className="px-2.5 py-1 rounded bg-amber-400/20 hover:bg-amber-400 hover:text-neutral-950 text-amber-600 dark:text-amber-300 dark:hover:text-neutral-950 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-amber-400/30"
+                      title="Select media from Media Library"
+                    >
+                      <FolderArchive className="w-3.5 h-3.5" />
+                      <span>Choose from Media Library</span>
+                    </button>
+
+                    <input
+                      ref={fileUploadRef}
+                      type="file"
+                      accept="image/*,video/mp4,video/webm,video/quicktime,video/m4v,.mp4,.mov,.webm,.m4v"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="gallery-file-upload-input"
+                    />
+                    <label
+                      htmlFor="gallery-file-upload-input"
+                      className="px-2.5 py-1 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-neutral-300 dark:border-white/10"
+                      title="Upload photo or video from computer"
+                    >
+                      <Upload className={`w-3.5 h-3.5 ${isUploadingMedia ? 'animate-bounce text-amber-500' : ''}`} />
+                      <span>{isUploadingMedia ? 'Uploading...' : 'Upload File (Photo or Video)'}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="/images/... or /uploads/videos/... or URL"
+                    className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-white/10 bg-white dark:bg-neutral-900 text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-neutral-500 flex-wrap gap-1">
+                  <span>Supports photos (JPG, PNG, WebP) and video clips (MP4, MOV, WebM up to 100MB).</span>
+                  {isVideoFile(formData.image_url) && (
+                    <span className="text-amber-500 font-bold flex items-center gap-1">
+                      <Film className="w-3 h-3" />
+                      Video Clip Detected (Will play in lightbox)
+                    </span>
+                  )}
+                </div>
+
+                {/* Media Preview (Video or Image) */}
+                <div className="mt-2 rounded overflow-hidden border border-neutral-200 dark:border-white/10 bg-black aspect-video max-h-48 relative flex items-center justify-center">
+                  {isVideoFile(formData.image_url) ? (
+                    <video
+                      src={formData.image_url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={normalizeImageUrl(formData.image_url)}
+                      alt="Preview"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE;
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -224,6 +444,8 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                     <option value="V&A Museum">V&A Museum</option>
                     <option value="Studio">Studio</option>
                     <option value="Live Performance">Live Performance</option>
+                    <option value="Video Clips & Visuals">Video Clips & Visuals</option>
+                    <option value="Documentary Shorts">Documentary Shorts</option>
                   </select>
                 </div>
 
@@ -284,7 +506,8 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
+                  disabled={isUploadingMedia}
+                  className="px-5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {editingItem ? 'Save Changes' : 'Create Record'}
                 </button>
@@ -297,12 +520,32 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={deleteCandidateId !== null}
-        title="Delete Photo Record"
-        message="Are you sure you want to delete this photo from the archive? This will update the local SQLite database."
+        title="Delete Record"
+        message="Are you sure you want to delete this record from the archive? This will update the local SQLite database."
         confirmLabel="Delete"
         isDestructive
         onConfirm={confirmDelete}
         onCancel={() => setDeleteCandidateId(null)}
+      />
+
+      {/* Media Picker Modal for selecting photos or videos from unified library */}
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        allowedType="all"
+        title="Select Media for Gallery (Photo or Video)"
+        onSelect={(selectedUrl, item) => {
+          setFormData((prev) => ({
+            ...prev,
+            image_url: selectedUrl,
+            category:
+              item?.file_type === 'video' && prev.category === 'Vital Fest'
+                ? 'Video Clips & Visuals'
+                : prev.category,
+          }));
+          setIsMediaPickerOpen(false);
+          showSuccess('Media Selected', 'Gallery item media asset updated.');
+        }}
       />
     </div>
   );

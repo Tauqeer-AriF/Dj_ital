@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Video,
   Plus,
@@ -22,6 +22,8 @@ import {
   X,
   Youtube,
   Search,
+  Upload,
+  FolderArchive,
 } from 'lucide-react';
 import {
   DocumentaryData,
@@ -36,11 +38,13 @@ import {
   updateDocumentary,
   deleteDocumentary,
   resetDocumentaries,
+  createMediaLibraryItem,
 } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
+import { MediaPickerModal } from './MediaPickerModal';
 import { useToast } from '../../context/ToastContext';
-import { DocumentarySection, extractYouTubeEmbedUrl } from '../DocumentarySection';
+import { DocumentarySection, extractYouTubeEmbedUrl, isVideoFile } from '../DocumentarySection';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../../utils/imageOptimization';
 
 interface DocumentaryManagerProps {
@@ -83,6 +87,71 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
 
   // Video preview player modal
   const [testVideoUrl, setTestVideoUrl] = useState<{ title: string; url: string } | null>(null);
+
+  // Video picker and direct upload states for episode editor
+  const [isVideoPickerOpen, setIsVideoPickerOpen] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Direct video upload handler (stores to persistent disk & records in SQLite Media Library)
+  const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingVideo(true);
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read video file'));
+        reader.readAsDataURL(file);
+      });
+
+      const uploadRes = await fetch('/api/upload-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          dataUrl: base64Data,
+          category: 'videos',
+        }),
+      });
+
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'Server failed to store uploaded video');
+      }
+
+      const uploadJson = await uploadRes.json();
+      const videoUrl = uploadJson.url;
+
+      setEpisodeForm((prev) => ({ ...prev, youtube_url: videoUrl }));
+
+      const sizeKb = Math.round(file.size / 1024);
+      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+      // Track in Media Library
+      await createMediaLibraryItem({
+        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+        file_name: file.name,
+        file_type: 'video',
+        mime_type: file.type || 'video/mp4',
+        url: videoUrl,
+        source: 'Documentary Series Upload',
+        size_text: sizeText,
+        category: 'Documentary Series',
+        description: `Uploaded for Documentary Series episode on ${new Date().toLocaleDateString()}`,
+      });
+
+      showSuccess('Video Uploaded', `"${file.name}" saved and assigned to this episode.`);
+    } catch (err: any) {
+      console.error('Failed to upload video for episode:', err);
+      showError('Upload Failed', err?.message || 'Could not upload video clip.');
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+    }
+  };
 
   // Episode form state
   const [episodeForm, setEpisodeForm] = useState({
@@ -546,8 +615,17 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
                         )}
 
                         <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-1.5 truncate">
-                          <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                          <span className="truncate">{ep.youtube_url}</span>
+                          {isVideoFile(ep.youtube_url) ? (
+                            <>
+                              <Film className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span className="truncate text-amber-500/90 font-bold">[Uploaded Video] {ep.youtube_url}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                              <span className="truncate">{ep.youtube_url}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -979,24 +1057,75 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
                 </div>
               </div>
 
-              {/* YouTube Video URL or ID */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                  YouTube Video Link or Video ID *
-                </label>
+              {/* Video Media Source: Direct Upload, Media Library, or YouTube */}
+              <div className="space-y-2.5 p-3.5 rounded sound-cabinet border border-neutral-300 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/40">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="block text-xs font-bold text-neutral-800 dark:text-white flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-amber-500" />
+                    <span>Video Media Source (Direct Upload, Media Library, or YouTube) *</span>
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setIsVideoPickerOpen(true)}
+                      className="px-2.5 py-1 rounded bg-amber-400/20 hover:bg-amber-400 hover:text-neutral-950 text-amber-600 dark:text-amber-300 dark:hover:text-neutral-950 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-amber-400/30"
+                      title="Select video from Media Library"
+                    >
+                      <FolderArchive className="w-3.5 h-3.5" />
+                      <span>Choose from Media Library</span>
+                    </button>
+
+                    <input
+                      ref={videoFileInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,video/m4v,.mp4,.mov,.webm,.m4v"
+                      onChange={handleDirectVideoUpload}
+                      className="hidden"
+                      id="doc-episode-video-upload"
+                    />
+                    <label
+                      htmlFor="doc-episode-video-upload"
+                      className="px-2.5 py-1 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-neutral-300 dark:border-white/10"
+                      title="Upload video from your computer"
+                    >
+                      <Upload className={`w-3.5 h-3.5 ${isUploadingVideo ? 'animate-bounce text-amber-500' : ''}`} />
+                      <span>{isUploadingVideo ? 'Uploading Clip...' : 'Upload Video File'}</span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="relative">
                   <input
                     type="text"
                     required
                     value={episodeForm.youtube_url}
                     onChange={(e) => setEpisodeForm((prev) => ({ ...prev, youtube_url: e.target.value }))}
-                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/... or video ID"
-                    className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900 text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:border-amber-400"
+                    placeholder="/uploads/videos/... or https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                    className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-white/10 bg-white dark:bg-neutral-950 text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
-                <p className="text-[10px] text-neutral-500">
-                  Supports full YouTube URLs (<code className="font-mono">youtube.com/watch?v=xyz</code>), short links (<code className="font-mono">youtu.be/xyz</code>), or 11-char IDs.
-                </p>
+
+                <div className="flex items-center justify-between text-[10px] text-neutral-500 flex-wrap gap-1">
+                  <span>Supports uploaded video clips (MP4, MOV, WebM up to 100MB) or YouTube links.</span>
+                  {isVideoFile(episodeForm.youtube_url) && (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      Direct Video File Linked
+                    </span>
+                  )}
+                </div>
+
+                {/* Live Video Preview if it is a video file */}
+                {isVideoFile(episodeForm.youtube_url) && (
+                  <div className="mt-2 rounded overflow-hidden border border-amber-500/30 bg-black aspect-video max-h-52 relative flex items-center justify-center">
+                    <video
+                      src={episodeForm.youtube_url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Thumbnail Image with ImageInput */}
@@ -1105,7 +1234,11 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
           <div className="relative w-full max-w-4xl rounded sound-cabinet bg-neutral-950 border border-white/20 overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 text-white">
               <div className="flex items-center gap-2">
-                <Youtube className="w-5 h-5 text-red-500" />
+                {isVideoFile(testVideoUrl.url) ? (
+                  <Film className="w-5 h-5 text-amber-400" />
+                ) : (
+                  <Youtube className="w-5 h-5 text-red-500" />
+                )}
                 <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-white">
                   Preview: {testVideoUrl.title}
                 </span>
@@ -1118,14 +1251,24 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
               </button>
             </div>
 
-            <div className="relative aspect-video bg-black">
-              <iframe
-                src={extractYouTubeEmbedUrl(testVideoUrl.url)}
-                title={testVideoUrl.title}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="relative aspect-video bg-black flex items-center justify-center">
+              {isVideoFile(testVideoUrl.url) ? (
+                <video
+                  src={testVideoUrl.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <iframe
+                  src={extractYouTubeEmbedUrl(testVideoUrl.url)}
+                  title={testVideoUrl.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1162,6 +1305,19 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
         isDestructive={false}
         onConfirm={handleResetSettings}
         onCancel={() => setShowResetSettingsModal(false)}
+      />
+
+      {/* Media Picker Modal for selecting uploaded videos from Media Library */}
+      <MediaPickerModal
+        isOpen={isVideoPickerOpen}
+        onClose={() => setIsVideoPickerOpen(false)}
+        allowedType="video"
+        title="Select Video for Documentary Episode"
+        onSelect={(selectedUrl) => {
+          setEpisodeForm((prev) => ({ ...prev, youtube_url: selectedUrl }));
+          setIsVideoPickerOpen(false);
+          showSuccess('Video Selected', 'Documentary episode video source updated.');
+        }}
       />
     </div>
   );

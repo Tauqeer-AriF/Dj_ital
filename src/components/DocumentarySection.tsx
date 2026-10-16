@@ -11,6 +11,22 @@ export interface DocumentarySectionProps {
   isLivePreview?: boolean;
 }
 
+export function isVideoFile(url?: string): boolean {
+  if (!url) return false;
+  const clean = url.trim().toLowerCase();
+  return (
+    clean.endsWith('.mp4') ||
+    clean.endsWith('.webm') ||
+    clean.endsWith('.mov') ||
+    clean.endsWith('.m4v') ||
+    clean.endsWith('.ogv') ||
+    clean.includes('/uploads/videos/') ||
+    clean.includes('video/mp4') ||
+    clean.includes('video/webm') ||
+    clean.includes('video/quicktime')
+  );
+}
+
 export function extractYouTubeEmbedUrl(urlOrId: string): string {
   if (!urlOrId || !urlOrId.trim()) {
     return 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&modestbranding=1&rel=0';
@@ -248,14 +264,24 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
               </button>
             </div>
 
-            <div className="relative aspect-video bg-black">
-              <iframe
-                src={extractYouTubeEmbedUrl(selectedEp.youtube_url)}
-                title={selectedEp.title}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="relative aspect-video bg-black flex items-center justify-center">
+              {isVideoFile(selectedEp.youtube_url) ? (
+                <video
+                  src={selectedEp.youtube_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <iframe
+                  src={extractYouTubeEmbedUrl(selectedEp.youtube_url)}
+                  title={selectedEp.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
             </div>
           </div>
         </div>
