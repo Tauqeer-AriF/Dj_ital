@@ -388,16 +388,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
                     Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customise every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
                   </p>
-                  <div className="pt-2 flex flex-wrap gap-2">
-                    <a
-                      href="/dj_ital_complete_repo.zip"
-                      download="dj_ital_complete_repo.zip"
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-bold shadow-sm transition-colors cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download Complete Project (.zip)</span>
-                    </a>
-                  </div>
+
                 </div>
               </div>
 
