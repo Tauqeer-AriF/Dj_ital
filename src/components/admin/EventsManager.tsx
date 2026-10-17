@@ -205,7 +205,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                 <input
                   type="text"
                   required
-                  value={formData.title}
+                  value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Vital Fest: Hackney All-Dayer"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -218,7 +218,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <input
                     type="text"
                     required
-                    value={formData.venue}
+                    value={formData.venue || ''}
                     onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
                     placeholder="e.g. The Hackney Social"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -229,7 +229,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <input
                     type="text"
                     required
-                    value={formData.location}
+                    value={formData.location || ''}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g. Hackney, London E8"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -243,7 +243,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <input
                     type="date"
                     required
-                    value={formData.event_date}
+                    value={formData.event_date || ''}
                     onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
@@ -252,7 +252,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Time Window</label>
                   <input
                     type="text"
-                    value={formData.start_time}
+                    value={formData.start_time || ''}
                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                     placeholder="e.g. 15:00 - 23:00"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -262,7 +262,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Price Text</label>
                   <input
                     type="text"
-                    value={formData.price_text}
+                    value={formData.price_text || ''}
                     onChange={(e) => setFormData({ ...formData, price_text: e.target.value })}
                     placeholder="e.g. £17.50 Adv"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -274,7 +274,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Lineup Artists</label>
                 <input
                   type="text"
-                  value={formData.lineup}
+                  value={formData.lineup || ''}
                   onChange={(e) => setFormData({ ...formData, lineup: e.target.value })}
                   placeholder="e.g. DJ Ital, Brockie, Ragga Twins, Jumpin Jack Frost, Det"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -285,7 +285,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Status</label>
                   <select
-                    value={formData.status}
+                    value={formData.status || 'Upcoming'}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   >
@@ -298,7 +298,7 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Ticket Link</label>
                   <input
                     type="text"
-                    value={formData.ticket_url}
+                    value={formData.ticket_url || ''}
                     onChange={(e) => setFormData({ ...formData, ticket_url: e.target.value })}
                     placeholder="https://djital.me/vitalfest"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
