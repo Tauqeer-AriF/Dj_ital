@@ -300,17 +300,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="hidden sm:inline">Help Guide</span>
           </button>
 
-          {/* 1-Click Codebase ZIP Export */}
-          <a
-            href="/api/export-codebase"
-            download="djital-sound-system-source.zip"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 border border-neutral-700 dark:border-white/20 transition-all hover:bg-amber-400 hover:text-neutral-950 dark:hover:bg-amber-400 dark:hover:text-neutral-950 cursor-pointer shadow-sm"
-            title="Download full project codebase as a complete .zip archive (all files, components, and assets)"
-          >
-            <Download className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600 group-hover:text-neutral-950" />
-            <span className="hidden md:inline">Export Code (.zip)</span>
-            <span className="md:hidden">Export</span>
-          </a>
 
           <button
             onClick={toggleTheme}
