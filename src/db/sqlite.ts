@@ -680,7 +680,11 @@ export async function forceSaveToServer(): Promise<ServerSyncResult> {
   let b64: string | null = null;
   let updatedAt: string | undefined;
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (dbInstance) {
+      const data = dbInstance.export();
+      b64 = uint8ArrayToBase64(data);
+      updatedAt = getLocalDbMeta()?.updatedAt || new Date().toISOString();
+    } else if (typeof localStorage !== 'undefined') {
       b64 = localStorage.getItem(STORAGE_KEY);
       updatedAt = getLocalDbMeta()?.updatedAt;
     }
@@ -692,9 +696,9 @@ export async function forceSaveToServer(): Promise<ServerSyncResult> {
       }
     }
   } catch (err) {
-    console.warn('Could not read local snapshot for forced save:', err);
+    console.warn('Could not read snapshot for forced save:', err);
   }
-  if (!b64) return { ok: false, status: 0, error: 'No local snapshot available' };
+  if (!b64) return { ok: false, status: 0, error: 'No snapshot available' };
   return postDatabaseToServer(b64, updatedAt, true);
 }
 
@@ -815,38 +819,38 @@ export async function getDatabase(): Promise<Database> {
     }
 
     // 3. Server is the Single Authoritative Source of Truth
-    // If server provides database state, always use server state.
+    // If server provides database state, always use server state directly.
     // LocalStorage and IndexedDB act strictly as local caches.
     if (serverBase64) {
       try {
         const u8 = base64ToUint8Array(serverBase64);
         const serverDb: Database = new SQL.Database(u8);
         ensureSchemaMigrations(serverDb);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, serverBase64);
-          setLocalDbMeta({
-            updatedAt: serverMeta?.updatedAt || new Date().toISOString(),
-            isCustom: !serverMeta?.isSeed,
-          });
-        }
-        saveToIndexedDb(serverBase64, {
+        const meta = {
           updatedAt: serverMeta?.updatedAt || new Date().toISOString(),
           isCustom: !serverMeta?.isSeed,
-        });
+        };
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY, serverBase64);
+          setLocalDbMeta(meta);
+        }
+        saveToIndexedDb(serverBase64, meta);
         dbInstance = serverDb;
+        startServerBackgroundSync();
         return serverDb;
       } catch (err) {
         console.warn('Failed to parse server SQLite DB, falling back to local cache:', err);
       }
     }
 
-    // 4. Offline Fallback: Only if server is unreachable, use local cache
+    // 4. Offline Fallback ONLY: If server is unreachable, use local cache
     if (saved) {
       try {
         const u8 = base64ToUint8Array(saved);
         const restoredDb: Database = new SQL.Database(u8);
         ensureSchemaMigrations(restoredDb);
         dbInstance = restoredDb;
+        startServerBackgroundSync();
         return restoredDb;
       } catch (err) {
         console.warn('Failed to parse saved local SQLite DB:', err);
@@ -858,10 +862,73 @@ export async function getDatabase(): Promise<Database> {
     initSchemaAndSeeds(freshDb);
     saveDatabaseToStorage(freshDb);
     dbInstance = freshDb;
+    startServerBackgroundSync();
     return freshDb;
   })();
 
   return initPromise;
+}
+
+let bgSyncStarted = false;
+
+/**
+ * Periodically and on window focus, verifies if the server has a newer database state.
+ * If another user saved changes, immediately pulls and re-renders live state.
+ */
+export async function refreshDatabaseFromServer(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/db/state', { cache: 'no-store' });
+    if (!res.ok) return false;
+    const json = await res.json();
+    if (!json.exists || !json.databaseBase64) return false;
+
+    const currentMeta = getLocalDbMeta();
+    const serverUpdatedAt = json.meta?.updatedAt;
+
+    if (serverUpdatedAt && (!currentMeta?.updatedAt || serverUpdatedAt !== currentMeta.updatedAt)) {
+      const u8 = base64ToUint8Array(json.databaseBase64);
+      const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+      const newDb = new SQL.Database(u8);
+      ensureSchemaMigrations(newDb);
+      dbInstance = newDb;
+
+      const newMeta = {
+        updatedAt: serverUpdatedAt,
+        isCustom: !json.meta?.isSeed,
+      };
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, json.databaseBase64);
+        setLocalDbMeta(newMeta);
+      }
+      saveToIndexedDb(json.databaseBase64, newMeta);
+      notifyListeners();
+      console.log('[Storage Sync] Updated live state from server:', serverUpdatedAt);
+      return true;
+    }
+  } catch (err) {
+    // Ignore transient network errors during background polling
+  }
+  return false;
+}
+
+export function startServerBackgroundSync() {
+  if (bgSyncStarted || typeof window === 'undefined') return;
+  bgSyncStarted = true;
+
+  // Poll when user switches back to this tab
+  window.addEventListener('focus', () => {
+    refreshDatabaseFromServer();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshDatabaseFromServer();
+    }
+  });
+
+  // Regular periodic poll (every 10 seconds)
+  setInterval(() => {
+    refreshDatabaseFromServer();
+  }, 10000);
 }
 
 const DEFAULT_SITE_MEDIA: Array<[string, string, string, string, string, string]> = [
