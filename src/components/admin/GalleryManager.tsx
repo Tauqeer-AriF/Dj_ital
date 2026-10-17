@@ -339,7 +339,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <input
                   type="text"
                   required
-                  value={formData.title}
+                  value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Vital Fest Sound Clash Crowd (or 1994 Dubplate Reel)"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -392,7 +392,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   <input
                     type="text"
                     required
-                    value={formData.image_url}
+                    value={formData.image_url || ''}
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                     placeholder="/images/... or /uploads/videos/... or URL"
                     className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-white/10 bg-white dark:bg-neutral-900 text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:border-amber-400"
@@ -435,7 +435,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Category</label>
                   <select
-                    value={formData.category}
+                    value={formData.category || 'Vital Fest'}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   >
@@ -453,7 +453,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Year</label>
                   <input
                     type="text"
-                    value={formData.year}
+                    value={formData.year || ''}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                     placeholder="2026"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -465,7 +465,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Location</label>
                 <input
                   type="text"
-                  value={formData.location}
+                  value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="The Hackney Social, London"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -476,7 +476,7 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Caption / Description</label>
                 <textarea
                   rows={3}
-                  value={formData.caption}
+                  value={formData.caption || ''}
                   onChange={(e) => setFormData({ ...formData, caption: e.target.value })}
                   placeholder="Context and details about this moment in sound system history..."
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm resize-none"
