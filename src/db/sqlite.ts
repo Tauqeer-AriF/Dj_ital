@@ -1092,6 +1092,13 @@ function ensureSchemaMigrations(db: Database) {
         updated_at TEXT NOT NULL
       );
 
+      CREATE INDEX IF NOT EXISTS idx_media_library_url ON media_library (url);
+
+      -- Prune any duplicate media records preserving the latest entry
+      DELETE FROM media_library WHERE id NOT IN (
+        SELECT MAX(id) FROM media_library GROUP BY url
+      );
+
       CREATE TABLE IF NOT EXISTS deleted_media_urls (
         url TEXT PRIMARY KEY,
         deleted_at TEXT NOT NULL
@@ -3162,6 +3169,30 @@ export async function createMediaLibraryItem(
   if (item.url) {
     db.run(`CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT)`);
     db.run('DELETE FROM deleted_media_urls WHERE url = ?', [item.url]);
+  }
+
+  // Deduplication check: if an item with this exact URL already exists in media_library, update metadata and return its ID
+  if (item.url && item.url.trim()) {
+    try {
+      const existing = db.exec('SELECT id FROM media_library WHERE url = ? LIMIT 1', [item.url.trim()]);
+      if (existing.length > 0 && existing[0].values.length > 0) {
+        const existingId = Number(existing[0].values[0][0]);
+        db.run(
+          `UPDATE media_library SET 
+             title = COALESCE(NULLIF(?, ''), title),
+             category = COALESCE(NULLIF(?, ''), category),
+             description = COALESCE(NULLIF(?, ''), description),
+             updated_at = ?
+           WHERE id = ?`,
+          [item.title || '', item.category ?? null, item.description ?? null, now, existingId]
+        );
+        saveDatabaseToStorage(db);
+        notifyListeners();
+        return existingId;
+      }
+    } catch {
+      // Continue to insertion if query check fails
+    }
   }
 
   db.run(
