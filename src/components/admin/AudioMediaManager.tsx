@@ -543,7 +543,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <input
                   type="text"
                   required
-                  value={mixFormData.title}
+                  value={mixFormData.title || ''}
                   onChange={(e) => setMixFormData({ ...mixFormData, title: e.target.value })}
                   placeholder="e.g. Kool FM 94.5 Archive (1994)"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -556,7 +556,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     Style Grouping
                   </label>
                   <select
-                    value={mixFormData.style}
+                    value={mixFormData.style || 'Jungle / D&B'}
                     onChange={(e) => setMixFormData({ ...mixFormData, style: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
@@ -572,7 +572,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     Platform
                   </label>
                   <select
-                    value={mixFormData.platform}
+                    value={mixFormData.platform || 'SoundCloud'}
                     onChange={(e) => setMixFormData({ ...mixFormData, platform: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
@@ -625,7 +625,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <input
                   type="text"
                   required
-                  value={mixFormData.embed_url}
+                  value={mixFormData.embed_url || ''}
                   onChange={(e) => {
                     const val = e.target.value;
                     setMixFormData({
@@ -663,7 +663,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   </label>
                   <input
                     type="text"
-                    value={mixFormData.duration}
+                    value={mixFormData.duration || ''}
                     onChange={(e) => setMixFormData({ ...mixFormData, duration: e.target.value })}
                     placeholder="e.g. 58:40"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -676,7 +676,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   </label>
                   <input
                     type="text"
-                    value={mixFormData.stream_url}
+                    value={mixFormData.stream_url || ''}
                     onChange={(e) => setMixFormData({ ...mixFormData, stream_url: e.target.value })}
                     placeholder="https://..."
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -690,7 +690,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 </label>
                 <textarea
                   rows={2}
-                  value={mixFormData.description}
+                  value={mixFormData.description || ''}
                   onChange={(e) => setMixFormData({ ...mixFormData, description: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                 />
@@ -740,7 +740,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <input
                   type="text"
                   required
-                  value={videoFormData.title}
+                  value={videoFormData.title || ''}
                   onChange={(e) => setVideoFormData({ ...videoFormData, title: e.target.value })}
                   placeholder="e.g. Vital Fest 2026 Crowd Reaction"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -753,7 +753,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                     Category
                   </label>
                   <select
-                    value={videoFormData.category}
+                    value={videoFormData.category || 'Event Recap'}
                     onChange={(e) => setVideoFormData({ ...videoFormData, category: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
                   >
@@ -770,7 +770,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   </label>
                   <input
                     type="text"
-                    value={videoFormData.duration}
+                    value={videoFormData.duration || ''}
                     onChange={(e) => setVideoFormData({ ...videoFormData, duration: e.target.value })}
                     placeholder="e.g. 02:45"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -819,7 +819,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                 <input
                   type="text"
                   required
-                  value={videoFormData.video_url}
+                  value={videoFormData.video_url || ''}
                   onChange={(e) => setVideoFormData({ ...videoFormData, video_url: e.target.value })}
                   placeholder="https://www.youtube.com/watch?v=... or /uploads/videos/..."
                   className="w-full px-3.5 py-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-sm font-mono"
