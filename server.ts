@@ -122,34 +122,40 @@ function findLatestDatabase(): { seedDbPath?: string; seedMetaPath?: string; isC
   let bestUpdatedAt: string | undefined;
 
   for (const s of uniqueDirs) {
-    const dbFile = path.join(s, 'djital_db.sqlite.b64');
-    const metaFile = path.join(s, 'db_meta.json');
-    if (fs.existsSync(dbFile)) {
-      try {
-        const stats = fs.statSync(dbFile);
-        if (stats.size > 100) {
-          let time = 0;
-          let isSeed = true;
-          let updatedAt = '';
-          if (fs.existsSync(metaFile)) {
-            try {
-              const meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
-              time = meta.updatedAt ? new Date(meta.updatedAt).getTime() : 0;
-              isSeed = Boolean(meta.isSeed);
-              updatedAt = meta.updatedAt;
-            } catch {}
+    const candidateFiles = [
+      { db: path.join(s, 'djital_db.sqlite.b64'), meta: path.join(s, 'db_meta.json') },
+      { db: path.join(s, 'backups', 'latest_backup.b64'), meta: path.join(s, 'backups', 'latest_meta.json') },
+      { db: path.join(s, 'djital_db.sqlite.b64.bak'), meta: path.join(s, 'db_meta.json') },
+    ];
+
+    for (const { db: dbFile, meta: metaFile } of candidateFiles) {
+      if (fs.existsSync(dbFile)) {
+        try {
+          const stats = fs.statSync(dbFile);
+          if (stats.size > 100) {
+            let time = 0;
+            let isSeed = true;
+            let updatedAt = '';
+            if (fs.existsSync(metaFile)) {
+              try {
+                const meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+                time = meta.updatedAt ? new Date(meta.updatedAt).getTime() : 0;
+                isSeed = Boolean(meta.isSeed);
+                updatedAt = meta.updatedAt;
+              } catch {}
+            }
+            // Weight custom databases with user edits much higher so newly deployed seed never overwrites user edits
+            const score = (!isSeed ? 10000000000000 : 0) + time;
+            if (score > bestTime || !bestDbPath) {
+              bestTime = score;
+              bestDbPath = dbFile;
+              bestMetaPath = fs.existsSync(metaFile) ? metaFile : undefined;
+              bestIsCustom = !isSeed;
+              bestUpdatedAt = updatedAt;
+            }
           }
-          // Weight custom databases with user edits much higher so newly deployed seed never overwrites user edits
-          const score = (!isSeed ? 10000000000000 : 0) + time;
-          if (score > bestTime || !bestDbPath) {
-            bestTime = score;
-            bestDbPath = dbFile;
-            bestMetaPath = fs.existsSync(metaFile) ? metaFile : undefined;
-            bestIsCustom = !isSeed;
-            bestUpdatedAt = updatedAt;
-          }
-        }
-      } catch {}
+        } catch {}
+      }
     }
   }
 
@@ -1153,17 +1159,29 @@ app.post('/api/upload-media', (req, res) => {
 
     // Target destinations to guarantee media survives code rebuilds & volume changes
     const storage = getStorageDetails();
-    const destDirs = [
-      path.resolve(__dirname, 'public', 'uploads', safeCategory),
-      path.join(storage.resolvedDataDir, 'uploads', safeCategory),
-      path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory),
-    ];
+    const destDirs = new Set<string>();
+    destDirs.add(path.resolve(__dirname, 'public', 'uploads', safeCategory));
+    destDirs.add(path.join(storage.resolvedDataDir, 'uploads', safeCategory));
+    destDirs.add(path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory));
+    if (fs.existsSync('/app/data')) {
+      destDirs.add(path.resolve('/app/data', 'uploads', safeCategory));
+    }
+    if (process.env.DATA_DIR) {
+      destDirs.add(path.resolve(process.env.DATA_DIR, 'uploads', safeCategory));
+    }
 
     for (const dir of destDirs) {
       try {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         const filePath = path.join(dir, finalFilename);
-        fs.writeFileSync(filePath, buffer);
+        const tempPath = path.join(dir, `.tmp_${Date.now()}_${finalFilename}`);
+        const fd = fs.openSync(tempPath, 'w');
+        fs.writeSync(fd, buffer);
+        try {
+          fs.fsyncSync(fd);
+        } catch {}
+        fs.closeSync(fd);
+        fs.renameSync(tempPath, filePath);
       } catch (err: any) {
         console.warn(`[Upload] Notice: Could not write to ${dir}:`, err.message);
       }
@@ -1318,3 +1336,26 @@ startServer().catch((err) => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+// Graceful shutdown handling for Railway container redeployments
+function handleGracefulShutdown(signal: string) {
+  console.log(`[Storage] Received ${signal}. Flushing active database and uploads to Railway volume...`);
+  try {
+    const storage = getStorageDetails();
+    const primaryDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    if (fs.existsSync(primaryDbFile)) {
+      const fd = fs.openSync(primaryDbFile, 'r+');
+      try {
+        fs.fsyncSync(fd);
+      } catch {}
+      fs.closeSync(fd);
+    }
+    console.log('[Storage] Graceful shutdown complete. Data flushed to disk.');
+  } catch (err: any) {
+    console.warn('[Storage] Shutdown flush warning:', err.message);
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
