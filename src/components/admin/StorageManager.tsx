@@ -9,10 +9,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Server,
-  FolderGit2,
   Terminal,
   FileCheck,
-  Info,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { getDatabase, uint8ArrayToBase64, base64ToUint8Array } from '../../db/sqlite';
@@ -97,26 +95,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ onRefresh }) => 
     }
   };
 
-  const [isDownloadingProject, setIsDownloadingProject] = useState(false);
 
-  const handleDownloadProject = () => {
-    try {
-      setIsDownloadingProject(true);
-      showSuccess('Downloading Full Project', 'Your complete project ZIP archive is being generated. Download starting...');
-      const link = document.createElement('a');
-      link.href = '/api/download-project';
-      link.setAttribute('download', 'dj-ital-sound-system.zip');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => {
-        setIsDownloadingProject(false);
-      }, 3500);
-    } catch (err: any) {
-      setIsDownloadingProject(false);
-      showError('Download Failed', err?.message || 'Could not download project ZIP');
-    }
-  };
 
   const handleDownloadBackup = () => {
     window.location.href = '/api/db/export';
@@ -295,73 +274,6 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ onRefresh }) => 
               <span>Not seeded</span>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Railway Root-Cause Investigation Card */}
-      <div className="p-5 rounded-xl border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
-        <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-sm">
-          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-          <span>Why Railway loses updates and how to make persistence 100% permanent:</span>
-        </div>
-        <div className="text-xs text-neutral-700 dark:text-neutral-300 space-y-2 leading-relaxed">
-          <p>
-            When deploying on <strong>Railway.com</strong>, Docker containers are <em>ephemeral</em> by default. Every time you push a code update or Railway restarts the service, Railway creates a <strong>fresh new container</strong>.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <div className="p-3 rounded-lg bg-white/80 dark:bg-black/30 border border-neutral-200 dark:border-white/10 space-y-1">
-              <span className="font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                The Common Pitfall
-              </span>
-              <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
-                1. A volume was created in Railway canvas, but <strong>never attached to this Web Service</strong>.<br />
-                2. Or the volume was mounted at <code>/data</code>, but the Node.js application runs in <code>/app</code> with working data at <code>/app/data</code>.<br />
-                3. The container wrote changes to ephemeral root disk, which Railway destroyed upon the next commit!
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-white/80 dark:bg-black/30 border border-neutral-200 dark:border-white/10 space-y-1">
-              <span className="font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                The 2-Minute Solution
-              </span>
-              <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
-                In Railway Dashboard:<br />
-                1. Click your Web Service &rarr; <strong>Settings</strong> &rarr; scroll to <strong>Volumes</strong>.<br />
-                2. Attach Volume with <strong>Mount Path</strong>: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded font-bold">/app/data</code>.<br />
-                3. In <strong>Variables</strong> tab, add: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded font-bold">DATA_DIR=/app/data</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Complete Project Archive Export (Ready for Railway / Local) */}
-      <div className="p-5 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent dark:bg-amber-950/20 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <FolderGit2 className="w-5 h-5 text-amber-500" />
-              <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
-                Download Complete Project Directory (ZIP)
-              </h4>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500 text-neutral-950 uppercase">
-                Railway Ready
-              </span>
-            </div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-              Download the entire codebase (React components, Vite build config, Express backend, SQLite database schemas, .npmrc dependency resolver, and audio/image assets) as a clean, ready-to-deploy ZIP archive.
-            </p>
-          </div>
-
-          <button
-            onClick={handleDownloadProject}
-            disabled={isDownloadingProject}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
-          >
-            <Download className={`w-4 h-4 ${isDownloadingProject ? 'animate-bounce' : ''}`} />
-            <span>{isDownloadingProject ? 'Preparing ZIP...' : 'Download Full Project (ZIP)'}</span>
-          </button>
         </div>
       </div>
 
