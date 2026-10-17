@@ -31,6 +31,10 @@ import {
   KeyRound,
   Lock,
   Clock,
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { audioEngine } from '../../audio/audioEngine';
 import { ProfileData, updateProfile, trackMediaUpload } from '../../db/sqlite';
@@ -38,6 +42,7 @@ import { optimizeImageFile, normalizeImageUrl } from '../../utils/imageOptimizat
 import { MediaPickerModal } from './MediaPickerModal';
 import { applyThemeToDOM, resolveColorHex } from '../../utils/themeEngine';
 import { AppLoader } from '../AppLoader';
+import { sanitizeSlideshowImages, ARCHIVAL_SLIDESHOW_PRESETS } from '../DynamicBackground';
 import { getPlayableStreamUrl, getProxyStreamUrl, isEmbedStream } from '../../utils/streamAudio';
 import { useToast } from '../../context/ToastContext';
 
@@ -58,6 +63,8 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isLogoPickerOpen, setIsLogoPickerOpen] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [isSlideshowPickerOpen, setIsSlideshowPickerOpen] = useState(false);
+  const [slideshowUrlInput, setSlideshowUrlInput] = useState('');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Turntable Dub Clock & BPM Synthesiser Audition State
@@ -1977,49 +1984,173 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
           </div>
 
           {/* Archival Slideshow Photos Manager */}
-          <div className="space-y-3 pt-3 border-t border-neutral-200 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
-                <span>Archival Slideshow Photo Collection</span>
-              </label>
+          <div className="space-y-4 pt-4 border-t border-neutral-200 dark:border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Archival Slideshow Photo Collection</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold">
+                    {sanitizeSlideshowImages(formData.slideshow_images).length} Photos Active
+                  </span>
+                </label>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  These high-contrast archival images crossfade in the background in "Photo Slideshow" mode or as a subtle animated underlay.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsSlideshowPickerOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                  title="Upload or pick photo from Media Library"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add from Media Library</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, slideshow_images: JSON.stringify(ARCHIVAL_SLIDESHOW_PRESETS) });
+                    showSuccess('Slideshow Reset', 'Restored 6 heritage rave photographs.');
+                  }}
+                  className="text-[11px] font-mono text-neutral-500 hover:text-amber-600 dark:text-neutral-400 dark:hover:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer px-2 py-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Defaults</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick URL Input Bar */}
+            <div className="flex items-center gap-2 bg-neutral-100 dark:bg-white/5 p-2 rounded border border-neutral-200 dark:border-white/10">
+              <Link2 className="w-4 h-4 text-neutral-400 shrink-0 ml-1" />
+              <input
+                type="text"
+                placeholder="Or paste image URL (e.g. /images/my-photo.jpg or https://...)"
+                value={slideshowUrlInput}
+                onChange={(e) => setSlideshowUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!slideshowUrlInput.trim()) return;
+                    const currentList = sanitizeSlideshowImages(formData.slideshow_images);
+                    const cleanUrl = slideshowUrlInput.trim();
+                    if (currentList.includes(cleanUrl)) {
+                      showError('Duplicate Photo', 'This image is already in the collection.');
+                      return;
+                    }
+                    const updated = [...currentList, cleanUrl];
+                    setFormData({ ...formData, slideshow_images: JSON.stringify(updated) });
+                    setSlideshowUrlInput('');
+                    showSuccess('Photo Added', 'New image added to slideshow collection.');
+                  }
+                }}
+                className="flex-1 bg-transparent text-xs text-neutral-900 dark:text-white placeholder:text-neutral-500 focus:outline-none"
+              />
               <button
                 type="button"
                 onClick={() => {
-                  const defaultPhotos = JSON.stringify([
-                    '/images/dj_ital_hero_1790112374509.jpg',
-                    '/images/vital_fest_crowd_1790112387611.jpg',
-                    '/images/kool_fm_vintage_1790112400005.jpg',
-                    '/images/va_museum_exhibition_1790112416279.jpg',
-                    '/images/hackney_pirate_radio_1790113898507.jpg',
-                    '/images/vinyl_dubplate_acetate_1790113879360.jpg',
-                  ]);
-                  setFormData({ ...formData, slideshow_images: defaultPhotos });
+                  if (!slideshowUrlInput.trim()) return;
+                  const currentList = sanitizeSlideshowImages(formData.slideshow_images);
+                  const cleanUrl = slideshowUrlInput.trim();
+                  if (currentList.includes(cleanUrl)) {
+                    showError('Duplicate Photo', 'This image is already in the collection.');
+                    return;
+                  }
+                  const updated = [...currentList, cleanUrl];
+                  setFormData({ ...formData, slideshow_images: JSON.stringify(updated) });
+                  setSlideshowUrlInput('');
+                  showSuccess('Photo Added', 'New image added to slideshow collection.');
                 }}
-                className="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                disabled={!slideshowUrlInput.trim()}
+                className="px-3 py-1 rounded bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-semibold text-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-400 hover:text-neutral-950 dark:hover:bg-amber-400 dark:hover:text-neutral-950 transition-colors cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset to 6 Heritage Rave Photos</span>
+                Add URL
               </button>
             </div>
 
-            {/* Thumbnail previews */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {[
-                { label: 'DJ Ital Hero', src: '/images/dj_ital_hero_1790112374509.jpg' },
-                { label: 'Vital Fest Crowd', src: '/images/vital_fest_crowd_1790112387611.jpg' },
-                { label: 'Kool FM Vintage', src: '/images/kool_fm_vintage_1790112400005.jpg' },
-                { label: 'V&A East Archive', src: '/images/va_museum_exhibition_1790112416279.jpg' },
-                { label: 'Hackney Pirate', src: '/images/hackney_pirate_radio_1790113898507.jpg' },
-                { label: 'Decibel Acetate', src: '/images/vinyl_dubplate_acetate_1790113879360.jpg' },
-              ].map((item, i) => (
-                <div key={i} className="group relative rounded overflow-hidden border border-neutral-300 dark:border-white/10 aspect-video bg-neutral-900">
-                  <img src={item.src} alt={item.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  <div className="absolute inset-x-0 bottom-0 bg-neutral-950/80 px-1 py-0.5 text-[9px] font-mono text-neutral-300 truncate text-center">
-                    {item.label}
+            {/* Dynamic Interactive Photos Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {sanitizeSlideshowImages(formData.slideshow_images).map((imgUrl, idx, allImages) => {
+                const fileName = imgUrl.split('/').pop()?.split('?')[0] || `Slide ${idx + 1}`;
+                return (
+                  <div
+                    key={`${imgUrl}-${idx}`}
+                    className="group relative rounded-lg overflow-hidden border border-neutral-300 dark:border-white/15 bg-neutral-900 shadow-sm flex flex-col"
+                  >
+                    <div className="relative aspect-video w-full bg-neutral-950 overflow-hidden">
+                      <img
+                        src={imgUrl}
+                        alt={`Slideshow ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.opacity = '0.3';
+                        }}
+                      />
+                      {/* Action overlays */}
+                      <div className="absolute inset-0 bg-neutral-950/65 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = [...sanitizeSlideshowImages(formData.slideshow_images)];
+                              const temp = list[idx - 1];
+                              list[idx - 1] = list[idx];
+                              list[idx] = temp;
+                              setFormData({ ...formData, slideshow_images: JSON.stringify(list) });
+                            }}
+                            className="p-1 rounded bg-black/70 hover:bg-amber-400 hover:text-neutral-950 text-white text-[10px] transition-colors cursor-pointer"
+                            title="Move photo left"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const list = sanitizeSlideshowImages(formData.slideshow_images).filter((_, i) => i !== idx);
+                            setFormData({ ...formData, slideshow_images: JSON.stringify(list) });
+                            showSuccess('Photo Removed', `Removed photo from collection.`);
+                          }}
+                          className="p-1 rounded bg-red-600/90 hover:bg-red-500 text-white text-[10px] transition-colors cursor-pointer"
+                          title="Remove from slideshow"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {idx < allImages.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = [...sanitizeSlideshowImages(formData.slideshow_images)];
+                              const temp = list[idx + 1];
+                              list[idx + 1] = list[idx];
+                              list[idx] = temp;
+                              setFormData({ ...formData, slideshow_images: JSON.stringify(list) });
+                            }}
+                            className="p-1 rounded bg-black/70 hover:bg-amber-400 hover:text-neutral-950 text-white text-[10px] transition-colors cursor-pointer"
+                            title="Move photo right"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Index badge */}
+                      <span className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/70 text-white text-[9px] font-mono font-bold">
+                        #{idx + 1}
+                      </span>
+                    </div>
+
+                    <div className="p-1.5 bg-neutral-900 dark:bg-neutral-950/80 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-neutral-300">
+                      <span className="truncate flex-1" title={imgUrl}>
+                        {fileName}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -2118,6 +2249,27 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         title="Select Official Logo from Media Library"
         allowedType="image"
         selectedUrl={currentLogo}
+      />
+
+      {/* Slideshow Photo Collection Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={isSlideshowPickerOpen}
+        onClose={() => setIsSlideshowPickerOpen(false)}
+        onSelect={(selectedUrl) => {
+          const currentList = sanitizeSlideshowImages(formData.slideshow_images);
+          if (!currentList.includes(selectedUrl)) {
+            const updated = [...currentList, selectedUrl];
+            setFormData((prev) => ({
+              ...prev,
+              slideshow_images: JSON.stringify(updated),
+            }));
+            showSuccess('Photo Added', 'Added photo from media library to slideshow collection.');
+          } else {
+            showError('Already Added', 'This photo is already in the slideshow collection.');
+          }
+        }}
+        title="Select Archival Photo for Background Slideshow"
+        allowedType="image"
       />
 
       {/* App Loader Realtime Preview Modal */}
