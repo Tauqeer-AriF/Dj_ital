@@ -436,7 +436,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="flex items-center justify-between pb-3.5 border-b border-neutral-200 dark:border-white/15 text-xs font-industrial">
                   <div className="flex items-center gap-2 text-neutral-900 dark:text-white font-black tracking-wider">
                     <span className={`w-2 h-2 rounded-full ${isPlaying && isLiveOnAir ? 'bg-red-500 animate-ping' : (isLiveOnAir ? 'bg-amber-400' : 'bg-neutral-500')}`} />
-                    <span>[ TECHNICS SL-1210 MK2 ]</span>
+                    <span>[ CDJS 3000's ]</span>
                   </div>
                   <div className="flex items-center gap-2 text-neutral-700 dark:text-white text-[11px] font-bold">
                     <span className="text-neutral-500 dark:text-white/80">33⅓ / 45 RPM</span>
