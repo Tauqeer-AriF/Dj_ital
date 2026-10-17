@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import os from 'os';
@@ -400,6 +401,7 @@ function syncUploadDirectories(): void {
 
     const syncDirs = (src: string, dest: string) => {
       if (!fs.existsSync(src)) return;
+      if (path.resolve(src) === path.resolve(dest)) return;
       for (const cat of categories) {
         const srcCat = path.join(src, cat);
         const destCat = path.join(dest, cat);
@@ -1152,16 +1154,65 @@ app.post('/api/upload-media', (req, res) => {
       buffer = Buffer.from(dataUrl, 'base64');
     }
 
+    // Compute content hash to detect and deduplicate identical uploads
+    const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
+    const storage = getStorageDetails();
+
+    // 1. Content Deduplication Check: Look for an existing identical file
+    const candidateDirs = [
+      path.resolve(__dirname, 'public', 'uploads', safeCategory),
+      path.resolve(storage.resolvedDataDir, 'uploads', safeCategory),
+      path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory),
+    ];
+
+    let existingFileMatch: string | null = null;
+    for (const dir of candidateDirs) {
+      if (fs.existsSync(dir)) {
+        try {
+          const files = fs.readdirSync(dir);
+          for (const f of files) {
+            if (f.startsWith('.')) continue;
+            const fullP = path.join(dir, f);
+            try {
+              const stat = fs.statSync(fullP);
+              if (stat.size === buffer.length) {
+                const existingData = fs.readFileSync(fullP);
+                const existingHash = crypto.createHash('sha256').update(existingData).digest('hex');
+                if (existingHash === contentHash) {
+                  existingFileMatch = f;
+                  break;
+                }
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+      if (existingFileMatch) break;
+    }
+
+    if (existingFileMatch) {
+      const publicUrl = `/uploads/${safeCategory}/${existingFileMatch}`;
+      console.log(`[Upload Deduplication] Reusing existing identical file (${(buffer.length / (1024 * 1024)).toFixed(2)} MB): ${existingFileMatch} -> ${publicUrl}`);
+      return res.json({
+        success: true,
+        url: publicUrl,
+        filename: existingFileMatch,
+        sizeBytes: buffer.length,
+        category: safeCategory,
+        deduplicated: true,
+      });
+    }
+
     const originalName = (filename || `clip_${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
     const baseName = originalName.replace(/\.[^/.]+$/, '');
     const cleanExt = path.extname(originalName).replace('.', '') || ext;
-    const finalFilename = `${baseName}_${Date.now()}.${cleanExt}`;
+    const shortHash = contentHash.substring(0, 8);
+    const finalFilename = `${baseName}_${shortHash}.${cleanExt}`;
 
     // Target destinations to guarantee media survives code rebuilds & volume changes
-    const storage = getStorageDetails();
     const destDirs = new Set<string>();
     destDirs.add(path.resolve(__dirname, 'public', 'uploads', safeCategory));
-    destDirs.add(path.join(storage.resolvedDataDir, 'uploads', safeCategory));
+    destDirs.add(path.resolve(storage.resolvedDataDir, 'uploads', safeCategory));
     destDirs.add(path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory));
     if (fs.existsSync('/app/data')) {
       destDirs.add(path.resolve('/app/data', 'uploads', safeCategory));
@@ -1174,6 +1225,10 @@ app.post('/api/upload-media', (req, res) => {
       try {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         const filePath = path.join(dir, finalFilename);
+        if (fs.existsSync(filePath)) {
+          const stat = fs.statSync(filePath);
+          if (stat.size === buffer.length) continue;
+        }
         const tempPath = path.join(dir, `.tmp_${Date.now()}_${finalFilename}`);
         const fd = fs.openSync(tempPath, 'w');
         fs.writeSync(fd, buffer);
@@ -1188,7 +1243,7 @@ app.post('/api/upload-media', (req, res) => {
     }
 
     const publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
-    console.log(`[Upload] Saved media clip to all storage targets (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
+    console.log(`[Upload] Saved media clip to storage targets (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
 
     return res.json({
       success: true,
