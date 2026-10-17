@@ -581,22 +581,121 @@ export async function loadFromIndexedDb(): Promise<{ b64: string; meta: LocalDbM
   }
 }
 
-export async function syncDatabaseToServer(b64: string, customTimestamp?: string): Promise<boolean> {
+export interface ServerSyncResult {
+  ok: boolean;
+  status: number;
+  error?: string;
+  currentBytes?: number;
+  incomingBytes?: number;
+}
+
+export interface ServerSaveRejection {
+  currentBytes?: number;
+  incomingBytes?: number;
+  at: string;
+}
+
+// Set when the server refused a save (HTTP 409) so the newest changes exist only on this device.
+let serverSaveRejected: ServerSaveRejection | null = null;
+
+export function getServerSaveRejection(): ServerSaveRejection | null {
+  return serverSaveRejected;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (e) => {
+    if (serverSaveRejected) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+}
+
+async function postDatabaseToServer(
+  b64: string,
+  customTimestamp: string | undefined,
+  force: boolean
+): Promise<ServerSyncResult> {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (force) headers['X-Force-Overwrite'] = 'true';
     const res = await fetch('/api/db/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         databaseBase64: b64,
         timestamp: customTimestamp || new Date().toISOString(),
         clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
       }),
     });
-    return res.ok;
+    if (res.ok) {
+      if (serverSaveRejected) {
+        serverSaveRejected = null;
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('djital:save-accepted'));
+        }
+      }
+      return { ok: true, status: res.status };
+    }
+    let body: any = null;
+    try {
+      body = await res.json();
+    } catch {}
+    const result: ServerSyncResult = {
+      ok: false,
+      status: res.status,
+      error: body?.error,
+      currentBytes: body?.currentBytes,
+      incomingBytes: body?.incomingBytes,
+    };
+    if (res.status === 409) {
+      // Never retry or force automatically; the user must decide explicitly.
+      const detail: ServerSaveRejection = {
+        currentBytes: result.currentBytes,
+        incomingBytes: result.incomingBytes,
+        at: new Date().toISOString(),
+      };
+      serverSaveRejected = detail;
+      console.warn('Server rejected database save (409):', result);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('djital:save-rejected', { detail }));
+      }
+    }
+    return result;
   } catch (err) {
     console.warn('Server database sync error:', err);
-    return false;
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+export async function syncDatabaseToServer(b64: string, customTimestamp?: string): Promise<ServerSyncResult> {
+  return postDatabaseToServer(b64, customTimestamp, false);
+}
+
+/**
+ * Re-sends the most recent local snapshot with X-Force-Overwrite.
+ * Must only be called from an explicit user action.
+ */
+export async function forceSaveToServer(): Promise<ServerSyncResult> {
+  let b64: string | null = null;
+  let updatedAt: string | undefined;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      b64 = localStorage.getItem(STORAGE_KEY);
+      updatedAt = getLocalDbMeta()?.updatedAt;
+    }
+    if (!b64) {
+      const idb = await loadFromIndexedDb();
+      if (idb?.b64) {
+        b64 = idb.b64;
+        updatedAt = idb.meta?.updatedAt;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read local snapshot for forced save:', err);
+  }
+  if (!b64) return { ok: false, status: 0, error: 'No local snapshot available' };
+  return postDatabaseToServer(b64, updatedAt, true);
 }
 
 export function saveDatabaseToStorage(db: Database, customTimestamp?: string) {
@@ -3259,8 +3358,8 @@ export async function forcePushToServer(): Promise<{ success: boolean; message: 
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
     const now = new Date().toISOString();
-    const ok = await syncDatabaseToServer(b64, now);
-    if (ok) {
+    const syncResult = await syncDatabaseToServer(b64, now);
+    if (syncResult.ok) {
       setLocalDbMeta({
         updatedAt: now,
         clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
