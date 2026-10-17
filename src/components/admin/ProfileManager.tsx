@@ -1436,7 +1436,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
             </div>
             <input
               type="text"
-              value={formData.navbar_subtitle !== undefined ? formData.navbar_subtitle : (formData.subtitle || '')}
+              value={formData.navbar_subtitle ?? formData.subtitle ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
                 setFormData({ ...formData, navbar_subtitle: val, subtitle: val });
