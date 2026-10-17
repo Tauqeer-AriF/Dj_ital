@@ -1799,16 +1799,111 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         </div>
 
         {/* Section 7: Background Motion & Slideshow Options */}
-        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-5">
-          <div className="flex items-center gap-2 text-xs font-mono text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">
-            <Sliders className="w-4 h-4" />
-            <span>7. Subtle Moving Backgrounds & Slideshow Controls</span>
+        <div className="p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-mono text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">
+              <Sliders className="w-4 h-4" />
+              <span>7. Background Motion Styles & Visual FX Engine</span>
+            </div>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+              Active: {formData.bg_style || 'subtle-motion'}
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Interactive Visual Style Grid */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block">
+              Select Sound-System Motion Aesthetic:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                {
+                  id: 'subtle-motion',
+                  label: 'Subtle Motion',
+                  badge: 'AMBIENT FLOW',
+                  desc: 'Drifting amber & cyan spheres with gentle wave ribbons',
+                },
+                {
+                  id: 'particles',
+                  label: 'Bass Particles',
+                  badge: 'VINYL DUST',
+                  desc: 'Upward floating gold vinyl flecks & bass particles',
+                },
+                {
+                  id: 'ambient-glow',
+                  label: 'Sound System Glow',
+                  badge: '164 BPM PULSE',
+                  desc: 'Warm tube-amp amber glow breathing with subwoofer',
+                },
+                {
+                  id: 'slideshow',
+                  label: 'Photo Slideshow',
+                  badge: 'ARCHIVAL RAVE',
+                  desc: 'Cinematic Ken Burns crossfade between archival photos',
+                },
+                {
+                  id: 'soundwave',
+                  label: 'Soundwave Waves',
+                  badge: 'EQUALIZER FX',
+                  desc: 'Dynamic audio spectrum ribbons flowing horizontally',
+                },
+                {
+                  id: 'dub-sonar',
+                  label: 'Bass Sonar Rings',
+                  badge: 'ACOUSTIC RADAR',
+                  desc: 'Concentric bass shockwave rings expanding outward',
+                },
+                {
+                  id: 'minimal',
+                  label: 'Minimal Static',
+                  badge: 'STUDIO MATRIX',
+                  desc: 'Clean precision sound engineering grid, zero motion',
+                },
+                {
+                  id: 'hybrid',
+                  label: 'Full Atmosphere',
+                  badge: 'ALL FX COMBINED',
+                  desc: 'Full sound-system presence: glow + particles + waves',
+                },
+              ].map((styleOption) => {
+                const isSelected = (formData.bg_style || 'subtle-motion') === styleOption.id;
+                return (
+                  <button
+                    key={styleOption.id}
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, bg_style: styleOption.id });
+                    }}
+                    className={`p-3 rounded text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-amber-500 bg-amber-500/15 dark:bg-amber-400/15 shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-1 ring-amber-500'
+                        : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-950/60 hover:border-neutral-300 dark:hover:border-white/20'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
+                          {styleOption.badge}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-500" />}
+                      </div>
+                      <div className="text-xs font-bold text-neutral-950 dark:text-white font-industrial uppercase">
+                        {styleOption.label}
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 leading-snug line-clamp-2">
+                      {styleOption.desc}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-neutral-200 dark:border-white/10">
             <div className="space-y-1">
               <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                Background Motion Style
+                Background Motion Dropdown
               </label>
               <select
                 value={formData.bg_style || 'subtle-motion'}
@@ -1819,7 +1914,10 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 <option value="particles">Floating Bass Particles</option>
                 <option value="ambient-glow">Warm Sound System Glow</option>
                 <option value="slideshow">Photo Slideshow Background</option>
-                <option value="minimal">Minimal Static</option>
+                <option value="soundwave">Dynamic Equalizer & Soundwaves</option>
+                <option value="dub-sonar">Concentric Bass Sonar Rings</option>
+                <option value="minimal">Minimal Static Studio Grid</option>
+                <option value="hybrid">Full Atmosphere (Hybrid All-In-One)</option>
               </select>
             </div>
 
@@ -1852,6 +1950,76 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 }
                 className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white text-sm"
               />
+            </div>
+          </div>
+
+          {/* Slideshow Secondary Overlay Toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded bg-neutral-50 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/10 text-xs">
+            <div className="space-y-0.5">
+              <span className="font-bold text-neutral-900 dark:text-white block font-mono">
+                Archival Photo Background Underlay
+              </span>
+              <p className="text-neutral-500 dark:text-neutral-400">
+                Display subtle archival rave photos behind moving particles and glow effects.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(formData.slideshow_enabled)}
+                onChange={(e) =>
+                  setFormData({ ...formData, slideshow_enabled: e.target.checked ? 1 : 0 })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {/* Archival Slideshow Photos Manager */}
+          <div className="space-y-3 pt-3 border-t border-neutral-200 dark:border-white/10">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
+                <span>Archival Slideshow Photo Collection</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultPhotos = JSON.stringify([
+                    '/images/dj_ital_hero_1790112374509.jpg',
+                    '/images/vital_fest_crowd_1790112387611.jpg',
+                    '/images/kool_fm_vintage_1790112400005.jpg',
+                    '/images/va_museum_exhibition_1790112416279.jpg',
+                    '/images/hackney_pirate_radio_1790113898507.jpg',
+                    '/images/vinyl_dubplate_acetate_1790113879360.jpg',
+                  ]);
+                  setFormData({ ...formData, slideshow_images: defaultPhotos });
+                }}
+                className="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset to 6 Heritage Rave Photos</span>
+              </button>
+            </div>
+
+            {/* Thumbnail previews */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {[
+                { label: 'DJ Ital Hero', src: '/images/dj_ital_hero_1790112374509.jpg' },
+                { label: 'Vital Fest Crowd', src: '/images/vital_fest_crowd_1790112387611.jpg' },
+                { label: 'Kool FM Vintage', src: '/images/kool_fm_vintage_1790112400005.jpg' },
+                { label: 'V&A East Archive', src: '/images/va_museum_exhibition_1790112416279.jpg' },
+                { label: 'Hackney Pirate', src: '/images/hackney_pirate_radio_1790113898507.jpg' },
+                { label: 'Decibel Acetate', src: '/images/vinyl_dubplate_acetate_1790113879360.jpg' },
+              ].map((item, i) => (
+                <div key={i} className="group relative rounded overflow-hidden border border-neutral-300 dark:border-white/10 aspect-video bg-neutral-900">
+                  <img src={item.src} alt={item.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <div className="absolute inset-x-0 bottom-0 bg-neutral-950/80 px-1 py-0.5 text-[9px] font-mono text-neutral-300 truncate text-center">
+                    {item.label}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

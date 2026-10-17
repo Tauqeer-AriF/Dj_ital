@@ -327,17 +327,17 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
       content: (
         <div className="space-y-4 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
           <p>
-            The website's background is powered by a GPU-accelerated visual engine that supports 5 distinct aesthetic modes:
+            The website's background is powered by a GPU-accelerated visual engine supporting 8 distinct sound-system aesthetic modes:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">1. Subtle Ambient Motion:</span>
-              <span className="text-neutral-600 dark:text-neutral-400">Luminous amber & cyan spheres orbiting continuously, combined with soundwave equalizer ribbons and subtle vinyl particles.</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Drifting amber & cyan spheres orbiting continuously, combined with fluid soundwave ribbons and subtle vinyl dust.</span>
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">2. Floating Bass Particles:</span>
-              <span className="text-neutral-600 dark:text-neutral-400">32 distinct gold vinyl dust particles floating upwards across the viewport with organic horizontal drift.</span>
+              <span className="text-neutral-600 dark:text-neutral-400">28 distinct gold vinyl dust particles floating upwards across the viewport with organic horizontal drift.</span>
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">3. Warm Sound System Glow:</span>
@@ -345,7 +345,23 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">4. Photo Slideshow:</span>
-              <span className="text-neutral-600 dark:text-neutral-400">Smooth crossfade between archival rave and sound system images with subtle Ken Burns zoom.</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Cinematic crossfade between archival rave and sound system images with subtle Ken Burns zoom.</span>
+            </div>
+            <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
+              <span className="font-bold font-mono text-amber-500 block">5. Dynamic Soundwave Waves:</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Equalizer ribbons undulating across the horizon with glowing multi-tone frequencies.</span>
+            </div>
+            <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
+              <span className="font-bold font-mono text-amber-500 block">6. Concentric Bass Sonar:</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Expanding acoustic shockwave rings radiating outwards from the turntable platter.</span>
+            </div>
+            <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
+              <span className="font-bold font-mono text-amber-500 block">7. Minimal Static:</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Architectural sound-stage engineering grid and acoustic dot matrix with zero motion.</span>
+            </div>
+            <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
+              <span className="font-bold font-mono text-amber-500 block">8. Full Atmosphere (Hybrid):</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Complete sound-system stage presence uniting ambient glow, floating particles, and soundwave motion.</span>
             </div>
           </div>
 

@@ -940,3 +940,117 @@ html[data-theme="dark"] .hover-glass-sheen::after {
   }
 }
 
+/* ----------------------------------------------------
+   Background Motion Engine & Visual FX Patterns
+   ---------------------------------------------------- */
+
+@keyframes ken-burns-pan {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
+  }
+  100% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.animate-ken-burns {
+  animation: ken-burns-pan 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes sonar-ring-expand {
+  0% {
+    transform: translate3d(-50%, -50%, 0) scale(0.2);
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(-50%, -50%, 0) scale(2.6);
+    opacity: 0;
+  }
+}
+
+.animate-sonar-ring {
+  animation: sonar-ring-expand 4.5s cubic-bezier(0.1, 0.4, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes wave-flow-horizontal {
+  0% {
+    transform: translate3d(-20%, 0, 0);
+  }
+  50% {
+    transform: translate3d(10%, -15px, 0);
+  }
+  100% {
+    transform: translate3d(-20%, 0, 0);
+  }
+}
+
+.animate-wave-flow {
+  animation: wave-flow-horizontal 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes ribbon-warp {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+  33% {
+    transform: translate3d(2%, 8px, 0) scaleY(1.15);
+  }
+  66% {
+    transform: translate3d(-2%, -6px, 0) scaleY(0.88);
+  }
+}
+
+.animate-ribbon-warp {
+  animation: ribbon-warp 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Studio Sound Engineering Precision Grid Pattern */
+.bg-studio-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.light .bg-studio-grid,
+html[data-theme="light"] .bg-studio-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Acoustic Dot Matrix */
+.bg-acoustic-dots {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.18) 1.25px, transparent 1.25px);
+  background-size: 28px 28px;
+}
+
+.light .bg-acoustic-dots,
+html[data-theme="light"] .bg-acoustic-dots {
+  background-image: radial-gradient(rgba(217, 119, 6, 0.22) 1.25px, transparent 1.25px);
+  background-size: 28px 28px;
+}
+
+/* Vinyl Micro-Groove Circles */
+.bg-vinyl-grooves {
+  background: repeating-radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.015) 0,
+    rgba(255, 255, 255, 0.015) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+}
+
+

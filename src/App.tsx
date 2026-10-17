@@ -446,16 +446,12 @@ export default function App() {
         <div className="relative min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 selection:bg-amber-400 selection:text-neutral-950 transition-colors duration-200 overflow-x-hidden">
           {/* Dynamic Background with slideshow / moving subtle patterns */}
           <DynamicBackground
-            style={profile?.bg_style}
+            style={profile?.bg_style || 'subtle-motion'}
             speed={profile?.bg_speed}
             signatureBpm={profile?.signature_bpm || 164}
             slideshowEnabled={Boolean(profile?.slideshow_enabled)}
             slideshowInterval={profile?.slideshow_interval}
-            slideshowImages={
-              profile?.slideshow_images
-                ? profile.slideshow_images.split(',').map((s) => s.trim()).filter(Boolean)
-                : undefined
-            }
+            slideshowImages={profile?.slideshow_images}
           />
 
           {/* Top Bar Navigation */}
