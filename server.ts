@@ -721,6 +721,7 @@ app.post('/api/db/save', (req, res) => {
     // Write redundantly to ALL writable data locations: /app/data, /data, LOCAL_DATA_DIR, and Railway env paths
     const mirrorDirs = new Set<string>();
     mirrorDirs.add(LOCAL_DATA_DIR);
+    mirrorDirs.add(PROTECTED_SEED_DIR);
     mirrorDirs.add(path.resolve(process.cwd(), 'data'));
     if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
     if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
