@@ -348,7 +348,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 <textarea
                   rows={3}
                   required
-                  value={testimonialFormData.quote}
+                  value={testimonialFormData.quote || ''}
                   onChange={(e) => setTestimonialFormData({ ...testimonialFormData, quote: e.target.value })}
                   placeholder="The feedback or review from the promoter..."
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -363,7 +363,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                   <input
                     type="text"
                     required
-                    value={testimonialFormData.author_name}
+                    value={testimonialFormData.author_name || ''}
                     onChange={(e) =>
                       setTestimonialFormData({ ...testimonialFormData, author_name: e.target.value })
                     }
@@ -379,7 +379,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                   <input
                     type="text"
                     required
-                    value={testimonialFormData.role_venue}
+                    value={testimonialFormData.role_venue || ''}
                     onChange={(e) =>
                       setTestimonialFormData({ ...testimonialFormData, role_venue: e.target.value })
                     }
@@ -445,7 +445,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 <input
                   type="text"
                   required
-                  value={venueFormData.name}
+                  value={venueFormData.name || ''}
                   onChange={(e) => setVenueFormData({ ...venueFormData, name: e.target.value })}
                   placeholder="e.g. Fabric London"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
@@ -458,7 +458,7 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 </label>
                 <input
                   type="text"
-                  value={venueFormData.location}
+                  value={venueFormData.location || ''}
                   onChange={(e) => setVenueFormData({ ...venueFormData, location: e.target.value })}
                   placeholder="Farringdon, London"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
