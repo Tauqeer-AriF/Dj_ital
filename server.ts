@@ -602,6 +602,47 @@ function isBlockedOrPrivateHost(hostname: string): boolean {
   return false;
 }
 
+// Save guard & versioned backup settings
+const SAVE_GUARD_MIN_CURRENT_BYTES = 1024 * 1024; // only guard databases larger than 1 MB
+const SAVE_GUARD_MIN_RATIO = 0.5; // reject incoming snapshots smaller than 50% of current
+const MAX_TIMESTAMPED_BACKUPS = Math.max(1, parseInt(process.env.DB_BACKUP_KEEP || '30', 10) || 30);
+const TIMESTAMPED_BACKUP_PATTERN = /^djital_db_.+\.b64$/;
+
+function listTimestampedBackups(backupDir: string): { name: string; sizeBytes: number; modifiedAt: string }[] {
+  if (!fs.existsSync(backupDir)) return [];
+  const items: { name: string; sizeBytes: number; modifiedAt: string }[] = [];
+  for (const name of fs.readdirSync(backupDir)) {
+    if (!TIMESTAMPED_BACKUP_PATTERN.test(name)) continue;
+    try {
+      const stat = fs.statSync(path.join(backupDir, name));
+      if (!stat.isFile()) continue;
+      items.push({ name, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() });
+    } catch {}
+  }
+  // ISO timestamps in file names sort chronologically; newest first
+  items.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+  return items;
+}
+
+// Copy the current primary snapshot to a timestamped backup and prune older ones
+function backupCurrentSnapshot(primaryDbFile: string, backupDir: string): void {
+  try {
+    if (!fs.existsSync(primaryDbFile) || fs.statSync(primaryDbFile).size === 0) return;
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    fs.copyFileSync(primaryDbFile, path.join(backupDir, `djital_db_${stamp}.b64`));
+
+    const backups = listTimestampedBackups(backupDir);
+    for (const old of backups.slice(MAX_TIMESTAMPED_BACKUPS)) {
+      try {
+        fs.unlinkSync(path.join(backupDir, old.name));
+      } catch {}
+    }
+  } catch (err) {
+    console.warn('[Storage] Failed to create timestamped database backup:', err);
+  }
+}
+
 // POST save database state to server
 app.post('/api/db/save', (req, res) => {
   try {
@@ -620,7 +661,35 @@ app.post('/api/db/save', (req, res) => {
     const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
     const primaryBakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
 
-    // 1. Write to active storage directory
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+
+    // 0. Size guard: refuse to replace a large database with a much smaller snapshot
+    const forceOverwrite = String(req.get('x-force-overwrite') || '').toLowerCase() === 'true';
+    if (fs.existsSync(primaryDbFile)) {
+      const currentBytes = fs.statSync(primaryDbFile).size;
+      const incomingBytes = Buffer.byteLength(databaseBase64, 'utf-8');
+      if (
+        currentBytes > SAVE_GUARD_MIN_CURRENT_BYTES &&
+        incomingBytes < currentBytes * SAVE_GUARD_MIN_RATIO
+      ) {
+        if (!forceOverwrite) {
+          console.warn(
+            `[Storage] Rejected database save from "${clientDevice || 'web-client'}": incoming snapshot (${incomingBytes} bytes) is smaller than ${SAVE_GUARD_MIN_RATIO * 100}% of current database (${currentBytes} bytes).`
+          );
+          return res.status(409).json({
+            error: 'Snapshot smaller than current database; refusing to overwrite',
+            currentBytes,
+            incomingBytes,
+          });
+        }
+        console.warn(
+          `[Storage] Forced overwrite via X-Force-Overwrite: current ${currentBytes} bytes replaced by ${incomingBytes} bytes (client: "${clientDevice || 'web-client'}").`
+        );
+      }
+    }
+
+    // 1. Preserve the existing snapshot as a timestamped backup, then write to active storage directory
+    backupCurrentSnapshot(primaryDbFile, backupDir);
     fs.writeFileSync(primaryDbFile, databaseBase64, 'utf-8');
     try {
       fs.writeFileSync(primaryBakFile, databaseBase64, 'utf-8');
@@ -655,7 +724,6 @@ app.post('/api/db/save', (req, res) => {
 
     // 3. Keep a rotating local backup
     try {
-      const backupDir = path.join(storage.resolvedDataDir, 'backups');
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
       fs.writeFileSync(path.join(backupDir, 'latest_backup.b64'), databaseBase64, 'utf-8');
       fs.writeFileSync(path.join(backupDir, 'latest_meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
@@ -676,6 +744,25 @@ app.post('/api/db/save', (req, res) => {
   } catch (error: any) {
     console.error('Error writing server database:', error);
     return res.status(500).json({ error: error.message || 'Failed to save database' });
+  }
+});
+
+// GET list of timestamped database backups (read-only)
+app.get('/api/db/backups', (_req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    const storage = getStorageDetails();
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+    const backups = listTimestampedBackups(backupDir);
+    return res.json({
+      backupDir,
+      maxBackups: MAX_TIMESTAMPED_BACKUPS,
+      count: backups.length,
+      backups,
+    });
+  } catch (error: any) {
+    console.error('Error listing database backups:', error);
+    return res.status(500).json({ error: error.message || 'Failed to list backups' });
   }
 });
 
