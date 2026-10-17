@@ -630,7 +630,6 @@ async function postDatabaseToServer(
       const res = await fetch('/api/db/save', {
         method: 'POST',
         headers,
-        keepalive: true,
         body: JSON.stringify({
           databaseBase64: b64,
           timestamp: customTimestamp || new Date().toISOString(),
@@ -803,7 +802,7 @@ export async function getDatabase(): Promise<Database> {
     let serverBase64: string | null = null;
     let serverMeta: { updatedAt?: string; isSeed?: boolean; updatedBy?: string } | null = null;
     try {
-      const res = await fetch('/api/db/state');
+      const res = await fetch('/api/db/state', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.exists && json.databaseBase64) {
@@ -815,64 +814,10 @@ export async function getDatabase(): Promise<Database> {
       console.warn('Could not query server DB state, falling back to local storage:', e);
     }
 
-    // 3. Smart Conflict Resolution & Auto-Healing on fresh deployment
-    // Prevents code deployments on Railway/Render/Docker from wiping out user's dashboard edits!
-    let preferLocal = false;
-    let preferServer = false;
-
-    if (saved && serverBase64) {
-      const localTime = localMeta?.updatedAt ? new Date(localMeta.updatedAt).getTime() : 0;
-      const serverTime = serverMeta?.updatedAt ? new Date(serverMeta.updatedAt).getTime() : 0;
-      const serverIsSeed = Boolean(serverMeta?.isSeed);
-
-      // If user has customized their dashboard (isCustom: true):
-      // NEVER allow a newly deployed seed snapshot to wipe user edits!
-      if (localMeta?.isCustom) {
-        if (serverIsSeed) {
-          // Deployed server is baseline seed: keep user's edits and auto-heal server!
-          preferLocal = true;
-        } else if (serverTime > localTime + 3000 && serverBase64 !== saved) {
-          // Another authenticated device explicitly saved newer data to server
-          preferServer = true;
-        } else {
-          preferLocal = true;
-        }
-      } else if (serverIsSeed) {
-        // Neither has custom edits; prefer whatever has data
-        preferLocal = Boolean(saved);
-        preferServer = !saved;
-      } else if (localTime && serverTime) {
-        if (localTime >= serverTime) {
-          preferLocal = true;
-        } else {
-          preferServer = true;
-        }
-      } else {
-        preferLocal = true;
-      }
-    } else if (saved) {
-      preferLocal = true;
-    } else if (serverBase64) {
-      preferServer = true;
-    }
-
-    if (preferLocal && saved) {
-      try {
-        const u8 = base64ToUint8Array(saved);
-        const restoredDb: Database = new SQL.Database(u8);
-        ensureSchemaMigrations(restoredDb);
-        dbInstance = restoredDb;
-
-        // Auto-heal newly deployed server instance: immediately push latest local data to server
-        const timeToSync = localMeta?.updatedAt || new Date().toISOString();
-        syncDatabaseToServer(saved, timeToSync);
-        return restoredDb;
-      } catch (err) {
-        console.warn('Failed to parse saved local SQLite DB, trying server:', err);
-      }
-    }
-
-    if (preferServer && serverBase64) {
+    // 3. Server is the Single Authoritative Source of Truth
+    // If server provides database state, always use server state.
+    // LocalStorage and IndexedDB act strictly as local caches.
+    if (serverBase64) {
       try {
         const u8 = base64ToUint8Array(serverBase64);
         const serverDb: Database = new SQL.Database(u8);
@@ -884,14 +829,31 @@ export async function getDatabase(): Promise<Database> {
             isCustom: !serverMeta?.isSeed,
           });
         }
+        saveToIndexedDb(serverBase64, {
+          updatedAt: serverMeta?.updatedAt || new Date().toISOString(),
+          isCustom: !serverMeta?.isSeed,
+        });
         dbInstance = serverDb;
         return serverDb;
       } catch (err) {
-        console.warn('Failed to parse server SQLite DB:', err);
+        console.warn('Failed to parse server SQLite DB, falling back to local cache:', err);
       }
     }
 
-    // 4. If neither exists, initialize fresh schema & seeds
+    // 4. Offline Fallback: Only if server is unreachable, use local cache
+    if (saved) {
+      try {
+        const u8 = base64ToUint8Array(saved);
+        const restoredDb: Database = new SQL.Database(u8);
+        ensureSchemaMigrations(restoredDb);
+        dbInstance = restoredDb;
+        return restoredDb;
+      } catch (err) {
+        console.warn('Failed to parse saved local SQLite DB:', err);
+      }
+    }
+
+    // 5. Fresh Database: If neither server nor local cache exists
     const freshDb: Database = new SQL.Database();
     initSchemaAndSeeds(freshDb);
     saveDatabaseToStorage(freshDb);
