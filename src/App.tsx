@@ -49,6 +49,7 @@ import { ActiveTrack } from './types';
 import { audioEngine } from './audio/audioEngine';
 import { AppLoader } from './components/AppLoader';
 import { BackToTop } from './components/BackToTop';
+import { SaveStatusBanner } from './components/SaveStatusBanner';
 import { applyThemeToDOM, resolveColorHex } from './utils/themeEngine';
 
 const isAdminPath = () => {
@@ -411,6 +412,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <SaveStatusBanner />
         {isLoading ? (
         <AppLoader
           logoUrl={profile?.logo_url || profile?.epk_logo_png}
