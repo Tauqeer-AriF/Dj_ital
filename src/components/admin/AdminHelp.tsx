@@ -345,7 +345,7 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">4. Photo Slideshow:</span>
-              <span className="text-neutral-600 dark:text-neutral-400">Cinematic crossfade between archival rave and sound system images with subtle Ken Burns zoom.</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Cinematic crossfade between archival rave and sound system images with subtle Ken Burns zoom. You can add photos from the Media Library, enter image URLs, reorder, or remove slides in Section 7.</span>
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10">
               <span className="font-bold font-mono text-amber-500 block">5. Dynamic Soundwave Waves:</span>
