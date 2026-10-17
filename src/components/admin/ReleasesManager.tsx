@@ -185,7 +185,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <input
                   type="text"
                   required
-                  value={formData.title}
+                  value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Decibel (VIP Remaster)"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -198,7 +198,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <input
                     type="number"
                     required
-                    value={formData.release_year}
+                    value={formData.release_year ?? 2026}
                     onChange={(e) => setFormData({ ...formData, release_year: parseInt(e.target.value) || 2026 })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
@@ -208,7 +208,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <input
                     type="number"
                     required
-                    value={formData.bpm}
+                    value={formData.bpm ?? 168}
                     onChange={(e) => setFormData({ ...formData, bpm: parseInt(e.target.value) || 168 })}
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                   />
@@ -217,7 +217,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Format</label>
                   <input
                     type="text"
-                    value={formData.format}
+                    value={formData.format || ''}
                     onChange={(e) => setFormData({ ...formData, format: e.target.value })}
                     placeholder='12" Vinyl / Digital'
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -230,7 +230,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Record Label</label>
                   <input
                     type="text"
-                    value={formData.label}
+                    value={formData.label || ''}
                     onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                     placeholder="e.g. Kool FM Recordings"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -240,7 +240,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Catalogue Number</label>
                   <input
                     type="text"
-                    value={formData.catalog_number}
+                    value={formData.catalog_number || ''}
                     onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
                     placeholder="e.g. KOOL-005"
                     className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -252,7 +252,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Audio Theme / Sonic Description</label>
                 <input
                   type="text"
-                  value={formData.audio_theme}
+                  value={formData.audio_theme || ''}
                   onChange={(e) => setFormData({ ...formData, audio_theme: e.target.value })}
                   placeholder="e.g. Rolling sub-bass with amen break cutups and ragga vocals"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
@@ -263,7 +263,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Historical & Liner Notes</label>
                 <textarea
                   rows={3}
-                  value={formData.description}
+                  value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Details on production, hardware samplers, release context..."
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
