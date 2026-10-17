@@ -57,6 +57,28 @@ function testDirectoryWritable(dir: string): boolean {
   }
 }
 
+function safeWriteFileWithSync(filePath: string, data: string): void {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const tempPath = path.join(dir, `.tmp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
+  try {
+    const fd = fs.openSync(tempPath, 'w');
+    fs.writeSync(fd, data, 0, 'utf-8');
+    try {
+      fs.fsyncSync(fd);
+    } catch {
+      // Some virtual filesystems do not support fsync, ignore if so
+    }
+    fs.closeSync(fd);
+    fs.renameSync(tempPath, filePath);
+  } catch (err) {
+    // Direct write fallback
+    fs.writeFileSync(filePath, data, 'utf-8');
+  }
+}
+
 function getLinuxMountPoints(): string[] {
   try {
     if (!fs.existsSync('/proc/mounts')) return [];
@@ -150,6 +172,11 @@ function getStorageDetails(): StorageStatus {
 
   const linuxMounts = getLinuxMountPoints();
   const candidates: Array<{ path: string; note: string; isExplicitVolume: boolean; isConfirmedMount: boolean }> = [];
+
+  // 0. Attached Railway volume at /app/data (Highest Priority)
+  if (fs.existsSync('/app/data')) {
+    candidates.push({ path: '/app/data', note: 'attached-volume:/app/data', isExplicitVolume: true, isConfirmedMount: true });
+  }
 
   // 1. Explicit Railway Volume environment variables
   if (process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.RAILWAY_VOLUME_MOUNT_PATH.trim()) {
@@ -663,36 +690,15 @@ app.post('/api/db/save', (req, res) => {
 
     const backupDir = path.join(storage.resolvedDataDir, 'backups');
 
-    // 0. Size guard: refuse to replace a large database with a much smaller snapshot
-    const forceOverwrite = String(req.get('x-force-overwrite') || '').toLowerCase() === 'true';
+    // 0. Safety Backup: Always preserve existing database before applying new updates
     if (fs.existsSync(primaryDbFile)) {
-      const currentBytes = fs.statSync(primaryDbFile).size;
-      const incomingBytes = Buffer.byteLength(databaseBase64, 'utf-8');
-      if (
-        currentBytes > SAVE_GUARD_MIN_CURRENT_BYTES &&
-        incomingBytes < currentBytes * SAVE_GUARD_MIN_RATIO
-      ) {
-        if (!forceOverwrite) {
-          console.warn(
-            `[Storage] Rejected database save from "${clientDevice || 'web-client'}": incoming snapshot (${incomingBytes} bytes) is smaller than ${SAVE_GUARD_MIN_RATIO * 100}% of current database (${currentBytes} bytes).`
-          );
-          return res.status(409).json({
-            error: 'Snapshot smaller than current database; refusing to overwrite',
-            currentBytes,
-            incomingBytes,
-          });
-        }
-        console.warn(
-          `[Storage] Forced overwrite via X-Force-Overwrite: current ${currentBytes} bytes replaced by ${incomingBytes} bytes (client: "${clientDevice || 'web-client'}").`
-        );
-      }
+      backupCurrentSnapshot(primaryDbFile, backupDir);
     }
 
-    // 1. Preserve the existing snapshot as a timestamped backup, then write to active storage directory
-    backupCurrentSnapshot(primaryDbFile, backupDir);
-    fs.writeFileSync(primaryDbFile, databaseBase64, 'utf-8');
+    // 1. Physically sync new snapshot to active storage directory with OS fsync
+    safeWriteFileWithSync(primaryDbFile, databaseBase64);
     try {
-      fs.writeFileSync(primaryBakFile, databaseBase64, 'utf-8');
+      safeWriteFileWithSync(primaryBakFile, databaseBase64);
     } catch {}
 
     const meta = {
@@ -701,7 +707,7 @@ app.post('/api/db/save', (req, res) => {
       sizeBytes: databaseBase64.length,
       isSeed: false,
     };
-    fs.writeFileSync(primaryMetaFile, JSON.stringify(meta, null, 2), 'utf-8');
+    safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
     // 2. Multi-directory mirror write:
     // Write redundantly to ALL writable data locations: /app/data, /data, LOCAL_DATA_DIR, and Railway env paths
@@ -716,8 +722,8 @@ app.post('/api/db/save', (req, res) => {
     for (const dir of mirrorDirs) {
       if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
         try {
-          fs.writeFileSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64, 'utf-8');
-          fs.writeFileSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
+          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64);
+          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
         } catch {}
       }
     }
@@ -725,8 +731,8 @@ app.post('/api/db/save', (req, res) => {
     // 3. Keep a rotating local backup
     try {
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      fs.writeFileSync(path.join(backupDir, 'latest_backup.b64'), databaseBase64, 'utf-8');
-      fs.writeFileSync(path.join(backupDir, 'latest_meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
+      safeWriteFileWithSync(path.join(backupDir, 'latest_backup.b64'), databaseBase64);
+      safeWriteFileWithSync(path.join(backupDir, 'latest_meta.json'), JSON.stringify(meta, null, 2));
     } catch {}
 
     console.log(`[Storage] Saved database snapshot (${meta.sizeBytes} bytes) to "${primaryDbFile}" (Volume: ${storage.isPersistent ? 'YES' : 'NO'}, Mount: ${storage.mountSource})`);
