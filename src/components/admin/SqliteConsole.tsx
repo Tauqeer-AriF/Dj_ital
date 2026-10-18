@@ -16,6 +16,7 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   const [error, setError] = useState<string | null>(null);
   const [execMessage, setExecMessage] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const presets = [
     { label: 'View Events', sql: 'SELECT id, title, venue, event_date, status FROM events;' },
@@ -54,14 +55,17 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   };
 
   const confirmReset = async () => {
+    setIsResetting(true);
     try {
-      setIsResetConfirmOpen(false);
       await resetDatabaseToSeed();
-      showSuccess('Database Reset', 'SQLite database restored to initial factory seed.');
+      showSuccess('Database Reset', 'SQLite database restored to initial factory seed with media library, heritage, audio & testimonials.');
+      setIsResetConfirmOpen(false);
       onRefresh();
       handleRunQuery();
     } catch (err: any) {
       showError('Reset Failed', err?.message || 'Database reset failed.');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -179,12 +183,14 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
       <ConfirmModal
         isOpen={isResetConfirmOpen}
         title="Confirm SQLite Database Reset"
-        message="Are you sure you want to reset the SQLite database back to original seed records? All customised events, releases, bookings, and profile copy will be reverted to the factory state."
+        message="Are you sure you want to reset the SQLite database back to original seed records? All customised events, releases, bookings, media library assets, heritage milestones, audio mixes, and promoter testimonials will be reverted to the factory state."
         confirmLabel="Reset Database"
         cancelLabel="Keep Current DB"
+        isLoading={isResetting}
+        loadingLabel="Resetting Database & Seed Records..."
         isDestructive
         onConfirm={confirmReset}
-        onCancel={() => setIsResetConfirmOpen(false)}
+        onCancel={() => !isResetting && setIsResetConfirmOpen(false)}
       />
     </div>
   );

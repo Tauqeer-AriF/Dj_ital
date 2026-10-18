@@ -578,7 +578,16 @@ app.post('/api/db/reset', (_req, res) => {
     // Re-seed with baseline
     ensureDatabaseSeeded();
 
-    return res.json({ success: true, message: 'Server database reset to default seeds' });
+    let databaseBase64: string | null = null;
+    if (fs.existsSync(dbFile)) {
+      databaseBase64 = fs.readFileSync(dbFile, 'utf-8').trim();
+    }
+
+    return res.json({
+      success: true,
+      message: 'Server database reset to default seeds',
+      databaseBase64,
+    });
   } catch (error: any) {
     console.error('Error resetting server database:', error);
     return res.status(500).json({ error: error.message || 'Failed to reset database' });

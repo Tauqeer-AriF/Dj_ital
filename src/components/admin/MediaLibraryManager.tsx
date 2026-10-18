@@ -42,6 +42,7 @@ import {
   updateSiteMedia,
   resetSiteMedia,
   resetAllSiteMedia,
+  subscribeDb,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
@@ -116,6 +117,11 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   useEffect(() => {
     loadLibrary();
     loadSiteMedia();
+    const unsubscribe = subscribeDb(() => {
+      loadLibrary();
+      loadSiteMedia();
+    });
+    return () => unsubscribe();
   }, []);
 
   // Copy URL to clipboard

@@ -43,6 +43,7 @@ import {
   updateHeritageMilestone,
   deleteHeritageMilestone,
   DEFAULT_HERITAGE_SETTINGS,
+  subscribeDb,
 } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
@@ -148,6 +149,10 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   useEffect(() => {
     loadData();
+    const unsubscribe = subscribeDb(() => {
+      loadData();
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleSettingsFieldChange = (field: keyof HeritageSettingsData, value: string) => {

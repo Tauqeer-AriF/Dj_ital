@@ -20,6 +20,7 @@ import {
   createVenueLogo,
   updateVenueLogo,
   deleteVenueLogo,
+  subscribeDb,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
@@ -67,6 +68,10 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
 
   useEffect(() => {
     loadData();
+    const unsubscribe = subscribeDb(() => {
+      loadData();
+    });
+    return () => unsubscribe();
   }, []);
 
   // Handlers for Testimonials

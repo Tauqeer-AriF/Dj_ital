@@ -946,113 +946,7 @@ function ensureSchemaMigrations(db: Database) {
       // ignore
     }
 
-    if (!isSeeded) {
-      try {
-        const heritageCount = db.exec('SELECT count(*) FROM heritage_settings');
-        if (heritageCount.length === 0 || heritageCount[0].values[0][0] === 0) {
-          db.run(
-            `INSERT OR REPLACE INTO heritage_settings (
-              id, badge_text, subbadge_text, heading, description,
-              va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
-              residency_label, residency_title, residency_badge, residency_badge_color,
-              provenance_tag, provenance_heading, lead_paragraph, updated_at
-            ) VALUES (
-              1, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?,
-              ?, ?, ?, ?,
-              ?, ?, ?, ?
-            )`,
-            [
-              DEFAULT_HERITAGE_SETTINGS.badge_text,
-              DEFAULT_HERITAGE_SETTINGS.subbadge_text,
-              DEFAULT_HERITAGE_SETTINGS.heading,
-              DEFAULT_HERITAGE_SETTINGS.description,
-              DEFAULT_HERITAGE_SETTINGS.va_image,
-              DEFAULT_HERITAGE_SETTINGS.va_image_alt,
-              DEFAULT_HERITAGE_SETTINGS.plaque_title,
-              DEFAULT_HERITAGE_SETTINGS.plaque_tag,
-              DEFAULT_HERITAGE_SETTINGS.plaque_description,
-              DEFAULT_HERITAGE_SETTINGS.residency_label,
-              DEFAULT_HERITAGE_SETTINGS.residency_title,
-              DEFAULT_HERITAGE_SETTINGS.residency_badge,
-              DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
-              DEFAULT_HERITAGE_SETTINGS.provenance_tag,
-              DEFAULT_HERITAGE_SETTINGS.provenance_heading,
-              DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
-              new Date().toISOString(),
-            ]
-          );
-        }
-      } catch (e) {
-        console.warn('Error seeding heritage_settings:', e);
-      }
-
-      try {
-        const credsCount = db.exec('SELECT count(*) FROM heritage_credentials');
-        if (credsCount.length === 0 || credsCount[0].values[0][0] === 0) {
-          for (const c of DEFAULT_HERITAGE_CREDENTIALS) {
-            db.run(
-              'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
-              [c.icon, c.title, c.description, c.color, c.order_index]
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Error seeding heritage_credentials:', e);
-      }
-
-      try {
-        const chapsCount = db.exec('SELECT count(*) FROM heritage_chapters');
-        if (chapsCount.length === 0 || chapsCount[0].values[0][0] === 0) {
-          for (const ch of DEFAULT_HERITAGE_CHAPTERS) {
-            db.run(
-              'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
-              [ch.tab_label, ch.title, ch.period, ch.content, ch.order_index]
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Error seeding heritage_chapters:', e);
-      }
-
-      try {
-        const milesCount = db.exec('SELECT count(*) FROM heritage_milestones');
-        if (milesCount.length === 0 || milesCount[0].values[0][0] === 0) {
-          for (const m of DEFAULT_HERITAGE_MILESTONES) {
-            db.run(
-              'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
-              [m.year_badge, m.title, m.description, m.color, m.order_index]
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Error seeding heritage_milestones:', e);
-      }
-
-    }
-
-    try {
-      const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
-      if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
-        db.run(
-          `INSERT OR REPLACE INTO documentary_settings (
-            id, badge_text, subbadge_text, heading, description,
-            youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
-          ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
-          [
-            DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.heading,
-            DEFAULT_DOCUMENTARY_SETTINGS.description,
-            DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
-            new Date().toISOString(),
-          ]
-        );
-      }
-    } catch (e) {
-      console.warn('Error seeding documentary_settings:', e);
-    }
+    seedHeritageTablesIfEmpty(db, false);
 
     // Ensure documentary table columns exist before backfilling
     addColumnIfNotExists(db, 'documentary', 'order_index', 'INTEGER DEFAULT 0');
@@ -1143,11 +1037,10 @@ function ensureSchemaMigrations(db: Database) {
     addColumnIfNotExists(db, 'bookings', 'set_length', "TEXT DEFAULT '90 min'");
     addColumnIfNotExists(db, 'bookings', 'venue_location', "TEXT DEFAULT ''");
 
-    // Populate default seeds only on fresh install
-    if (!isSeeded) {
-      seedNewTablesIfEmpty(db);
-      db.run("INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('initial_seed', 'completed');");
-    }
+    // Populate default seeds if tables are empty
+    seedNewTablesIfEmpty(db, false);
+    seedDocumentariesIfEmpty(db, false);
+    db.run("INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('initial_seed', 'completed');");
 
     // Sync all existing app images, logos, documents, and media into media_library
     syncAppMediaToLibrary(db);
@@ -1221,8 +1114,307 @@ function ensureSchemaMigrations(db: Database) {
   }
 }
 
-function seedNewTablesIfEmpty(db: Database) {
+export function seedHeritageTablesIfEmpty(db: Database, force = false) {
   try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS heritage_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        badge_text TEXT,
+        subbadge_text TEXT,
+        heading TEXT,
+        description TEXT,
+        va_image TEXT,
+        va_image_alt TEXT,
+        plaque_title TEXT,
+        plaque_tag TEXT,
+        plaque_description TEXT,
+        residency_label TEXT,
+        residency_title TEXT,
+        residency_badge TEXT,
+        residency_badge_color TEXT,
+        provenance_tag TEXT,
+        provenance_heading TEXT,
+        lead_paragraph TEXT,
+        updated_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS heritage_credentials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        icon TEXT NOT NULL DEFAULT 'radio',
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT 'amber',
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS heritage_chapters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tab_label TEXT NOT NULL,
+        title TEXT NOT NULL,
+        period TEXT NOT NULL,
+        content TEXT NOT NULL,
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS heritage_milestones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year_badge TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT 'amber',
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS documentary_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        badge_text TEXT,
+        subbadge_text TEXT,
+        heading TEXT,
+        description TEXT,
+        youtube_button_text TEXT,
+        youtube_series_url TEXT,
+        show_youtube_button INTEGER DEFAULT 1,
+        is_section_visible INTEGER DEFAULT 1,
+        updated_at TEXT
+      );
+    `);
+
+    if (force) {
+      db.run('DELETE FROM heritage_settings;');
+      db.run('DELETE FROM heritage_credentials;');
+      db.run('DELETE FROM heritage_chapters;');
+      db.run('DELETE FROM heritage_milestones;');
+      db.run('DELETE FROM documentary_settings;');
+    }
+
+    const heritageCount = db.exec('SELECT count(*) FROM heritage_settings');
+    if (heritageCount.length === 0 || Number(heritageCount[0].values[0][0]) === 0) {
+      db.run(
+        `INSERT OR REPLACE INTO heritage_settings (
+          id, badge_text, subbadge_text, heading, description,
+          va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
+          residency_label, residency_title, residency_badge, residency_badge_color,
+          provenance_tag, provenance_heading, lead_paragraph, updated_at
+        ) VALUES (
+          1, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?
+        )`,
+        [
+          DEFAULT_HERITAGE_SETTINGS.badge_text,
+          DEFAULT_HERITAGE_SETTINGS.subbadge_text,
+          DEFAULT_HERITAGE_SETTINGS.heading,
+          DEFAULT_HERITAGE_SETTINGS.description,
+          DEFAULT_HERITAGE_SETTINGS.va_image,
+          DEFAULT_HERITAGE_SETTINGS.va_image_alt,
+          DEFAULT_HERITAGE_SETTINGS.plaque_title,
+          DEFAULT_HERITAGE_SETTINGS.plaque_tag,
+          DEFAULT_HERITAGE_SETTINGS.plaque_description,
+          DEFAULT_HERITAGE_SETTINGS.residency_label,
+          DEFAULT_HERITAGE_SETTINGS.residency_title,
+          DEFAULT_HERITAGE_SETTINGS.residency_badge,
+          DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
+          DEFAULT_HERITAGE_SETTINGS.provenance_tag,
+          DEFAULT_HERITAGE_SETTINGS.provenance_heading,
+          DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
+          new Date().toISOString(),
+        ]
+      );
+    }
+
+    const credsCount = db.exec('SELECT count(*) FROM heritage_credentials');
+    if (credsCount.length === 0 || Number(credsCount[0].values[0][0]) === 0) {
+      for (const c of DEFAULT_HERITAGE_CREDENTIALS) {
+        db.run(
+          'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+          [c.icon, c.title, c.description, c.color, c.order_index]
+        );
+      }
+    }
+
+    const chapsCount = db.exec('SELECT count(*) FROM heritage_chapters');
+    if (chapsCount.length === 0 || Number(chapsCount[0].values[0][0]) === 0) {
+      for (const ch of DEFAULT_HERITAGE_CHAPTERS) {
+        db.run(
+          'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
+          [ch.tab_label, ch.title, ch.period, ch.content, ch.order_index]
+        );
+      }
+    }
+
+    const milesCount = db.exec('SELECT count(*) FROM heritage_milestones');
+    if (milesCount.length === 0 || Number(milesCount[0].values[0][0]) === 0) {
+      for (const m of DEFAULT_HERITAGE_MILESTONES) {
+        db.run(
+          'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+          [m.year_badge, m.title, m.description, m.color, m.order_index]
+        );
+      }
+    }
+
+    const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
+    if (docSettingsCount.length === 0 || Number(docSettingsCount[0].values[0][0]) === 0) {
+      db.run(
+        `INSERT OR REPLACE INTO documentary_settings (
+          id, badge_text, subbadge_text, heading, description,
+          youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
+        [
+          DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
+          DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
+          DEFAULT_DOCUMENTARY_SETTINGS.heading,
+          DEFAULT_DOCUMENTARY_SETTINGS.description,
+          DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
+          DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
+          new Date().toISOString(),
+        ]
+      );
+    }
+  } catch (err) {
+    console.warn('Error in seedHeritageTablesIfEmpty:', err);
+  }
+}
+
+export function seedDocumentariesIfEmpty(db: Database, force = false) {
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS documentary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        episode_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        duration TEXT,
+        description TEXT,
+        youtube_url TEXT,
+        topics TEXT,
+        thumbnail_url TEXT DEFAULT '/images/dj_ital_hero_1790112374509.jpg',
+        badge_label TEXT DEFAULT '',
+        action_button_text TEXT DEFAULT 'WATCH ARCHIVAL TAPE',
+        order_index INTEGER DEFAULT 0
+      );
+    `);
+
+    if (force) {
+      db.run('DELETE FROM documentary;');
+    }
+
+    const check = db.exec('SELECT count(*) FROM documentary');
+    if (check.length === 0 || Number(check[0].values[0][0]) === 0) {
+      const docs = [
+        [
+          1,
+          'Rooftops & Airwaves: The Kool FM Inception',
+          '22 min',
+          'How a group of passionate East London music pioneers rigged aerials atop Hackney council towers to broadcast the revolutionary sounds of jungle drum and bass to thousands.',
+          'https://www.youtube.com/@djital',
+          'Pirate Radio History, Hackney Towers, Transmitter Tech',
+          '/images/hackney_pirate_radio_1790113898507.jpg',
+          'EPISODE 01',
+          'WATCH ARCHIVAL TAPE',
+          1,
+        ],
+        [
+          2,
+          'The Dubplate Culture & Producing "Decibel"',
+          '19 min',
+          'First-hand breakdown of how "Decibel" was composed on vintage hardware samplers, cut onto fresh acetate, and road-tested at landmark raves.',
+          'https://www.youtube.com/@djital',
+          'Music Production, Dubplate Cutting, Sound Clash',
+          '/images/vinyl_dubplate_acetate_1790113879360.jpg',
+          'EPISODE 02',
+          'WATCH ARCHIVAL TAPE',
+          2,
+        ],
+        [
+          3,
+          'Vital Fest: Protecting East London Sound Heritage',
+          '26 min',
+          'The genesis of Vital Fest, uniting original jungle originators with the next generation of ravers in grassroots East London venues.',
+          'https://www.youtube.com/@djital',
+          'Vital Fest, Hackney Social, Community Culture',
+          '/images/vital_fest_crowd_1790112387611.jpg',
+          'EPISODE 03',
+          'WATCH ARCHIVAL TAPE',
+          3,
+        ],
+        [
+          4,
+          'From Underground Pirate to The V&A Museum',
+          '18 min',
+          'Reflections on 35 years of dedication to UK jungle, culminating in national cultural recognition at the Victoria and Albert Museum in 2026.',
+          'https://www.youtube.com/@djital',
+          'V&A Museum Exhibition, Legacy, Cultural Preservation',
+          '/images/va_museum_exhibition_1790112416279.jpg',
+          'EPISODE 04',
+          'WATCH ARCHIVAL TAPE',
+          4,
+        ],
+      ];
+      for (const d of docs) {
+        db.run(
+          `INSERT INTO documentary (episode_number, title, duration, description, youtube_url, topics, thumbnail_url, badge_label, action_button_text, order_index)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          d
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('Error in seedDocumentariesIfEmpty:', err);
+  }
+}
+
+export function seedNewTablesIfEmpty(db: Database, force = false) {
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS audio_mixes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        style TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        embed_url TEXT NOT NULL,
+        stream_url TEXT,
+        duration TEXT,
+        description TEXT,
+        is_featured INTEGER DEFAULT 0,
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS videos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        video_url TEXT NOT NULL,
+        thumbnail_url TEXT,
+        duration TEXT,
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS testimonials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quote TEXT NOT NULL,
+        author_name TEXT NOT NULL,
+        role_venue TEXT NOT NULL,
+        avatar_url TEXT,
+        rating INTEGER DEFAULT 5,
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS venue_logos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        location TEXT,
+        logo_text TEXT,
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        created_at TEXT NOT NULL,
+        source TEXT DEFAULT 'Website'
+      );
+    `);
+
+    if (force) {
+      db.run('DELETE FROM audio_mixes;');
+      db.run('DELETE FROM videos;');
+      db.run('DELETE FROM testimonials;');
+      db.run('DELETE FROM venue_logos;');
+      db.run('DELETE FROM newsletter_subscribers;');
+    }
+
     const mixesCheck = db.exec('SELECT COUNT(*) FROM audio_mixes');
     if (mixesCheck.length === 0 || Number(mixesCheck[0].values[0][0]) === 0) {
       const mixes = [
@@ -2111,6 +2303,12 @@ function initSchemaAndSeeds(db: Database) {
       [m[0], m[1], m[2], m[3], m[4], m[5], now]
     );
   }
+
+  // Guarantee documentaries, heritage, audio/media mixes, testimonials, and media library are seeded
+  seedDocumentariesIfEmpty(db, true);
+  seedHeritageTablesIfEmpty(db, true);
+  seedNewTablesIfEmpty(db, true);
+  syncAppMediaToLibrary(db);
 
   db.run('CREATE TABLE IF NOT EXISTS _system_meta (key TEXT PRIMARY KEY, value TEXT);');
   db.run("INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('initial_seed', 'completed');");
@@ -3186,17 +3384,78 @@ export async function importDatabaseBinary(fileBuffer: Uint8Array): Promise<void
 }
 
 export async function resetDatabaseToDefault(): Promise<void> {
+  let seedBase64: string | null = null;
   try {
-    await fetch('/api/db/reset', { method: 'POST' });
+    const res = await fetch('/api/db/reset', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.databaseBase64) {
+        seedBase64 = data.databaseBase64;
+      }
+    }
   } catch (e) {
     console.warn('Failed to call /api/db/reset:', e);
   }
-  const SQL = await initSqlJs({
-    locateFile: () => '/sql-wasm.wasm',
-  });
-  dbInstance = new SQL.Database();
-  initSchemaAndSeeds(dbInstance);
-  await saveDatabaseToStorage(dbInstance);
+
+  // If server did not return databaseBase64 directly, try to query /api/db/state
+  if (!seedBase64) {
+    try {
+      const res = await fetch('/api/db/state', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.exists && json.databaseBase64) {
+          seedBase64 = json.databaseBase64;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not query /api/db/state after reset:', e);
+    }
+  }
+
+  let SQL: any;
+  try {
+    const wasmBinary = await loadSqlWasmBinary();
+    if (wasmBinary) {
+      SQL = await initSqlJs({ wasmBinary });
+    } else {
+      SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+    }
+  } catch (e) {
+    SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+  }
+
+  let currentDb: Database;
+  if (seedBase64) {
+    try {
+      const u8 = base64ToUint8Array(seedBase64);
+      currentDb = new SQL.Database(u8);
+    } catch (err) {
+      console.warn('Failed to parse reset base64 seed, reinitializing fresh schema:', err);
+      currentDb = new SQL.Database();
+      initSchemaAndSeeds(currentDb);
+    }
+  } else {
+    currentDb = new SQL.Database();
+    initSchemaAndSeeds(currentDb);
+  }
+
+  // Ensure migrations
+  ensureSchemaMigrations(currentDb);
+
+  // Clear deleted media tracking so default assets are immediately visible
+  try {
+    currentDb.run('CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT);');
+    currentDb.run('DELETE FROM deleted_media_urls;');
+  } catch {}
+
+  // Explicitly force seed heritage, documentaries, and new tables (audio, videos, testimonials, venues)
+  seedHeritageTablesIfEmpty(currentDb, true);
+  seedDocumentariesIfEmpty(currentDb, true);
+  seedNewTablesIfEmpty(currentDb, true);
+  syncAppMediaToLibrary(currentDb);
+
+  dbInstance = currentDb;
+  await saveDatabaseToStorage(currentDb);
   notifyListeners();
 }
 

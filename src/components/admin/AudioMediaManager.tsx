@@ -27,6 +27,7 @@ import {
   updateVideo,
   deleteVideo,
   createMediaLibraryItem,
+  subscribeDb,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
@@ -182,6 +183,10 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
   useEffect(() => {
     loadData();
+    const unsubscribe = subscribeDb(() => {
+      loadData();
+    });
+    return () => unsubscribe();
   }, []);
 
   // Handlers for Audio Mixes
