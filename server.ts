@@ -138,14 +138,11 @@ function ensureDatabaseSeeded(): void {
 function syncUploadDirectories(): void {
   try {
     const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
-    const localDataUploadDir = path.join(DATA_DIR, 'uploads');
     const categories = ['videos', 'images', 'audio', 'documents'];
-    for (const base of [publicUploadDir, localDataUploadDir]) {
-      for (const cat of categories) {
-        const catDir = path.join(base, cat);
-        if (!fs.existsSync(catDir)) {
-          fs.mkdirSync(catDir, { recursive: true });
-        }
+    for (const cat of categories) {
+      const catDir = path.join(publicUploadDir, cat);
+      if (!fs.existsSync(catDir)) {
+        fs.mkdirSync(catDir, { recursive: true });
       }
     }
   } catch (err: any) {
@@ -190,29 +187,15 @@ app.get('/sitemap.xml', (_req, res) => {
   }
 });
 
-// Dedicated streaming endpoint for uploaded media with HTTP 206 Range support and multi-path fallback
+// Dedicated streaming endpoint for uploaded media with HTTP 206 Range support
 app.get('/uploads/:category/:filename', (req, res) => {
   const { category, filename } = req.params;
   const safeCategory = ['videos', 'images', 'audio', 'documents'].includes(category) ? category : 'documents';
   const safeFilename = path.basename(filename);
 
-  const storage = getStorageDetails();
-  const candidatePaths = [
-    path.resolve(__dirname, 'public', 'uploads', safeCategory, safeFilename),
-    path.join(storage.resolvedDataDir, 'uploads', safeCategory, safeFilename),
-    path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory, safeFilename),
-    path.resolve(PROTECTED_SEED_DIR, 'uploads', safeCategory, safeFilename),
-  ];
+  const foundPath = path.resolve(__dirname, 'public', 'uploads', safeCategory, safeFilename);
 
-  let foundPath: string | null = null;
-  for (const p of candidatePaths) {
-    if (fs.existsSync(p)) {
-      foundPath = p;
-      break;
-    }
-  }
-
-  if (!foundPath) {
+  if (!fs.existsSync(foundPath)) {
     // CRITICAL: Return 404 immediately!
     // Never fall through to SPA fallback or Vite, which would send index.html (causing corrupted video errors)
     return res.status(404).json({ error: `Uploaded asset ${safeFilename} not found` });
@@ -859,36 +842,29 @@ app.post('/api/upload-media', (req, res) => {
     const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
     const storage = getStorageDetails();
 
-    // 1. Content Deduplication Check: Look for an existing identical file
-    const candidateDirs = [
-      path.resolve(__dirname, 'public', 'uploads', safeCategory),
-      path.resolve(storage.resolvedDataDir, 'uploads', safeCategory),
-      path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory),
-    ];
-
+    // 1. Content Deduplication Check: Look for an existing identical file in public/uploads
+    const uploadCategoryDir = path.resolve(__dirname, 'public', 'uploads', safeCategory);
     let existingFileMatch: string | null = null;
-    for (const dir of candidateDirs) {
-      if (fs.existsSync(dir)) {
-        try {
-          const files = fs.readdirSync(dir);
-          for (const f of files) {
-            if (f.startsWith('.')) continue;
-            const fullP = path.join(dir, f);
-            try {
-              const stat = fs.statSync(fullP);
-              if (stat.size === buffer.length) {
-                const existingData = fs.readFileSync(fullP);
-                const existingHash = crypto.createHash('sha256').update(existingData).digest('hex');
-                if (existingHash === contentHash) {
-                  existingFileMatch = f;
-                  break;
-                }
+
+    if (fs.existsSync(uploadCategoryDir)) {
+      try {
+        const files = fs.readdirSync(uploadCategoryDir);
+        for (const f of files) {
+          if (f.startsWith('.')) continue;
+          const fullP = path.join(uploadCategoryDir, f);
+          try {
+            const stat = fs.statSync(fullP);
+            if (stat.size === buffer.length) {
+              const existingData = fs.readFileSync(fullP);
+              const existingHash = crypto.createHash('sha256').update(existingData).digest('hex');
+              if (existingHash === contentHash) {
+                existingFileMatch = f;
+                break;
               }
-            } catch {}
-          }
-        } catch {}
-      }
-      if (existingFileMatch) break;
+            }
+          } catch {}
+        }
+      } catch {}
     }
 
     if (existingFileMatch) {
@@ -910,41 +886,22 @@ app.post('/api/upload-media', (req, res) => {
     const shortHash = contentHash.substring(0, 8);
     const finalFilename = `${baseName}_${shortHash}.${cleanExt}`;
 
-    // Target destinations to guarantee media survives code rebuilds & volume changes
-    const destDirs = new Set<string>();
-    destDirs.add(path.resolve(__dirname, 'public', 'uploads', safeCategory));
-    destDirs.add(path.resolve(storage.resolvedDataDir, 'uploads', safeCategory));
-    destDirs.add(path.resolve(LOCAL_DATA_DIR, 'uploads', safeCategory));
-    if (fs.existsSync('/app/data')) {
-      destDirs.add(path.resolve('/app/data', 'uploads', safeCategory));
+    // Target single destination in public/uploads
+    if (!fs.existsSync(uploadCategoryDir)) {
+      fs.mkdirSync(uploadCategoryDir, { recursive: true });
     }
-    if (process.env.DATA_DIR) {
-      destDirs.add(path.resolve(process.env.DATA_DIR, 'uploads', safeCategory));
-    }
-
-    for (const dir of destDirs) {
-      try {
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const filePath = path.join(dir, finalFilename);
-        if (fs.existsSync(filePath)) {
-          const stat = fs.statSync(filePath);
-          if (stat.size === buffer.length) continue;
-        }
-        const tempPath = path.join(dir, `.tmp_${Date.now()}_${finalFilename}`);
-        const fd = fs.openSync(tempPath, 'w');
-        fs.writeSync(fd, buffer);
-        try {
-          fs.fsyncSync(fd);
-        } catch {}
-        fs.closeSync(fd);
-        fs.renameSync(tempPath, filePath);
-      } catch (err: any) {
-        console.warn(`[Upload] Notice: Could not write to ${dir}:`, err.message);
-      }
-    }
+    const targetFilePath = path.join(uploadCategoryDir, finalFilename);
+    const tempPath = path.join(uploadCategoryDir, `.tmp_${Date.now()}_${finalFilename}`);
+    const fd = fs.openSync(tempPath, 'w');
+    fs.writeSync(fd, buffer);
+    try {
+      fs.fsyncSync(fd);
+    } catch {}
+    fs.closeSync(fd);
+    fs.renameSync(tempPath, targetFilePath);
 
     const publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
-    console.log(`[Upload] Saved media clip to storage targets (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
+    console.log(`[Upload] Successfully stored ${finalFilename} (${(buffer.length / (1024 * 1024)).toFixed(2)} MB) -> ${publicUrl}`);
 
     return res.json({
       success: true,
@@ -975,22 +932,13 @@ app.post('/api/delete-media', (req, res) => {
     const relativeSubPath = cleanUrl.replace(/^\/uploads\//, '');
     const safeSubPath = path.normalize(relativeSubPath).replace(/^(\.\.[\/\\])+/, '');
 
-    const storage = getStorageDetails();
-    const targetDirs = [
-      path.resolve(__dirname, 'public', 'uploads'),
-      path.join(storage.resolvedDataDir, 'uploads'),
-      path.resolve(LOCAL_DATA_DIR, 'uploads'),
-    ];
-
-    for (const base of targetDirs) {
-      const filePath = path.resolve(base, safeSubPath);
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-          console.log(`[Delete] Deleted media file from ${filePath}`);
-        } catch (unlinkErr: any) {
-          console.warn(`[Delete] Warning unlinking ${filePath}:`, unlinkErr.message);
-        }
+    const filePath = path.resolve(__dirname, 'public', 'uploads', safeSubPath);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        console.log(`[Delete] Deleted media file from ${filePath}`);
+      } catch (unlinkErr: any) {
+        console.warn(`[Delete] Warning unlinking ${filePath}:`, unlinkErr.message);
       }
     }
 
