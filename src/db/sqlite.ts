@@ -1029,29 +1029,40 @@ function ensureSchemaMigrations(db: Database) {
         console.warn('Error seeding heritage_milestones:', e);
       }
 
-      try {
-        const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
-        if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
-          db.run(
-            `INSERT OR REPLACE INTO documentary_settings (
-              id, badge_text, subbadge_text, heading, description,
-              youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
-            ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
-            [
-              DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
-              DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
-              DEFAULT_DOCUMENTARY_SETTINGS.heading,
-              DEFAULT_DOCUMENTARY_SETTINGS.description,
-              DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
-              DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
-              new Date().toISOString(),
-            ]
-          );
-        }
-      } catch (e) {
-        console.warn('Error seeding documentary_settings:', e);
-      }
     }
+
+    try {
+      const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
+      if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
+        db.run(
+          `INSERT OR REPLACE INTO documentary_settings (
+            id, badge_text, subbadge_text, heading, description,
+            youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
+          [
+            DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.heading,
+            DEFAULT_DOCUMENTARY_SETTINGS.description,
+            DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
+            DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
+            new Date().toISOString(),
+          ]
+        );
+      }
+    } catch (e) {
+      console.warn('Error seeding documentary_settings:', e);
+    }
+
+    // Ensure documentary table columns exist before backfilling
+    addColumnIfNotExists(db, 'documentary', 'order_index', 'INTEGER DEFAULT 0');
+    addColumnIfNotExists(db, 'documentary', 'thumbnail_url', "TEXT DEFAULT '/images/dj_ital_hero_1790112374509.jpg'");
+    addColumnIfNotExists(db, 'documentary', 'badge_label', "TEXT DEFAULT ''");
+    addColumnIfNotExists(db, 'documentary', 'action_button_text', "TEXT DEFAULT 'WATCH ARCHIVAL TAPE'");
+
+    try {
+      db.run('UPDATE documentary SET order_index = episode_number WHERE order_index IS NULL OR order_index = 0');
+    } catch {}
 
     try {
       const existingDocs = db.exec('SELECT id, episode_number, thumbnail_url FROM documentary');
@@ -1660,7 +1671,11 @@ function initSchemaAndSeeds(db: Database) {
       duration TEXT,
       description TEXT,
       youtube_url TEXT,
-      topics TEXT
+      topics TEXT,
+      thumbnail_url TEXT DEFAULT '/images/dj_ital_hero_1790112374509.jpg',
+      badge_label TEXT DEFAULT '',
+      action_button_text TEXT DEFAULT 'WATCH ARCHIVAL TAPE',
+      order_index INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS bookings (
@@ -2334,19 +2349,23 @@ export async function deleteGalleryItem(id: number): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function getDocumentarySettings(): Promise<DocumentarySettingsData> {
-  const db = await getDatabase();
-  const res = db.exec('SELECT * FROM documentary_settings WHERE id = 1');
-  if (res.length === 0 || res[0].values.length === 0) {
-    return {
-      id: 1,
-      ...DEFAULT_DOCUMENTARY_SETTINGS,
-      updated_at: new Date().toISOString(),
-    };
+  try {
+    const db = await getDatabase();
+    const res = db.exec('SELECT * FROM documentary_settings WHERE id = 1');
+    if (res.length > 0 && res[0].values.length > 0) {
+      const cols = res[0].columns;
+      const obj: any = {};
+      cols.forEach((c, i) => (obj[c] = res[0].values[0][i]));
+      return obj as DocumentarySettingsData;
+    }
+  } catch (err) {
+    console.warn('Could not read documentary_settings:', err);
   }
-  const cols = res[0].columns;
-  const obj: any = {};
-  cols.forEach((c, i) => (obj[c] = res[0].values[0][i]));
-  return obj as DocumentarySettingsData;
+  return {
+    id: 1,
+    ...DEFAULT_DOCUMENTARY_SETTINGS,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 export async function updateDocumentarySettings(data: Partial<DocumentarySettingsData>): Promise<void> {
@@ -2410,9 +2429,14 @@ export async function resetDocumentarySettings(): Promise<void> {
 
 export async function getDocumentaries(): Promise<DocumentaryData[]> {
   const db = await getDatabase();
-  const res = db.exec(
-    'SELECT * FROM documentary ORDER BY CASE WHEN order_index IS NOT NULL AND order_index > 0 THEN order_index ELSE episode_number END ASC, episode_number ASC, id ASC'
-  );
+  let res;
+  try {
+    res = db.exec(
+      'SELECT * FROM documentary ORDER BY CASE WHEN order_index IS NOT NULL AND order_index > 0 THEN order_index ELSE episode_number END ASC, episode_number ASC, id ASC'
+    );
+  } catch (err) {
+    res = db.exec('SELECT * FROM documentary ORDER BY episode_number ASC, id ASC');
+  }
   if (res.length === 0) return [];
   const cols = res[0].columns;
   return res[0].values.map((row) => {
@@ -2933,18 +2957,23 @@ export async function resetAllSiteMedia(): Promise<void> {
 
 // Media Library Unified Management Methods
 export async function getMediaLibraryItems(): Promise<MediaLibraryItem[]> {
-  const db = await getDatabase();
-  const res = db.exec('SELECT * FROM media_library ORDER BY id DESC');
-  if (res.length === 0) return [];
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
-    const obj: any = {};
-    cols.forEach((c, i) => (obj[c] = row[i]));
-    if (obj.file_type === 'image') {
-      obj.url = normalizeImageUrl(obj.url);
-    }
-    return obj as MediaLibraryItem;
-  });
+  try {
+    const db = await getDatabase();
+    const res = db.exec('SELECT * FROM media_library ORDER BY id DESC');
+    if (res.length === 0) return [];
+    const cols = res[0].columns;
+    return res[0].values.map((row) => {
+      const obj: any = {};
+      cols.forEach((c, i) => (obj[c] = row[i]));
+      if (obj.file_type === 'image') {
+        obj.url = normalizeImageUrl(obj.url);
+      }
+      return obj as MediaLibraryItem;
+    });
+  } catch (err) {
+    console.warn('Could not read media_library:', err);
+    return [];
+  }
 }
 
 export async function createMediaLibraryItem(
