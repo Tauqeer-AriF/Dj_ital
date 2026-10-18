@@ -1061,10 +1061,24 @@ app.get('/api/export-codebase', (_req, res) => {
 // ----------------------------------------------------
 
 async function startServer() {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction =
+    process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.RAILWAY_ENVIRONMENT) ||
+    Boolean(process.env.RAILWAY_PROJECT_ID) ||
+    Boolean(process.env.RAILWAY_STATIC_URL);
 
-  if (!isProduction) {
-    // Vite middleware for development
+  const distPath = path.resolve(__dirname, 'dist');
+  const distIndexPath = path.join(distPath, 'index.html');
+
+  if (isProduction && fs.existsSync(distIndexPath)) {
+    console.log('[Server] Running in PRODUCTION mode, serving static build from /dist');
+    app.use(express.static(distPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(distIndexPath);
+    });
+  } else {
+    // Vite middleware for development or fallback
+    console.log('[Server] Initializing Vite middleware for dynamic development serving');
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: {
@@ -1076,12 +1090,6 @@ async function startServer() {
     });
 
     app.use(vite.middlewares);
-  } else {
-    // Static build serving in production
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-    });
   }
 
   app.listen(Number(PORT), '0.0.0.0', () => {
