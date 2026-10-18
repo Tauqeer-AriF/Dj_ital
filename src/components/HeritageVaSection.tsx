@@ -159,20 +159,17 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
   };
 
   const resolvedVaImage = normalizeImageUrl(settings.va_image || vaImage);
-  const credentials = heritageData?.credentials?.length
-    ? heritageData.credentials
-    : (DEFAULT_HERITAGE_CREDENTIALS.map((c, i) => ({ id: i + 1, ...c })));
+  const credentials = heritageData?.credentials ?? [];
+  const chapters = heritageData?.chapters ?? [];
+  const milestones = heritageData?.milestones ?? [];
 
-  const chapters = heritageData?.chapters?.length
-    ? heritageData.chapters
-    : (DEFAULT_HERITAGE_CHAPTERS.map((ch, i) => ({ id: i + 1, ...ch })));
-
-  const milestones = heritageData?.milestones?.length
-    ? heritageData.milestones
-    : (DEFAULT_HERITAGE_MILESTONES.map((m, i) => ({ id: i + 1, ...m })));
-
-  const leadParagraph = settings.lead_paragraph || profile?.bio_full || DEFAULT_HERITAGE_SETTINGS.lead_paragraph;
+  const leadParagraph = settings.lead_paragraph !== undefined && settings.lead_paragraph !== null ? settings.lead_paragraph : (profile?.bio_full || DEFAULT_HERITAGE_SETTINGS.lead_paragraph);
   const residencyBadgeClasses = getResidencyBadgeClasses(settings.residency_badge_color || 'emerald');
+
+  const badgeText = settings.badge_text !== undefined ? settings.badge_text : DEFAULT_HERITAGE_SETTINGS.badge_text;
+  const subbadgeText = settings.subbadge_text !== undefined ? settings.subbadge_text : DEFAULT_HERITAGE_SETTINGS.subbadge_text;
+  const heading = settings.heading !== undefined ? settings.heading : DEFAULT_HERITAGE_SETTINGS.heading;
+  const description = settings.description !== undefined ? settings.description : DEFAULT_HERITAGE_SETTINGS.description;
 
   return (
     <section id="heritage" className="py-24 md:py-32 lg:py-36 border-t border-neutral-200 dark:border-white/10 relative transition-colors duration-200">
@@ -184,21 +181,33 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
         {/* Section Header */}
         <ScrollReveal variant="fade-up">
           <div className="max-w-3xl mb-12 md:mb-16 space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
-              <span className="sound-badge text-cyan-600 dark:text-cyan-300 border-cyan-500/40 bg-cyan-500/10">
-                {settings.badge_text || '[ V&A NATIONAL ARCHIVE // 1991—2026 ]'}
-              </span>
-              <span aria-hidden="true" className="opacity-60">·</span>
-              <span className="text-neutral-700 dark:text-white">
-                {settings.subbadge_text || 'EAST LONDON PIRATE RIGS TO NATIONAL MUSEUM'}
-              </span>
-            </div>
-            <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
-              {settings.heading || 'From Hackney Pirate Towers to the V&A Museum'}
-            </h2>
-            <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base max-w-xl font-normal leading-relaxed">
-              {settings.description || "Tracing DJ Ital's 35-year journey from pirate broadcasts across East London rooftops to receiving permanent archival recognition in the Victoria & Albert Museum in 2026."}
-            </p>
+            {(badgeText || subbadgeText) && (
+              <div className="flex flex-wrap items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
+                {badgeText && (
+                  <span className="sound-badge text-cyan-600 dark:text-cyan-300 border-cyan-500/40 bg-cyan-500/10">
+                    {badgeText}
+                  </span>
+                )}
+                {subbadgeText && (
+                  <>
+                    {badgeText && <span aria-hidden="true" className="opacity-60">·</span>}
+                    <span className="text-neutral-700 dark:text-white">
+                      {subbadgeText}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+            {heading && (
+              <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
+                {heading}
+              </h2>
+            )}
+            {description && (
+              <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base max-w-xl font-normal leading-relaxed">
+                {description}
+              </p>
+            )}
           </div>
         </ScrollReveal>
 

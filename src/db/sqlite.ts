@@ -471,23 +471,15 @@ export interface LocalDbMeta {
 }
 
 export function getLocalDbMeta(): LocalDbMeta | null {
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(STORAGE_META_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
   return null;
 }
 
-export function setLocalDbMeta(meta: LocalDbMeta) {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(STORAGE_META_KEY, JSON.stringify(meta));
-  } catch {}
-}
+export function setLocalDbMeta(_meta: LocalDbMeta) {}
 
 let dbInstance: Database | null = null;
 let initPromise: Promise<Database> | null = null;
+let lastServerTimestamp: string = '';
+let isSavingToServer: boolean = false;
 
 // Listeners for reactive updates
 type DbListener = () => void;
@@ -527,210 +519,63 @@ export function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-// IndexedDB Dual-Layer Persistence (protects SQLite binary across browser sessions and quota limits)
-const IDB_NAME = 'djital_db_store';
-const IDB_STORE = 'db_state';
-const IDB_KEY = 'current_snapshot';
-
-function openIndexedDb(): Promise<IDBDatabase | null> {
-  if (typeof window === 'undefined' || !window.indexedDB) {
-    return Promise.resolve(null);
-  }
-  return new Promise((resolve) => {
-    try {
-      const request = window.indexedDB.open(IDB_NAME, 1);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(IDB_STORE)) {
-          db.createObjectStore(IDB_STORE);
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(null);
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
-export async function saveToIndexedDb(b64: string, meta: LocalDbMeta): Promise<void> {
-  try {
-    const db = await openIndexedDb();
-    if (!db) return;
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    const store = tx.objectStore(IDB_STORE);
-    store.put({ b64, meta, savedAt: Date.now() }, IDB_KEY);
-  } catch (e) {
-    console.warn('Could not save to IndexedDB:', e);
-  }
-}
-
-export async function loadFromIndexedDb(): Promise<{ b64: string; meta: LocalDbMeta } | null> {
-  try {
-    const db = await openIndexedDb();
-    if (!db) return null;
-    return new Promise((resolve) => {
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const store = tx.objectStore(IDB_STORE);
-      const req = store.get(IDB_KEY);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
-    });
-  } catch {
-    return null;
-  }
-}
-
-export interface ServerSyncResult {
-  ok: boolean;
-  status: number;
-  error?: string;
-  currentBytes?: number;
-  incomingBytes?: number;
-}
-
-export interface ServerSaveRejection {
-  currentBytes?: number;
-  incomingBytes?: number;
-  at: string;
-}
-
-// Set when the server refused a save (HTTP 409) so the newest changes exist only on this device.
-let serverSaveRejected: ServerSaveRejection | null = null;
-
-export function getServerSaveRejection(): ServerSaveRejection | null {
-  return serverSaveRejected;
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', (e) => {
-    if (serverSaveRejected) {
-      e.preventDefault();
-      e.returnValue = '';
-    }
-  });
-}
-
-async function postDatabaseToServer(
-  b64: string,
-  customTimestamp: string | undefined,
-  force: boolean = true
-): Promise<ServerSyncResult> {
-  let attempt = 0;
-  const maxAttempts = 3;
-  let lastError: any = null;
-
-  while (attempt < maxAttempts) {
-    attempt++;
-    try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Force-Overwrite': 'true',
-      };
-      const res = await fetch('/api/db/save', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          databaseBase64: b64,
-          timestamp: customTimestamp || new Date().toISOString(),
-          clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
-        }),
-      });
-
-      if (res.ok) {
-        if (serverSaveRejected) {
-          serverSaveRejected = null;
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('djital:save-accepted'));
-          }
-        }
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('djital:save-success', { detail: { timestamp: customTimestamp } }));
-        }
-        return { ok: true, status: res.status };
-      }
-
-      let body: any = null;
-      try {
-        body = await res.json();
-      } catch {}
-      lastError = body?.error || `HTTP ${res.status}`;
-    } catch (err: any) {
-      lastError = err?.message || String(err);
-    }
-
-    if (attempt < maxAttempts) {
-      await new Promise((r) => setTimeout(r, attempt * 400));
-    }
-  }
-
-  console.warn(`[Storage Sync] Failed to persist to Railway disk after ${maxAttempts} attempts:`, lastError);
-  return { ok: false, status: 0, error: String(lastError) };
-}
-
-export async function syncDatabaseToServer(b64: string, customTimestamp?: string): Promise<ServerSyncResult> {
-  return postDatabaseToServer(b64, customTimestamp, true);
+export function getServerSaveRejection() {
+  return null;
 }
 
 /**
- * Re-sends the most recent local snapshot with X-Force-Overwrite.
- * Must only be called from an explicit user action.
+ * Directly saves the SQLite database binary snapshot to the server disk in realtime.
+ * NO localStorage, NO IndexedDB. The server is the single source of truth.
  */
-export async function forceSaveToServer(): Promise<ServerSyncResult> {
-  let b64: string | null = null;
-  let updatedAt: string | undefined;
+export async function saveDatabaseToStorage(db: Database, customTimestamp?: string): Promise<boolean> {
   try {
-    if (dbInstance) {
-      const data = dbInstance.export();
-      b64 = uint8ArrayToBase64(data);
-      updatedAt = getLocalDbMeta()?.updatedAt || new Date().toISOString();
-    } else if (typeof localStorage !== 'undefined') {
-      b64 = localStorage.getItem(STORAGE_KEY);
-      updatedAt = getLocalDbMeta()?.updatedAt;
-    }
-    if (!b64) {
-      const idb = await loadFromIndexedDb();
-      if (idb?.b64) {
-        b64 = idb.b64;
-        updatedAt = idb.meta?.updatedAt;
-      }
-    }
-  } catch (err) {
-    console.warn('Could not read snapshot for forced save:', err);
-  }
-  if (!b64) return { ok: false, status: 0, error: 'No snapshot available' };
-  return postDatabaseToServer(b64, updatedAt, true);
-}
-
-export function saveDatabaseToStorage(db: Database, customTimestamp?: string) {
-  try {
+    isSavingToServer = true;
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
     const timestamp = customTimestamp || new Date().toISOString();
-    const meta: LocalDbMeta = {
-      updatedAt: timestamp,
-      clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
-      isCustom: true,
-    };
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_KEY, b64);
-        setLocalDbMeta(meta);
-        // Secondary backup copy in localStorage
-        localStorage.setItem('djital_sqlite_backup_v1', b64);
-        localStorage.setItem('djital_sqlite_backup_meta_v1', JSON.stringify(meta));
-      } catch (storageErr) {
-        console.warn('localStorage quota warning:', storageErr);
-      }
-    }
-    // Dual layer: also save to IndexedDB for resilience
-    saveToIndexedDb(b64, meta);
 
-    // Asynchronously push to server for cross-device synchronization (Windows, iOS, etc.)
-    syncDatabaseToServer(b64, timestamp);
+    const res = await fetch('/api/db/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        databaseBase64: b64,
+        timestamp,
+        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'web-client',
+      }),
+    });
+
+    if (res.ok) {
+      lastServerTimestamp = timestamp;
+      return true;
+    } else {
+      console.error('[Server Save Error]', res.status, await res.text());
+      return false;
+    }
   } catch (err) {
-    console.warn('Failed to save SQLite to storage:', err);
+    console.error('Failed to save SQLite to server:', err);
+    return false;
+  } finally {
+    isSavingToServer = false;
   }
+}
+
+export async function forcePushToServer(): Promise<{ success: boolean; message: string }> {
+  if (!dbInstance) return { success: false, message: 'Database not initialized' };
+  const ok = await await saveDatabaseToStorage(dbInstance);
+  return { success: ok, message: ok ? 'Saved to server in realtime' : 'Save failed' };
+}
+
+export async function forceSaveToServer(): Promise<{ ok: boolean; status: number; error?: string }> {
+  if (!dbInstance) return { ok: false, status: 0, error: 'Database not initialized' };
+  const ok = await await saveDatabaseToStorage(dbInstance);
+  return { ok, status: ok ? 200 : 500 };
+}
+
+export async function syncDatabaseToServer(b64: string, customTimestamp?: string) {
+  if (dbInstance) {
+    return await saveDatabaseToStorage(dbInstance, customTimestamp);
+  }
+  return false;
 }
 
 async function loadSqlWasmBinary(): Promise<ArrayBuffer | undefined> {
@@ -750,9 +595,7 @@ async function loadSqlWasmBinary(): Promise<ArrayBuffer | undefined> {
           return buffer;
         }
       }
-    } catch {
-      // Continue to next fallback source
-    }
+    } catch {}
   }
   return undefined;
 }
@@ -768,100 +611,47 @@ export async function getDatabase(): Promise<Database> {
       if (wasmBinary) {
         SQL = await initSqlJs({ wasmBinary });
       } else {
-        SQL = await initSqlJs({
-          locateFile: () => '/sql-wasm.wasm',
-        });
+        SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
       }
     } catch (e) {
-      console.warn('WASM binary load fallback:', e);
-      SQL = await initSqlJs({
-        locateFile: () => '/sql-wasm.wasm',
-      });
+      SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
     }
 
-    // 1. Read existing browser local storage & meta
-    let saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    let localMeta = getLocalDbMeta();
-
-    // 1b. Check IndexedDB if localStorage was empty or cleared
-    if (!saved) {
-      try {
-        const idb = await loadFromIndexedDb();
-        if (idb && idb.b64) {
-          saved = idb.b64;
-          localMeta = idb.meta;
-          if (typeof localStorage !== 'undefined') {
-            try {
-              localStorage.setItem(STORAGE_KEY, saved);
-              if (localMeta) setLocalDbMeta(localMeta);
-            } catch {}
-          }
-        }
-      } catch (err) {
-        console.warn('IndexedDB recovery fallback error:', err);
-      }
-    }
-
-    // 2. Query server database snapshot
+    // Always fetch directly from server (single authoritative source of truth)
     let serverBase64: string | null = null;
-    let serverMeta: { updatedAt?: string; isSeed?: boolean; updatedBy?: string } | null = null;
+    let serverUpdatedAt: string = '';
     try {
       const res = await fetch('/api/db/state', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.exists && json.databaseBase64) {
           serverBase64 = json.databaseBase64;
-          serverMeta = json.meta || null;
+          serverUpdatedAt = json.meta?.updatedAt || '';
         }
       }
     } catch (e) {
-      console.warn('Could not query server DB state, falling back to local storage:', e);
+      console.warn('Could not query server DB state:', e);
     }
 
-    // 3. Server is the Single Authoritative Source of Truth
-    // If server provides database state, always use server state directly.
-    // LocalStorage and IndexedDB act strictly as local caches.
     if (serverBase64) {
       try {
         const u8 = base64ToUint8Array(serverBase64);
         const serverDb: Database = new SQL.Database(u8);
         ensureSchemaMigrations(serverDb);
-        const meta = {
-          updatedAt: serverMeta?.updatedAt || new Date().toISOString(),
-          isCustom: !serverMeta?.isSeed,
-        };
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, serverBase64);
-          setLocalDbMeta(meta);
-        }
-        saveToIndexedDb(serverBase64, meta);
         dbInstance = serverDb;
+        lastServerTimestamp = serverUpdatedAt;
         startServerBackgroundSync();
         return serverDb;
       } catch (err) {
-        console.warn('Failed to parse server SQLite DB, falling back to local cache:', err);
+        console.error('Failed to parse server SQLite DB:', err);
       }
     }
 
-    // 4. Offline Fallback ONLY: If server is unreachable, use local cache
-    if (saved) {
-      try {
-        const u8 = base64ToUint8Array(saved);
-        const restoredDb: Database = new SQL.Database(u8);
-        ensureSchemaMigrations(restoredDb);
-        dbInstance = restoredDb;
-        startServerBackgroundSync();
-        return restoredDb;
-      } catch (err) {
-        console.warn('Failed to parse saved local SQLite DB:', err);
-      }
-    }
-
-    // 5. Fresh Database: If neither server nor local cache exists
+    // Fresh Database if server had no DB file
     const freshDb: Database = new SQL.Database();
     initSchemaAndSeeds(freshDb);
-    saveDatabaseToStorage(freshDb);
     dbInstance = freshDb;
+    await await saveDatabaseToStorage(freshDb);
     startServerBackgroundSync();
     return freshDb;
   })();
@@ -872,41 +662,30 @@ export async function getDatabase(): Promise<Database> {
 let bgSyncStarted = false;
 
 /**
- * Periodically and on window focus, verifies if the server has a newer database state.
- * If another user saved changes, immediately pulls and re-renders live state.
+ * Realtime sync across devices: verifies if server state changed from another device/browser.
  */
 export async function refreshDatabaseFromServer(): Promise<boolean> {
+  if (isSavingToServer) return false;
   try {
     const res = await fetch('/api/db/state', { cache: 'no-store' });
     if (!res.ok) return false;
     const json = await res.json();
     if (!json.exists || !json.databaseBase64) return false;
 
-    const currentMeta = getLocalDbMeta();
     const serverUpdatedAt = json.meta?.updatedAt;
-
-    if (serverUpdatedAt && (!currentMeta?.updatedAt || serverUpdatedAt !== currentMeta.updatedAt)) {
+    if (serverUpdatedAt && lastServerTimestamp && serverUpdatedAt !== lastServerTimestamp && !isSavingToServer) {
       const u8 = base64ToUint8Array(json.databaseBase64);
       const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
       const newDb = new SQL.Database(u8);
       ensureSchemaMigrations(newDb);
       dbInstance = newDb;
-
-      const newMeta = {
-        updatedAt: serverUpdatedAt,
-        isCustom: !json.meta?.isSeed,
-      };
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, json.databaseBase64);
-        setLocalDbMeta(newMeta);
-      }
-      saveToIndexedDb(json.databaseBase64, newMeta);
+      lastServerTimestamp = serverUpdatedAt;
       notifyListeners();
-      console.log('[Storage Sync] Updated live state from server:', serverUpdatedAt);
+      console.log('[Realtime Sync] Synced updates from server:', serverUpdatedAt);
       return true;
     }
   } catch (err) {
-    // Ignore transient network errors during background polling
+    // transient network error
   }
   return false;
 }
@@ -915,7 +694,6 @@ export function startServerBackgroundSync() {
   if (bgSyncStarted || typeof window === 'undefined') return;
   bgSyncStarted = true;
 
-  // Poll when user switches back to this tab
   window.addEventListener('focus', () => {
     refreshDatabaseFromServer();
   });
@@ -925,10 +703,10 @@ export function startServerBackgroundSync() {
     }
   });
 
-  // Regular periodic poll (every 10 seconds)
+  // Regular periodic poll (every 5 seconds) for realtime cross-device updates
   setInterval(() => {
     refreshDatabaseFromServer();
-  }, 10000);
+  }, 5000);
 }
 
 const DEFAULT_SITE_MEDIA: Array<[string, string, string, string, string, string]> = [
@@ -1043,16 +821,22 @@ function ensureSchemaMigrations(db: Database) {
       );
     `);
 
-    // Ensure all default site media rows exist
-    const now = new Date().toISOString();
-    for (const m of DEFAULT_SITE_MEDIA) {
-      const exists = db.exec(`SELECT key FROM site_media WHERE key = '${m[0]}'`);
-      if (exists.length === 0 || exists[0].values.length === 0) {
-        db.run(
-          `INSERT INTO site_media (key, section, label, description, image_url, default_url, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [m[0], m[1], m[2], m[3], m[4], m[5], now]
-        );
+    db.run('CREATE TABLE IF NOT EXISTS _system_meta (key TEXT PRIMARY KEY, value TEXT);');
+    const isSeededRes = db.exec("SELECT value FROM _system_meta WHERE key = 'initial_seed'");
+    const isSeeded = isSeededRes.length > 0 && isSeededRes[0].values.length > 0 && isSeededRes[0].values[0][0] === 'completed';
+
+    // Ensure all default site media rows exist only on initial setup
+    if (!isSeeded) {
+      const now = new Date().toISOString();
+      for (const m of DEFAULT_SITE_MEDIA) {
+        const exists = db.exec(`SELECT key FROM site_media WHERE key = '${m[0]}'`);
+        if (exists.length === 0 || exists[0].values.length === 0) {
+          db.run(
+            `INSERT INTO site_media (key, section, label, description, image_url, default_url, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [m[0], m[1], m[2], m[3], m[4], m[5], now]
+          );
+        }
       }
     }
 
@@ -1214,115 +998,111 @@ function ensureSchemaMigrations(db: Database) {
       // ignore
     }
 
-    try {
-      const heritageCount = db.exec('SELECT count(*) FROM heritage_settings');
-      if (heritageCount.length === 0 || heritageCount[0].values[0][0] === 0) {
-        db.run(
-          `INSERT OR REPLACE INTO heritage_settings (
-            id, badge_text, subbadge_text, heading, description,
-            va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
-            residency_label, residency_title, residency_badge, residency_badge_color,
-            provenance_tag, provenance_heading, lead_paragraph, updated_at
-          ) VALUES (
-            1, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?,
-            ?, ?, ?, ?,
-            ?, ?, ?, ?
-          )`,
-          [
-            DEFAULT_HERITAGE_SETTINGS.badge_text,
-            DEFAULT_HERITAGE_SETTINGS.subbadge_text,
-            DEFAULT_HERITAGE_SETTINGS.heading,
-            DEFAULT_HERITAGE_SETTINGS.description,
-            DEFAULT_HERITAGE_SETTINGS.va_image,
-            DEFAULT_HERITAGE_SETTINGS.va_image_alt,
-            DEFAULT_HERITAGE_SETTINGS.plaque_title,
-            DEFAULT_HERITAGE_SETTINGS.plaque_tag,
-            DEFAULT_HERITAGE_SETTINGS.plaque_description,
-            DEFAULT_HERITAGE_SETTINGS.residency_label,
-            DEFAULT_HERITAGE_SETTINGS.residency_title,
-            DEFAULT_HERITAGE_SETTINGS.residency_badge,
-            DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
-            DEFAULT_HERITAGE_SETTINGS.provenance_tag,
-            DEFAULT_HERITAGE_SETTINGS.provenance_heading,
-            DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
-            new Date().toISOString(),
-          ]
-        );
-      }
-    } catch (e) {
-      console.warn('Error seeding heritage_settings:', e);
-    }
-
-    try {
-      const credsCount = db.exec('SELECT count(*) FROM heritage_credentials');
-      if (credsCount.length === 0 || credsCount[0].values[0][0] === 0) {
-        for (const c of DEFAULT_HERITAGE_CREDENTIALS) {
+    if (!isSeeded) {
+      try {
+        const heritageCount = db.exec('SELECT count(*) FROM heritage_settings');
+        if (heritageCount.length === 0 || heritageCount[0].values[0][0] === 0) {
           db.run(
-            'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
-            [c.icon, c.title, c.description, c.color, c.order_index]
+            `INSERT OR REPLACE INTO heritage_settings (
+              id, badge_text, subbadge_text, heading, description,
+              va_image, va_image_alt, plaque_title, plaque_tag, plaque_description,
+              residency_label, residency_title, residency_badge, residency_badge_color,
+              provenance_tag, provenance_heading, lead_paragraph, updated_at
+            ) VALUES (
+              1, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, ?
+            )`,
+            [
+              DEFAULT_HERITAGE_SETTINGS.badge_text,
+              DEFAULT_HERITAGE_SETTINGS.subbadge_text,
+              DEFAULT_HERITAGE_SETTINGS.heading,
+              DEFAULT_HERITAGE_SETTINGS.description,
+              DEFAULT_HERITAGE_SETTINGS.va_image,
+              DEFAULT_HERITAGE_SETTINGS.va_image_alt,
+              DEFAULT_HERITAGE_SETTINGS.plaque_title,
+              DEFAULT_HERITAGE_SETTINGS.plaque_tag,
+              DEFAULT_HERITAGE_SETTINGS.plaque_description,
+              DEFAULT_HERITAGE_SETTINGS.residency_label,
+              DEFAULT_HERITAGE_SETTINGS.residency_title,
+              DEFAULT_HERITAGE_SETTINGS.residency_badge,
+              DEFAULT_HERITAGE_SETTINGS.residency_badge_color,
+              DEFAULT_HERITAGE_SETTINGS.provenance_tag,
+              DEFAULT_HERITAGE_SETTINGS.provenance_heading,
+              DEFAULT_HERITAGE_SETTINGS.lead_paragraph,
+              new Date().toISOString(),
+            ]
           );
         }
+      } catch (e) {
+        console.warn('Error seeding heritage_settings:', e);
       }
-    } catch (e) {
-      console.warn('Error seeding heritage_credentials:', e);
-    }
 
-    try {
-      const chapsCount = db.exec('SELECT count(*) FROM heritage_chapters');
-      if (chapsCount.length === 0 || chapsCount[0].values[0][0] === 0) {
-        for (const ch of DEFAULT_HERITAGE_CHAPTERS) {
+      try {
+        const credsCount = db.exec('SELECT count(*) FROM heritage_credentials');
+        if (credsCount.length === 0 || credsCount[0].values[0][0] === 0) {
+          for (const c of DEFAULT_HERITAGE_CREDENTIALS) {
+            db.run(
+              'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+              [c.icon, c.title, c.description, c.color, c.order_index]
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Error seeding heritage_credentials:', e);
+      }
+
+      try {
+        const chapsCount = db.exec('SELECT count(*) FROM heritage_chapters');
+        if (chapsCount.length === 0 || chapsCount[0].values[0][0] === 0) {
+          for (const ch of DEFAULT_HERITAGE_CHAPTERS) {
+            db.run(
+              'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
+              [ch.tab_label, ch.title, ch.period, ch.content, ch.order_index]
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Error seeding heritage_chapters:', e);
+      }
+
+      try {
+        const milesCount = db.exec('SELECT count(*) FROM heritage_milestones');
+        if (milesCount.length === 0 || milesCount[0].values[0][0] === 0) {
+          for (const m of DEFAULT_HERITAGE_MILESTONES) {
+            db.run(
+              'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
+              [m.year_badge, m.title, m.description, m.color, m.order_index]
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Error seeding heritage_milestones:', e);
+      }
+
+      try {
+        const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
+        if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
           db.run(
-            'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
-            [ch.tab_label, ch.title, ch.period, ch.content, ch.order_index]
+            `INSERT OR REPLACE INTO documentary_settings (
+              id, badge_text, subbadge_text, heading, description,
+              youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
+            ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
+            [
+              DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
+              DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
+              DEFAULT_DOCUMENTARY_SETTINGS.heading,
+              DEFAULT_DOCUMENTARY_SETTINGS.description,
+              DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
+              DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
+              new Date().toISOString(),
+            ]
           );
         }
+      } catch (e) {
+        console.warn('Error seeding documentary_settings:', e);
       }
-    } catch (e) {
-      console.warn('Error seeding heritage_chapters:', e);
-    }
-
-    try {
-      const milesCount = db.exec('SELECT count(*) FROM heritage_milestones');
-      if (milesCount.length === 0 || milesCount[0].values[0][0] === 0) {
-        for (const m of DEFAULT_HERITAGE_MILESTONES) {
-          db.run(
-            'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
-            [m.year_badge, m.title, m.description, m.color, m.order_index]
-          );
-        }
-      }
-    } catch (e) {
-      console.warn('Error seeding heritage_milestones:', e);
-    }
-
-    // Documentary table migrations & settings seed
-    addColumnIfNotExists(db, 'documentary', 'thumbnail_url', 'TEXT');
-    addColumnIfNotExists(db, 'documentary', 'badge_label', 'TEXT');
-    addColumnIfNotExists(db, 'documentary', 'action_button_text', "TEXT DEFAULT 'WATCH ARCHIVAL TAPE'");
-    addColumnIfNotExists(db, 'documentary', 'order_index', 'INTEGER DEFAULT 0');
-
-    try {
-      const docSettingsCount = db.exec('SELECT count(*) FROM documentary_settings');
-      if (docSettingsCount.length === 0 || docSettingsCount[0].values[0][0] === 0) {
-        db.run(
-          `INSERT OR REPLACE INTO documentary_settings (
-            id, badge_text, subbadge_text, heading, description,
-            youtube_button_text, youtube_series_url, show_youtube_button, is_section_visible, updated_at
-          ) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 1, ?)`,
-          [
-            DEFAULT_DOCUMENTARY_SETTINGS.badge_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.subbadge_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.heading,
-            DEFAULT_DOCUMENTARY_SETTINGS.description,
-            DEFAULT_DOCUMENTARY_SETTINGS.youtube_button_text,
-            DEFAULT_DOCUMENTARY_SETTINGS.youtube_series_url,
-            new Date().toISOString(),
-          ]
-        );
-      }
-    } catch (e) {
-      console.warn('Error seeding documentary_settings:', e);
     }
 
     try {
@@ -1404,8 +1184,11 @@ function ensureSchemaMigrations(db: Database) {
     addColumnIfNotExists(db, 'bookings', 'set_length', "TEXT DEFAULT '90 min'");
     addColumnIfNotExists(db, 'bookings', 'venue_location', "TEXT DEFAULT ''");
 
-    // Populate default seeds if new tables are empty
-    seedNewTablesIfEmpty(db);
+    // Populate default seeds only on fresh install
+    if (!isSeeded) {
+      seedNewTablesIfEmpty(db);
+      db.run("INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('initial_seed', 'completed');");
+    }
 
     // Sync all existing app images, logos, documents, and media into media_library
     syncAppMediaToLibrary(db);
@@ -2365,6 +2148,9 @@ function initSchemaAndSeeds(db: Database) {
       [m[0], m[1], m[2], m[3], m[4], m[5], now]
     );
   }
+
+  db.run('CREATE TABLE IF NOT EXISTS _system_meta (key TEXT PRIMARY KEY, value TEXT);');
+  db.run("INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('initial_seed', 'completed');");
 }
 
 // Helper methods for typed data access and mutations
@@ -2422,7 +2208,7 @@ export async function updateProfile(data: Partial<ProfileData>): Promise<void> {
   const values = keys.map((k) => payload[k]);
   values.push(1);
   db.run(`UPDATE profile SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2460,7 +2246,7 @@ export async function createEvent(event: Omit<EventData, 'id'>): Promise<number>
       event.flyer_image || '/images/vital_fest_crowd_1790112387611.jpg',
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2474,14 +2260,14 @@ export async function updateEvent(id: number, event: Partial<EventData>): Promis
   const values = keys.map((k) => (event as any)[k]);
   values.push(id);
   db.run(`UPDATE events SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteEvent(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM events WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2515,7 +2301,7 @@ export async function createRelease(release: Omit<ReleaseData, 'id'>): Promise<n
       release.is_featured ? 1 : 0,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2529,14 +2315,14 @@ export async function updateRelease(id: number, release: Partial<ReleaseData>): 
   const values = keys.map((k) => (release as any)[k]);
   values.push(id);
   db.run(`UPDATE releases SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteRelease(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM releases WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2570,7 +2356,7 @@ export async function createGalleryItem(item: Omit<GalleryData, 'id'>): Promise<
       item.is_featured ? 1 : 0,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2584,14 +2370,14 @@ export async function updateGalleryItem(id: number, item: Partial<GalleryData>):
   const values = keys.map((k) => (item as any)[k]);
   values.push(id);
   db.run(`UPDATE gallery SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteGalleryItem(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM gallery WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2645,9 +2431,8 @@ export async function updateDocumentarySettings(data: Partial<DocumentarySetting
     ]
   );
 
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function resetDocumentarySettings(): Promise<void> {
@@ -2671,9 +2456,8 @@ export async function resetDocumentarySettings(): Promise<void> {
       now,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function getDocumentaries(): Promise<DocumentaryData[]> {
@@ -2726,9 +2510,8 @@ export async function createDocumentary(doc: Omit<DocumentaryData, 'id'>): Promi
     });
   }
 
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
   return newId;
 }
 
@@ -2774,17 +2557,15 @@ export async function updateDocumentary(id: number, doc: Partial<DocumentaryData
     });
   }
 
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function deleteDocumentary(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM documentary WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function resetDocumentaries(): Promise<void> {
@@ -2808,9 +2589,8 @@ export async function resetDocumentaries(): Promise<void> {
       ]
     );
   }
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function getBookings(): Promise<BookingData[]> {
@@ -2844,7 +2624,7 @@ export async function createBooking(booking: Omit<BookingData, 'id' | 'status' |
       now,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2853,14 +2633,14 @@ export async function createBooking(booking: Omit<BookingData, 'id' | 'status' |
 export async function updateBookingStatus(id: number, status: string): Promise<void> {
   const db = await getDatabase();
   db.run('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteBooking(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM bookings WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2894,7 +2674,7 @@ export async function createAudioMix(mix: Omit<AudioMixData, 'id'>): Promise<num
       mix.order_index || 0,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2908,14 +2688,14 @@ export async function updateAudioMix(id: number, mix: Partial<AudioMixData>): Pr
   const values = keys.map((k) => (mix as any)[k]);
   values.push(id);
   db.run(`UPDATE audio_mixes SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteAudioMix(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM audio_mixes WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -2949,7 +2729,7 @@ export async function createVideo(video: Omit<VideoData, 'id'>): Promise<number>
       video.order_index || 0,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -2963,14 +2743,14 @@ export async function updateVideo(id: number, video: Partial<VideoData>): Promis
   const values = keys.map((k) => (video as any)[k]);
   values.push(id);
   db.run(`UPDATE videos SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteVideo(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM videos WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3004,7 +2784,7 @@ export async function createTestimonial(testimonial: Omit<TestimonialData, 'id'>
       testimonial.order_index || 0,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -3018,14 +2798,14 @@ export async function updateTestimonial(id: number, testimonial: Partial<Testimo
   const values = keys.map((k) => (testimonial as any)[k]);
   values.push(id);
   db.run(`UPDATE testimonials SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteTestimonial(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM testimonials WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3049,7 +2829,7 @@ export async function createVenueLogo(venue: Omit<VenueLogoData, 'id'>): Promise
      VALUES (?, ?, ?, ?)`,
     [venue.name, venue.location || '', venue.logo_text || venue.name, venue.order_index || 0]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -3063,14 +2843,14 @@ export async function updateVenueLogo(id: number, venue: Partial<VenueLogoData>)
   const values = keys.map((k) => (venue as any)[k]);
   values.push(id);
   db.run(`UPDATE venue_logos SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
 export async function deleteVenueLogo(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM venue_logos WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3096,7 +2876,7 @@ export async function addNewsletterSubscriber(email: string, source = 'Website')
   }
   const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
   db.run(`INSERT INTO newsletter_subscribers (email, created_at, source) VALUES (?, ?, ?)`, [cleanEmail, now, source]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   return true;
 }
@@ -3104,7 +2884,7 @@ export async function addNewsletterSubscriber(email: string, source = 'Website')
 export async function deleteNewsletterSubscriber(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM newsletter_subscribers WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3152,7 +2932,7 @@ export async function updateSiteMedia(key: string, imageUrl: string): Promise<vo
   const db = await getDatabase();
   const now = new Date().toISOString();
   db.run('UPDATE site_media SET image_url = ?, updated_at = ? WHERE key = ?', [imageUrl, now, key]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3160,7 +2940,7 @@ export async function resetSiteMedia(key: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   db.run('UPDATE site_media SET image_url = default_url, updated_at = ? WHERE key = ?', [now, key]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3168,7 +2948,7 @@ export async function resetAllSiteMedia(): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   db.run('UPDATE site_media SET image_url = default_url, updated_at = ?', [now]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3215,7 +2995,7 @@ export async function createMediaLibraryItem(
            WHERE id = ?`,
           [item.title || '', item.category ?? null, item.description ?? null, now, existingId]
         );
-        saveDatabaseToStorage(db);
+        await saveDatabaseToStorage(db);
         notifyListeners();
         return existingId;
       }
@@ -3241,7 +3021,7 @@ export async function createMediaLibraryItem(
       now,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
@@ -3258,7 +3038,7 @@ export async function updateMediaLibraryItem(
   const setClause = [...keys.map((k) => `${k} = ?`), 'updated_at = ?'].join(', ');
   const values = [...keys.map((k) => (item as any)[k]), now, id];
   db.run(`UPDATE media_library SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3291,7 +3071,7 @@ export async function deleteMediaLibraryItem(id: number): Promise<void> {
 
   // 4. Remove from media_library table
   db.run('DELETE FROM media_library WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
 }
 
@@ -3353,7 +3133,7 @@ export async function trackMediaUpload(item: {
         ]
       );
     }
-    saveDatabaseToStorage(db);
+    await saveDatabaseToStorage(db);
     notifyListeners();
   } catch (err) {
     console.warn('trackMediaUpload failed gracefully:', err);
@@ -3363,7 +3143,7 @@ export async function trackMediaUpload(item: {
 export async function executeRawSql(sqlQuery: string): Promise<{ columns: string[]; rows: any[][] }> {
   const db = await getDatabase();
   const results = db.exec(sqlQuery);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   if (results.length === 0) {
     return { columns: ['result'], rows: [['Query executed successfully. 0 rows returned.']] };
@@ -3377,7 +3157,7 @@ export async function executeRawSql(sqlQuery: string): Promise<{ columns: string
 export async function executeQuery(sqlQuery: string): Promise<{ columns: string[]; values: any[][] }[]> {
   const db = await getDatabase();
   const results = db.exec(sqlQuery);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
   return results;
 }
@@ -3393,7 +3173,7 @@ export async function importDatabaseBinary(fileBuffer: Uint8Array): Promise<void
   });
   dbInstance = new SQL.Database(fileBuffer);
   ensureSchemaMigrations(dbInstance);
-  saveDatabaseToStorage(dbInstance);
+  await saveDatabaseToStorage(dbInstance);
   notifyListeners();
 }
 
@@ -3409,7 +3189,7 @@ export async function resetDatabaseToDefault(): Promise<void> {
   });
   dbInstance = new SQL.Database();
   initSchemaAndSeeds(dbInstance);
-  saveDatabaseToStorage(dbInstance);
+  await saveDatabaseToStorage(dbInstance);
   notifyListeners();
 }
 
@@ -3545,7 +3325,7 @@ export async function verifyAdminPassword(password: string): Promise<{ success: 
         'INSERT OR REPLACE INTO admin_auth (id, password_hash, password_salt, updated_at) VALUES (1, ?, ?, ?)',
         [defaultHash, defaultSalt, new Date().toISOString()]
       );
-      saveDatabaseToStorage(db);
+      await saveDatabaseToStorage(db);
       res = db.exec('SELECT password_hash, password_salt FROM admin_auth WHERE id = 1');
     }
 
@@ -3555,7 +3335,7 @@ export async function verifyAdminPassword(password: string): Promise<{ success: 
     if (inputHash === storedHash) {
       const now = new Date().toISOString();
       db.run('UPDATE admin_auth SET last_login_at = ? WHERE id = 1', [now]);
-      saveDatabaseToStorage(db);
+      await saveDatabaseToStorage(db);
       return { success: true };
     } else {
       return { success: false, error: 'Incorrect password. Access denied.' };
@@ -3604,7 +3384,7 @@ export async function changeAdminPassword(
       [newHash, salt, now]
     );
 
-    saveDatabaseToStorage(db);
+    await saveDatabaseToStorage(db);
     notifyListeners();
 
     // Trigger async server push so other devices get updated credentials
@@ -3698,9 +3478,8 @@ export async function updateHeritageSettings(data: Partial<HeritageSettingsData>
     }
   }
 
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function resetHeritageSettings(): Promise<void> {
@@ -3738,9 +3517,8 @@ export async function resetHeritageSettings(): Promise<void> {
       now,
     ]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 // Heritage Credentials
@@ -3762,9 +3540,8 @@ export async function createHeritageCredential(data: Omit<HeritageCredentialData
     'INSERT INTO heritage_credentials (icon, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
     [data.icon || 'radio', data.title, data.description, data.color || 'amber', data.order_index ?? 0]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
 }
@@ -3777,17 +3554,15 @@ export async function updateHeritageCredential(id: number, data: Partial<Heritag
   const values = keys.map((k) => (data as any)[k]);
   values.push(id);
   db.run(`UPDATE heritage_credentials SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function deleteHeritageCredential(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM heritage_credentials WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 // Heritage Chapters
@@ -3809,9 +3584,8 @@ export async function createHeritageChapter(data: Omit<HeritageChapterData, 'id'
     'INSERT INTO heritage_chapters (tab_label, title, period, content, order_index) VALUES (?, ?, ?, ?, ?)',
     [data.tab_label, data.title, data.period, data.content, data.order_index ?? 0]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
 }
@@ -3824,17 +3598,15 @@ export async function updateHeritageChapter(id: number, data: Partial<HeritageCh
   const values = keys.map((k) => (data as any)[k]);
   values.push(id);
   db.run(`UPDATE heritage_chapters SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function deleteHeritageChapter(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM heritage_chapters WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 // Heritage Milestones
@@ -3856,9 +3628,8 @@ export async function createHeritageMilestone(data: Omit<HeritageMilestoneData, 
     'INSERT INTO heritage_milestones (year_badge, title, description, color, order_index) VALUES (?, ?, ?, ?, ?)',
     [data.year_badge, data.title, data.description, data.color || 'amber', data.order_index ?? 0]
   );
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
   const lastId = db.exec('SELECT last_insert_rowid() as id');
   return Number(lastId[0].values[0][0]);
 }
@@ -3871,17 +3642,15 @@ export async function updateHeritageMilestone(id: number, data: Partial<Heritage
   const values = keys.map((k) => (data as any)[k]);
   values.push(id);
   db.run(`UPDATE heritage_milestones SET ${setClause} WHERE id = ?`, values);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 export async function deleteHeritageMilestone(id: number): Promise<void> {
   const db = await getDatabase();
   db.run('DELETE FROM heritage_milestones WHERE id = ?', [id]);
-  saveDatabaseToStorage(db);
+  await saveDatabaseToStorage(db);
   notifyListeners();
-  forcePushToServer().catch(() => {});
 }
 
 // Full Heritage Bundle
@@ -3895,9 +3664,9 @@ export async function getHeritageFullData(): Promise<HeritageFullData> {
 
   return {
     settings,
-    credentials: credentials.length > 0 ? credentials : (DEFAULT_HERITAGE_CREDENTIALS.map((c, i) => ({ id: i + 1, ...c })) as HeritageCredentialData[]),
-    chapters: chapters.length > 0 ? chapters : (DEFAULT_HERITAGE_CHAPTERS.map((c, i) => ({ id: i + 1, ...c })) as HeritageChapterData[]),
-    milestones: milestones.length > 0 ? milestones : (DEFAULT_HERITAGE_MILESTONES.map((m, i) => ({ id: i + 1, ...m })) as HeritageMilestoneData[]),
+    credentials,
+    chapters,
+    milestones,
   };
 }
 

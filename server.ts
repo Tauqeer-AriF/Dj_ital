@@ -696,13 +696,6 @@ app.post('/api/db/save', (req, res) => {
     const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
     const primaryBakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
 
-    const backupDir = path.join(storage.resolvedDataDir, 'backups');
-
-    // 0. Safety Backup: Always preserve existing database before applying new updates
-    if (fs.existsSync(primaryDbFile)) {
-      backupCurrentSnapshot(primaryDbFile, backupDir);
-    }
-
     // 1. Physically sync new snapshot to active storage directory with OS fsync
     safeWriteFileWithSync(primaryDbFile, databaseBase64);
     try {
@@ -717,8 +710,7 @@ app.post('/api/db/save', (req, res) => {
     };
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
-    // 2. Multi-directory mirror write:
-    // Write redundantly to ALL writable data locations: /app/data, /data, LOCAL_DATA_DIR, and Railway env paths
+    // 2. Multi-directory mirror write to ensure persistence across rebuilds and volume types
     const mirrorDirs = new Set<string>();
     mirrorDirs.add(LOCAL_DATA_DIR);
     mirrorDirs.add(PROTECTED_SEED_DIR);
@@ -737,24 +729,12 @@ app.post('/api/db/save', (req, res) => {
       }
     }
 
-    // 3. Keep a rotating local backup
-    try {
-      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      safeWriteFileWithSync(path.join(backupDir, 'latest_backup.b64'), databaseBase64);
-      safeWriteFileWithSync(path.join(backupDir, 'latest_meta.json'), JSON.stringify(meta, null, 2));
-    } catch {}
-
-    console.log(`[Storage] Saved database snapshot (${meta.sizeBytes} bytes) to "${primaryDbFile}" (Volume: ${storage.isPersistent ? 'YES' : 'NO'}, Mount: ${storage.mountSource})`);
+    console.log(`[Storage] Saved database snapshot (${meta.sizeBytes} bytes) directly to "${primaryDbFile}"`);
 
     return res.json({
       success: true,
       meta,
-      storageInfo: {
-        dataDir: storage.resolvedDataDir,
-        isPersistent: storage.isPersistent,
-        mountSource: storage.mountSource,
-      },
-      message: 'Database saved to server successfully and synchronized for all devices.',
+      message: 'Database saved directly to server disk in realtime.',
     });
   } catch (error: any) {
     console.error('Error writing server database:', error);
