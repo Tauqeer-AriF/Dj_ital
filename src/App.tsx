@@ -49,7 +49,6 @@ import { ActiveTrack } from './types';
 import { audioEngine } from './audio/audioEngine';
 import { AppLoader } from './components/AppLoader';
 import { BackToTop } from './components/BackToTop';
-import { SaveStatusBanner } from './components/SaveStatusBanner';
 import { applyThemeToDOM, resolveColorHex } from './utils/themeEngine';
 
 const isAdminPath = () => {
@@ -63,11 +62,10 @@ export default function App() {
   const [isAdminView, setIsAdminView] = useState(() => isAdminPath());
   const [isDashboardConfirmed, setIsDashboardConfirmed] = useState(() => {
     if (typeof window === 'undefined') return false;
-    const sessionAuth =
+    return (
       sessionStorage.getItem('dj_ital_admin_authenticated') === 'true' ||
-      sessionStorage.getItem('dj_ital_admin_confirmed') === 'true';
-    const localAuth = localStorage.getItem('dj_ital_admin_authenticated') === 'true';
-    return sessionAuth || localAuth;
+      sessionStorage.getItem('dj_ital_admin_confirmed') === 'true'
+    );
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -148,8 +146,6 @@ export default function App() {
   const handleLockAdmin = () => {
     sessionStorage.removeItem('dj_ital_admin_confirmed');
     sessionStorage.removeItem('dj_ital_admin_authenticated');
-    localStorage.removeItem('dj_ital_admin_authenticated');
-    localStorage.removeItem('dj_ital_admin_auth_timestamp');
     setIsDashboardConfirmed(false);
   };
 
@@ -412,7 +408,6 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <SaveStatusBanner />
         {isLoading ? (
         <AppLoader
           logoUrl={profile?.logo_url || profile?.epk_logo_png}

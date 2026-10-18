@@ -461,21 +461,6 @@ export const DEFAULT_HERITAGE_MILESTONES: Omit<HeritageMilestoneData, 'id'>[] = 
   },
 ];
 
-export const STORAGE_KEY = 'djital_sqlite_db_v1';
-export const STORAGE_META_KEY = 'djital_sqlite_meta_v1';
-
-export interface LocalDbMeta {
-  updatedAt: string;
-  clientDevice?: string;
-  isCustom?: boolean;
-}
-
-export function getLocalDbMeta(): LocalDbMeta | null {
-  return null;
-}
-
-export function setLocalDbMeta(_meta: LocalDbMeta) {}
-
 let dbInstance: Database | null = null;
 let initPromise: Promise<Database> | null = null;
 let lastServerTimestamp: string = '';
@@ -559,15 +544,9 @@ export async function saveDatabaseToStorage(db: Database, customTimestamp?: stri
   }
 }
 
-export async function forcePushToServer(): Promise<{ success: boolean; message: string }> {
-  if (!dbInstance) return { success: false, message: 'Database not initialized' };
-  const ok = await await saveDatabaseToStorage(dbInstance);
-  return { success: ok, message: ok ? 'Saved to server in realtime' : 'Save failed' };
-}
-
 export async function forceSaveToServer(): Promise<{ ok: boolean; status: number; error?: string }> {
   if (!dbInstance) return { ok: false, status: 0, error: 'Database not initialized' };
-  const ok = await await saveDatabaseToStorage(dbInstance);
+  const ok = await saveDatabaseToStorage(dbInstance);
   return { ok, status: ok ? 200 : 500 };
 }
 
@@ -617,7 +596,7 @@ export async function getDatabase(): Promise<Database> {
       SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
     }
 
-    // Always fetch directly from server (single authoritative source of truth)
+    // Always fetch directly from server (authoritative single source of truth)
     let serverBase64: string | null = null;
     let serverUpdatedAt: string = '';
     try {
@@ -640,30 +619,23 @@ export async function getDatabase(): Promise<Database> {
         ensureSchemaMigrations(serverDb);
         dbInstance = serverDb;
         lastServerTimestamp = serverUpdatedAt;
-        startServerBackgroundSync();
         return serverDb;
       } catch (err) {
         console.error('Failed to parse server SQLite DB:', err);
       }
     }
 
-    // Fresh Database if server had no DB file
+    // Fresh Database if server had no DB file yet
     const freshDb: Database = new SQL.Database();
     initSchemaAndSeeds(freshDb);
     dbInstance = freshDb;
-    await await saveDatabaseToStorage(freshDb);
-    startServerBackgroundSync();
+    await saveDatabaseToStorage(freshDb);
     return freshDb;
   })();
 
   return initPromise;
 }
 
-let bgSyncStarted = false;
-
-/**
- * Realtime sync across devices: verifies if server state changed from another device/browser.
- */
 export async function refreshDatabaseFromServer(): Promise<boolean> {
   if (isSavingToServer) return false;
   try {
@@ -672,41 +644,17 @@ export async function refreshDatabaseFromServer(): Promise<boolean> {
     const json = await res.json();
     if (!json.exists || !json.databaseBase64) return false;
 
-    const serverUpdatedAt = json.meta?.updatedAt;
-    if (serverUpdatedAt && lastServerTimestamp && serverUpdatedAt !== lastServerTimestamp && !isSavingToServer) {
-      const u8 = base64ToUint8Array(json.databaseBase64);
-      const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-      const newDb = new SQL.Database(u8);
-      ensureSchemaMigrations(newDb);
-      dbInstance = newDb;
-      lastServerTimestamp = serverUpdatedAt;
-      notifyListeners();
-      console.log('[Realtime Sync] Synced updates from server:', serverUpdatedAt);
-      return true;
-    }
+    const u8 = base64ToUint8Array(json.databaseBase64);
+    const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+    const newDb = new SQL.Database(u8);
+    ensureSchemaMigrations(newDb);
+    dbInstance = newDb;
+    lastServerTimestamp = json.meta?.updatedAt || '';
+    notifyListeners();
+    return true;
   } catch (err) {
-    // transient network error
+    return false;
   }
-  return false;
-}
-
-export function startServerBackgroundSync() {
-  if (bgSyncStarted || typeof window === 'undefined') return;
-  bgSyncStarted = true;
-
-  window.addEventListener('focus', () => {
-    refreshDatabaseFromServer();
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      refreshDatabaseFromServer();
-    }
-  });
-
-  // Regular periodic poll (every 5 seconds) for realtime cross-device updates
-  setInterval(() => {
-    refreshDatabaseFromServer();
-  }, 5000);
 }
 
 const DEFAULT_SITE_MEDIA: Array<[string, string, string, string, string, string]> = [
@@ -2900,6 +2848,37 @@ export async function getStats(): Promise<StatData[]> {
   });
 }
 
+export async function createStat(stat: Omit<StatData, 'id'>): Promise<number> {
+  const db = await getDatabase();
+  db.run(
+    'INSERT INTO stats (label, value, suffix, order_index) VALUES (?, ?, ?, ?)',
+    [stat.label, stat.value, stat.suffix || '', stat.order_index ?? 0]
+  );
+  await saveDatabaseToStorage(db);
+  notifyListeners();
+  const lastId = db.exec('SELECT last_insert_rowid() as id');
+  return Number(lastId[0].values[0][0]);
+}
+
+export async function updateStat(id: number, stat: Partial<StatData>): Promise<void> {
+  const db = await getDatabase();
+  const keys = Object.keys(stat).filter((k) => k !== 'id');
+  if (keys.length === 0) return;
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => (stat as any)[k]);
+  values.push(id);
+  db.run(`UPDATE stats SET ${setClause} WHERE id = ?`, values);
+  await saveDatabaseToStorage(db);
+  notifyListeners();
+}
+
+export async function deleteStat(id: number): Promise<void> {
+  const db = await getDatabase();
+  db.run('DELETE FROM stats WHERE id = ?', [id]);
+  await saveDatabaseToStorage(db);
+  notifyListeners();
+}
+
 // Site Media Methods
 export async function getSiteMedia(): Promise<SiteMediaData[]> {
   const db = await getDatabase();
@@ -3178,7 +3157,6 @@ export async function importDatabaseBinary(fileBuffer: Uint8Array): Promise<void
 }
 
 export async function resetDatabaseToDefault(): Promise<void> {
-  localStorage.removeItem(STORAGE_KEY);
   try {
     await fetch('/api/db/reset', { method: 'POST' });
   } catch (e) {
@@ -3200,13 +3178,8 @@ export async function forcePushToServer(): Promise<{ success: boolean; message: 
     const b64 = uint8ArrayToBase64(data);
     const now = new Date().toISOString();
     const syncResult = await syncDatabaseToServer(b64, now);
-    if (syncResult.ok) {
-      setLocalDbMeta({
-        updatedAt: now,
-        clientDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'browser',
-        isCustom: true,
-      });
-      return { success: true, message: 'Current database pushed to server. All devices (iOS, Windows, etc.) will now receive this data.' };
+    if (syncResult) {
+      return { success: true, message: 'Database saved directly to server in realtime.' };
     }
     return { success: false, message: 'Failed to push database to server. Check server connection.' };
   } catch (err: any) {
@@ -3222,7 +3195,7 @@ export async function forcePullFromServer(): Promise<{ success: boolean; message
     }
     const json = await res.json();
     if (!json.exists || !json.databaseBase64) {
-      return { success: false, message: 'No custom database saved on server yet' };
+      return { success: false, message: 'No database found on server' };
     }
 
     const SQL = await initSqlJs({
@@ -3231,15 +3204,8 @@ export async function forcePullFromServer(): Promise<{ success: boolean; message
     const u8 = base64ToUint8Array(json.databaseBase64);
     dbInstance = new SQL.Database(u8);
     ensureSchemaMigrations(dbInstance);
-    localStorage.setItem(STORAGE_KEY, json.databaseBase64);
-    if (json.meta?.updatedAt) {
-      setLocalDbMeta({
-        updatedAt: json.meta.updatedAt,
-        isCustom: !json.meta.isSeed,
-      });
-    }
     notifyListeners();
-    return { success: true, message: 'Latest database state synchronized from server.' };
+    return { success: true, message: 'Latest database state synchronized directly from server.' };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Error syncing database from server' };
   }
@@ -3349,7 +3315,7 @@ export async function verifyAdminPassword(password: string): Promise<{ success: 
 /**
  * Changes the admin password:
  * Validates current password, checks new password strength, generates new salt,
- * updates SQLite, persists to localStorage and pushes to server.
+ * updates SQLite and saves directly to server in realtime.
  */
 export async function changeAdminPassword(
   currentPassword: string,

@@ -31,9 +31,10 @@ export interface StorageStatus {
   env: Record<string, string | undefined>;
 }
 
-// Baseline seed location (guaranteed safe from volume overlay mounts)
-const PROTECTED_SEED_DIR = path.resolve(__dirname, 'seed_data');
-const LOCAL_DATA_DIR = path.resolve(__dirname, 'data');
+const DATA_DIR = path.resolve(__dirname, 'data');
+const SEED_DIR = path.resolve(__dirname, 'seed_data');
+const LOCAL_DATA_DIR = DATA_DIR;
+const PROTECTED_SEED_DIR = SEED_DIR;
 
 function testDirectoryWritable(dir: string): boolean {
   try {
@@ -45,16 +46,7 @@ function testDirectoryWritable(dir: string): boolean {
     fs.unlinkSync(testFile);
     return true;
   } catch {
-    // Attempt permission fix if running under non-root container
-    try {
-      fs.chmodSync(dir, 0o777);
-      const testFile = path.join(dir, `.test_write_${process.pid}_${Date.now()}`);
-      fs.writeFileSync(testFile, 'ok', 'utf-8');
-      fs.unlinkSync(testFile);
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
@@ -69,244 +61,20 @@ function safeWriteFileWithSync(filePath: string, data: string): void {
     fs.writeSync(fd, data, 0, 'utf-8');
     try {
       fs.fsyncSync(fd);
-    } catch {
-      // Some virtual filesystems do not support fsync, ignore if so
-    }
+    } catch {}
     fs.closeSync(fd);
     fs.renameSync(tempPath, filePath);
-  } catch (err) {
-    // Direct write fallback
+  } catch {
     fs.writeFileSync(filePath, data, 'utf-8');
   }
 }
 
-function getLinuxMountPoints(): string[] {
-  try {
-    if (!fs.existsSync('/proc/mounts')) return [];
-    const content = fs.readFileSync('/proc/mounts', 'utf-8');
-    const lines = content.split('\n');
-    const mounts: string[] = [];
-    for (const line of lines) {
-      const parts = line.trim().split(/\s+/);
-      if (parts.length >= 3) {
-        const mountPoint = parts[1];
-        const fsType = parts[2];
-        if (!['proc', 'sysfs', 'devpts', 'cgroup', 'tmpfs', 'mqueue', 'overlay'].includes(fsType)) {
-          mounts.push(mountPoint);
-        } else if (mountPoint.startsWith('/app') || mountPoint.startsWith('/data') || mountPoint.startsWith('/mnt') || mountPoint.startsWith('/storage')) {
-          mounts.push(mountPoint);
-        }
-      }
-    }
-    return mounts;
-  } catch {
-    return [];
-  }
-}
-
-function findLatestDatabase(): { seedDbPath?: string; seedMetaPath?: string; isCustom?: boolean; updatedAt?: string } {
-  const possibleSeeds = [
-    process.env.RAILWAY_VOLUME_MOUNT_PATH,
-    process.env.DATA_DIR,
-    '/app/data',
-    path.resolve(process.cwd(), 'data'),
-    LOCAL_DATA_DIR,
-    '/data',
-    PROTECTED_SEED_DIR,
-  ].filter(Boolean) as string[];
-
-  const uniqueDirs = Array.from(new Set(possibleSeeds));
-  let bestDbPath: string | undefined;
-  let bestMetaPath: string | undefined;
-  let bestTime = -1;
-  let bestIsCustom = false;
-  let bestUpdatedAt: string | undefined;
-
-  for (const s of uniqueDirs) {
-    const candidateFiles = [
-      { db: path.join(s, 'djital_db.sqlite.b64'), meta: path.join(s, 'db_meta.json') },
-      { db: path.join(s, 'backups', 'latest_backup.b64'), meta: path.join(s, 'backups', 'latest_meta.json') },
-      { db: path.join(s, 'djital_db.sqlite.b64.bak'), meta: path.join(s, 'db_meta.json') },
-    ];
-
-    for (const { db: dbFile, meta: metaFile } of candidateFiles) {
-      if (fs.existsSync(dbFile)) {
-        try {
-          const stats = fs.statSync(dbFile);
-          if (stats.size > 100) {
-            let time = 0;
-            let isSeed = true;
-            let updatedAt = '';
-            if (fs.existsSync(metaFile)) {
-              try {
-                const meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
-                time = meta.updatedAt ? new Date(meta.updatedAt).getTime() : 0;
-                isSeed = Boolean(meta.isSeed);
-                updatedAt = meta.updatedAt;
-              } catch {}
-            }
-            // Weight custom databases with user edits much higher so newly deployed seed never overwrites user edits
-            const score = (!isSeed ? 10000000000000 : 0) + time;
-            if (score > bestTime || !bestDbPath) {
-              bestTime = score;
-              bestDbPath = dbFile;
-              bestMetaPath = fs.existsSync(metaFile) ? metaFile : undefined;
-              bestIsCustom = !isSeed;
-              bestUpdatedAt = updatedAt;
-            }
-          }
-        } catch {}
-      }
-    }
-  }
-
-  return { seedDbPath: bestDbPath, seedMetaPath: bestMetaPath, isCustom: bestIsCustom, updatedAt: bestUpdatedAt };
-}
-
 function getStorageDetails(): StorageStatus {
-  const env: Record<string, string | undefined> = {
-    RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
-    RAILWAY_VOLUME_NAME: process.env.RAILWAY_VOLUME_NAME,
-    DATA_DIR: process.env.DATA_DIR,
-    PERSISTENT_DATA_DIR: process.env.PERSISTENT_DATA_DIR,
-  };
-
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k.includes('VOLUME') && (k.includes('PATH') || k.includes('MOUNT')) && v) {
-      env[k] = v;
-    }
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-
-  const linuxMounts = getLinuxMountPoints();
-  const candidates: Array<{ path: string; note: string; isExplicitVolume: boolean; isConfirmedMount: boolean }> = [];
-
-  // 0. Attached Railway volume at /app/data (Highest Priority)
-  if (fs.existsSync('/app/data')) {
-    candidates.push({ path: '/app/data', note: 'attached-volume:/app/data', isExplicitVolume: true, isConfirmedMount: true });
-  }
-
-  // 1. Explicit Railway Volume environment variables
-  if (process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.RAILWAY_VOLUME_MOUNT_PATH.trim()) {
-    const p = path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH.trim());
-    candidates.push({ path: p, note: 'env:RAILWAY_VOLUME_MOUNT_PATH', isExplicitVolume: true, isConfirmedMount: true });
-  }
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k.startsWith('RAILWAY_VOLUME_') && k.endsWith('_MOUNT_PATH') && v && v.trim()) {
-      const p = path.resolve(v.trim());
-      if (!candidates.some((c) => c.path === p)) {
-        candidates.push({ path: p, note: `env:${k}`, isExplicitVolume: true, isConfirmedMount: true });
-      }
-    }
-  }
-  if (process.env.DATA_DIR && process.env.DATA_DIR.trim()) {
-    const p = path.resolve(process.env.DATA_DIR.trim());
-    if (!candidates.some((c) => c.path === p)) {
-      candidates.push({ path: p, note: 'env:DATA_DIR', isExplicitVolume: true, isConfirmedMount: true });
-    }
-  }
-  if (process.env.PERSISTENT_DATA_DIR && process.env.PERSISTENT_DATA_DIR.trim()) {
-    const p = path.resolve(process.env.PERSISTENT_DATA_DIR.trim());
-    if (!candidates.some((c) => c.path === p)) {
-      candidates.push({ path: p, note: 'env:PERSISTENT_DATA_DIR', isExplicitVolume: true, isConfirmedMount: true });
-    }
-  }
-
-  // 2. Linux mount points matching application data paths
-  for (const m of linuxMounts) {
-    if (!candidates.some((c) => c.path === m)) {
-      if (m === '/app/data' || m === '/data' || m.startsWith('/mnt/') || m === '/storage' || m === '/volume') {
-        candidates.push({ path: m, note: `linux-mount:${m}`, isExplicitVolume: true, isConfirmedMount: true });
-      }
-    }
-  }
-
-  // 3. Application local directory (/app/data or ./data) - Standard Railway mount path
-  const appDataPath = path.resolve(process.cwd(), 'data');
-  if (!candidates.some((c) => c.path === appDataPath)) {
-    const isRailwayVol = Boolean(process.env.RAILWAY_VOLUME_NAME || process.env.RAILWAY_VOLUME_MOUNT_PATH);
-    candidates.push({
-      path: appDataPath,
-      note: isRailwayVol ? 'app directory (Railway volume enabled)' : 'app directory (/app/data)',
-      isExplicitVolume: isRailwayVol,
-      isConfirmedMount: linuxMounts.includes(appDataPath),
-    });
-  }
-
-  // 4. Common persistent volume mount locations in Railway / Docker / Linux
-  const commonMountPoints = [
-    '/data',
-    '/mnt/data',
-    '/storage',
-    '/volume',
-    '/var/data',
-    LOCAL_DATA_DIR,
-  ];
-
-  for (const p of commonMountPoints) {
-    if (!candidates.some((c) => c.path === p)) {
-      const isKnownVol = p === '/data' || p.startsWith('/mnt/') || p === '/storage' || p === '/volume';
-      candidates.push({
-        path: p,
-        note: isKnownVol ? 'common volume mount path' : 'fallback directory',
-        isExplicitVolume: isKnownVol,
-        isConfirmedMount: linuxMounts.includes(p),
-      });
-    }
-  }
-
-  const candidatesChecked: Array<{ path: string; exists: boolean; writable: boolean; note: string }> = [];
-  let chosenDir: string = LOCAL_DATA_DIR;
-  let chosenNote: string = 'fallback:app local directory';
-  let isPersistent: boolean = false;
-
-  for (const candidate of candidates) {
-    let exists = false;
-    let writable = false;
-    try {
-      exists = fs.existsSync(candidate.path);
-      if (!exists && candidate.isExplicitVolume) {
-        try {
-          fs.mkdirSync(candidate.path, { recursive: true });
-          exists = true;
-        } catch {}
-      }
-      if (exists) {
-        writable = testDirectoryWritable(candidate.path);
-      }
-    } catch {
-      exists = false;
-      writable = false;
-    }
-
-    candidatesChecked.push({
-      path: candidate.path,
-      exists,
-      writable,
-      note: candidate.note,
-    });
-
-    if (writable) {
-      if (candidate.isExplicitVolume || candidate.isConfirmedMount) {
-        chosenDir = candidate.path;
-        chosenNote = candidate.note;
-        isPersistent = true;
-        break;
-      } else if (!chosenDir || chosenDir === LOCAL_DATA_DIR) {
-        chosenDir = candidate.path;
-        chosenNote = candidate.note;
-        isPersistent = Boolean(process.env.RAILWAY_VOLUME_NAME || process.env.RAILWAY_VOLUME_MOUNT_PATH);
-      }
-    }
-  }
-
-  try {
-    if (!fs.existsSync(chosenDir)) {
-      fs.mkdirSync(chosenDir, { recursive: true });
-    }
-  } catch {}
-
-  const dbFile = path.join(chosenDir, 'djital_db.sqlite.b64');
-  const dbMetaFile = path.join(chosenDir, 'db_meta.json');
+  const dbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
+  const dbMetaFile = path.join(DATA_DIR, 'db_meta.json');
   const dbExists = fs.existsSync(dbFile);
   let dbSizeBytes = 0;
   let dbUpdatedAt: string | undefined = undefined;
@@ -314,8 +82,7 @@ function getStorageDetails(): StorageStatus {
 
   if (dbExists) {
     try {
-      const stats = fs.statSync(dbFile);
-      dbSizeBytes = stats.size;
+      dbSizeBytes = fs.statSync(dbFile).size;
     } catch {}
     if (fs.existsSync(dbMetaFile)) {
       try {
@@ -327,70 +94,53 @@ function getStorageDetails(): StorageStatus {
   }
 
   return {
-    resolvedDataDir: chosenDir,
-    isPersistent,
-    mountSource: chosenNote,
-    isWritable: testDirectoryWritable(chosenDir),
+    resolvedDataDir: DATA_DIR,
+    isPersistent: true,
+    mountSource: 'local:data',
+    isWritable: testDirectoryWritable(DATA_DIR),
     dbExists,
     dbSizeBytes,
     dbUpdatedAt,
     isSeed,
-    candidatesChecked,
-    env,
+    candidatesChecked: [{ path: DATA_DIR, exists: true, writable: true, note: 'app data directory' }],
+    env: {},
   };
 }
 
 function ensureDatabaseSeeded(): void {
-  const storage = getStorageDetails();
-  const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
-  const dbMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  const dbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
+  const dbMetaFile = path.join(DATA_DIR, 'db_meta.json');
 
-  const fileExists = fs.existsSync(dbFile);
-  const fileSize = fileExists ? fs.statSync(dbFile).size : 0;
-
-  // Check if active DB file is missing, empty, or has no custom user data
-  if (!fileExists || fileSize < 100) {
-    const { seedDbPath, seedMetaPath, isCustom, updatedAt } = findLatestDatabase();
-    if (seedDbPath && fs.existsSync(seedDbPath) && seedDbPath !== dbFile) {
-      try {
-        fs.copyFileSync(seedDbPath, dbFile);
-        if (seedMetaPath && fs.existsSync(seedMetaPath)) {
-          fs.copyFileSync(seedMetaPath, dbMetaFile);
-        } else {
-          fs.writeFileSync(
-            dbMetaFile,
-            JSON.stringify(
-              {
-                updatedAt: updatedAt || '1970-01-01T00:00:00.000Z',
-                updatedBy: isCustom ? 'volume-recovery' : 'system-seed',
-                isSeed: !isCustom,
-              },
-              null,
-              2
-            ),
-            'utf-8'
-          );
-        }
-        console.log(`[Storage] Initialized persistent volume at "${storage.resolvedDataDir}" with snapshot from "${seedDbPath}" (Custom edits: ${isCustom ? 'YES' : 'NO'}).`);
-      } catch (err: any) {
-        console.error(`[Storage] Error copying snapshot to ${storage.resolvedDataDir}:`, err.message);
+  // ONLY seed if database file does NOT exist or has 0 bytes.
+  // Never re-seed or overwrite if an existing database is present!
+  if (!fs.existsSync(dbFile) || fs.statSync(dbFile).size === 0) {
+    const seedDbFile = path.join(SEED_DIR, 'djital_db.sqlite.b64');
+    const seedMetaFile = path.join(SEED_DIR, 'db_meta.json');
+    if (fs.existsSync(seedDbFile)) {
+      fs.copyFileSync(seedDbFile, dbFile);
+      if (fs.existsSync(seedMetaFile)) {
+        fs.copyFileSync(seedMetaFile, dbMetaFile);
+      } else {
+        fs.writeFileSync(
+          dbMetaFile,
+          JSON.stringify({ updatedAt: new Date().toISOString(), isSeed: true }, null, 2),
+          'utf-8'
+        );
       }
+      console.log(`[Storage] Initialized database from seed at "${DATA_DIR}"`);
     }
   }
 }
 
-// Ensure uploaded video and media files persist across code rebuilds, container restarts & volume mounts
 function syncUploadDirectories(): void {
   try {
-    const storage = getStorageDetails();
     const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
-    const persistUploadDir = path.join(storage.resolvedDataDir, 'uploads');
-    const localDataUploadDir = path.resolve(LOCAL_DATA_DIR, 'uploads');
-
-    const dirsToSync = [publicUploadDir, persistUploadDir, localDataUploadDir];
+    const localDataUploadDir = path.join(DATA_DIR, 'uploads');
     const categories = ['videos', 'images', 'audio'];
-
-    for (const base of dirsToSync) {
+    for (const base of [publicUploadDir, localDataUploadDir]) {
       for (const cat of categories) {
         const catDir = path.join(base, cat);
         if (!fs.existsSync(catDir)) {
@@ -398,47 +148,6 @@ function syncUploadDirectories(): void {
         }
       }
     }
-
-    const syncDirs = (src: string, dest: string) => {
-      if (!fs.existsSync(src)) return;
-      if (path.resolve(src) === path.resolve(dest)) return;
-      for (const cat of categories) {
-        const srcCat = path.join(src, cat);
-        const destCat = path.join(dest, cat);
-        if (!fs.existsSync(srcCat)) continue;
-        if (!fs.existsSync(destCat)) fs.mkdirSync(destCat, { recursive: true });
-
-        const files = fs.readdirSync(srcCat);
-        for (const file of files) {
-          if (file.startsWith('.')) continue;
-          const srcFile = path.join(srcCat, file);
-          const destFile = path.join(destCat, file);
-          try {
-            if (!fs.existsSync(destFile)) {
-              fs.copyFileSync(srcFile, destFile);
-              console.log(`[Storage Sync] Restored uploaded asset to ${destFile}`);
-            } else {
-              const srcStat = fs.statSync(srcFile);
-              const destStat = fs.statSync(destFile);
-              if (srcStat.size > 0 && (destStat.size === 0 || (srcStat.size !== destStat.size && srcStat.mtimeMs > destStat.mtimeMs))) {
-                fs.copyFileSync(srcFile, destFile);
-              }
-            }
-          } catch (e: any) {
-            console.warn(`[Storage Sync] Warning syncing ${srcFile} -> ${destFile}:`, e.message);
-          }
-        }
-      }
-    };
-
-    // 1. Restore persistent storage uploads into public directory
-    syncDirs(persistUploadDir, publicUploadDir);
-    // 2. Restore local data uploads into public directory
-    syncDirs(localDataUploadDir, publicUploadDir);
-    // 3. Backup public uploads to persistent storage
-    syncDirs(publicUploadDir, persistUploadDir);
-    // 4. Backup public uploads to local data directory
-    syncDirs(publicUploadDir, localDataUploadDir);
   } catch (err: any) {
     console.warn('[Storage Sync] Warning during upload synchronization:', err.message);
   }
@@ -691,12 +400,15 @@ app.post('/api/db/save', (req, res) => {
       return res.status(400).json({ error: 'Payload does not represent a valid SQLite database binary snapshot' });
     }
 
-    const storage = getStorageDetails();
-    const primaryDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
-    const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
-    const primaryBakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
 
-    // 1. Physically sync new snapshot to active storage directory with OS fsync
+    const primaryDbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
+    const primaryMetaFile = path.join(DATA_DIR, 'db_meta.json');
+    const primaryBakFile = path.join(DATA_DIR, 'djital_db.sqlite.b64.bak');
+
+    // 1. Physically write new snapshot to active storage directory
     safeWriteFileWithSync(primaryDbFile, databaseBase64);
     try {
       safeWriteFileWithSync(primaryBakFile, databaseBase64);
@@ -710,26 +422,7 @@ app.post('/api/db/save', (req, res) => {
     };
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
-    // 2. Multi-directory mirror write to ensure persistence across rebuilds and volume types
-    const mirrorDirs = new Set<string>();
-    mirrorDirs.add(LOCAL_DATA_DIR);
-    mirrorDirs.add(PROTECTED_SEED_DIR);
-    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
-    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
-    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
-    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
-    if (fs.existsSync('/data')) mirrorDirs.add('/data');
-
-    for (const dir of mirrorDirs) {
-      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
-        try {
-          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64);
-          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
-        } catch {}
-      }
-    }
-
-    console.log(`[Storage] Saved database snapshot (${meta.sizeBytes} bytes) directly to "${primaryDbFile}"`);
+    console.log(`[Storage] Saved database snapshot directly in realtime (${meta.sizeBytes} bytes)`);
 
     return res.json({
       success: true,

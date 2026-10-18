@@ -133,18 +133,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ onRefresh }) => 
         throw new Error(errJson.error || 'Import failed on server');
       }
 
-      // Also reload in-memory client database
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('djital_sqlite_db_v1', base64String);
-        localStorage.setItem(
-          'djital_sqlite_meta_v1',
-          JSON.stringify({
-            updatedAt: new Date().toISOString(),
-            isCustom: true,
-            clientDevice: 'manual-restore-file',
-          })
-        );
-      }
+      // Reload in-memory client database via refresh
+      await onRefresh();
 
       showSuccess('Database Restored', 'Uploaded SQLite database has been restored to the persistent volume.');
       setSyncResult('Database restored successfully from backup file!');

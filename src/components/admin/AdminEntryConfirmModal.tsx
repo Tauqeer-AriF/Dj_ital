@@ -104,12 +104,6 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
         // Store session authentication state
         sessionStorage.setItem('dj_ital_admin_authenticated', 'true');
         sessionStorage.setItem('dj_ital_admin_confirmed', 'true');
-        if (rememberMe) {
-          localStorage.setItem('dj_ital_admin_authenticated', 'true');
-          localStorage.setItem('dj_ital_admin_auth_timestamp', new Date().toISOString());
-        } else {
-          localStorage.removeItem('dj_ital_admin_authenticated');
-        }
         setFailedAttempts(0);
         onConfirm();
       } else {

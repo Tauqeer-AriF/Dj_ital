@@ -10,14 +10,9 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('djital_theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    return 'dark'; // DJ Ital underground sound aesthetic default
-  });
+  const [theme, setThemeState] = useState<ThemeMode>('dark');
 
   useEffect(() => {
-    localStorage.setItem('djital_theme', theme);
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');

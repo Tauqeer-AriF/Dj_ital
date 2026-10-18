@@ -402,38 +402,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 aria-label="Upload SQLite backup"
               />
 
-              {/* Cross-Device Sync Card */}
+              {/* Realtime Server Persistence Card */}
               <div className="p-6 rounded sound-cabinet border border-amber-400/40 bg-gradient-to-br from-amber-500/5 via-neutral-900/10 to-amber-500/10 dark:bg-neutral-900/80 shadow-md space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
-                      <Cloud className="w-4 h-4 text-amber-500" />
-                      <span>Cross-Device Cloud Sync & Persistence</span>
+                    <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <span>Direct Server Realtime Persistence</span>
                     </div>
                     <h3 className="font-display font-bold text-base sm:text-lg text-neutral-950 dark:text-white">
-                      Synchronize Media & Database Across All Phones & Computers
+                      Instant Server Synchronization (Zero Local Storage)
                     </h3>
                     <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-                      Your changes are automatically saved to browser storage and synced to the live server. When you update content, click <strong>"Broadcast to All Devices"</strong> to immediately publish your custom images and records to all visitors.
+                      Every CRUD operation you perform on events, releases, audio, gallery, or profile immediately commits directly to the server database in realtime.
                     </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      onClick={handlePushToCloud}
-                      disabled={isSyncing}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      <span>{isSyncing ? 'Syncing...' : 'Broadcast to All Devices'}</span>
-                    </button>
-                    <button
-                      onClick={handlePullFromCloud}
-                      disabled={isSyncing}
-                      className="flex items-center gap-2 px-3.5 py-2.5 rounded border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
-                    >
-                      <span>Pull Latest from Server</span>
-                    </button>
                     <button
                       onClick={handleRestoreClick}
                       disabled={isSyncing}
@@ -451,14 +436,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <Download className="w-3.5 h-3.5" />
                       <span>Download .sqlite</span>
                     </button>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-3 rounded bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-white/5 text-[11px] text-neutral-600 dark:text-neutral-300 leading-normal">
-                  <Server className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-neutral-900 dark:text-white">Continuous Deployment Protection:</span>{' '}
-                    Your custom dashboard changes are now protected against code redeployments. Even if a new container image is started, your newest local edits automatically heal and repopulate the server. For 100% server-side persistence on Railway, attach a Volume at <code className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px] text-amber-600 dark:text-amber-400 font-bold">/data</code>.
                   </div>
                 </div>
 

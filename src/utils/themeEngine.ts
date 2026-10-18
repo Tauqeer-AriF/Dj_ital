@@ -93,12 +93,6 @@ export const PRESET_COLOR_MAP: Record<string, string> = {
 
 export function resolveColorHex(scheme?: string, customHex?: string): string {
   if (!scheme) {
-    if (typeof window !== 'undefined') {
-      const savedColor = localStorage.getItem('dj_ital_theme_color');
-      if (savedColor) return savedColor;
-      const savedScheme = localStorage.getItem('dj_ital_color_scheme');
-      if (savedScheme && PRESET_COLOR_MAP[savedScheme]) return PRESET_COLOR_MAP[savedScheme];
-    }
     return '#f59e0b';
   }
   if (scheme === 'custom') {
@@ -133,25 +127,9 @@ export function applyThemeToDOM(
   if (colorSchemeName) {
     root.setAttribute('data-color-scheme', colorSchemeName);
   }
-
-  // Cache to localStorage for instant boot styling (including AppLoader)
-  try {
-    localStorage.setItem('dj_ital_theme_color', colorHex);
-    localStorage.setItem('dj_ital_font_preset', fontPreset);
-    localStorage.setItem('dj_ital_body_font_preset', bodyFontPreset);
-    if (colorSchemeName) {
-      localStorage.setItem('dj_ital_color_scheme', colorSchemeName);
-    }
-  } catch {}
 }
 
 export function initSavedTheme() {
   if (typeof window === 'undefined') return;
-  try {
-    const savedScheme = localStorage.getItem('dj_ital_color_scheme') || undefined;
-    const savedColor = localStorage.getItem('dj_ital_theme_color') || (savedScheme && PRESET_COLOR_MAP[savedScheme]) || '#f59e0b';
-    const savedFont = localStorage.getItem('dj_ital_font_preset') || 'syne';
-    const savedBodyFont = localStorage.getItem('dj_ital_body_font_preset') || 'jakarta';
-    applyThemeToDOM(savedColor, savedFont, savedBodyFont, savedScheme);
-  } catch {}
+  applyThemeToDOM('#f59e0b', 'syne', 'jakarta', 'amber');
 }
