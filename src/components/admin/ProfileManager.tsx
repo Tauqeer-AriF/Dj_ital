@@ -39,6 +39,7 @@ import {
 import { audioEngine } from '../../audio/audioEngine';
 import { ProfileData, updateProfile, trackMediaUpload } from '../../db/sqlite';
 import { optimizeImageFile, normalizeImageUrl } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { MediaPickerModal } from './MediaPickerModal';
 import { applyThemeToDOM, resolveColorHex } from '../../utils/themeEngine';
 import { AppLoader } from '../AppLoader';
@@ -214,18 +215,26 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
     try {
       setIsUploadingLogo(true);
       setLogoError(null);
-      const dataUrl = await optimizeImageFile(file, 800, 0.95);
+      let logoUrl = '';
+      try {
+        const uploaded = await uploadMediaFileToServer(file, 'images');
+        logoUrl = uploaded.url;
+      } catch (uploadErr) {
+        console.warn('Server logo upload failed, falling back to optimized base64:', uploadErr);
+        logoUrl = await optimizeImageFile(file, 800, 0.95);
+      }
+
       setFormData((prev) => ({
         ...prev,
-        logo_url: dataUrl,
-        epk_logo_png: dataUrl,
+        logo_url: logoUrl,
+        epk_logo_png: logoUrl,
       }));
       trackMediaUpload({
         title: `Official Brand Logo (${file.name})`,
         file_name: file.name,
         file_type: 'image',
         mime_type: file.type || 'image/png',
-        url: dataUrl,
+        url: logoUrl,
         source: 'Brand Logo Customiser',
         category: 'Branding',
       });

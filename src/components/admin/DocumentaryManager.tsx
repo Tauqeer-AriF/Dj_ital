@@ -46,6 +46,7 @@ import { MediaPickerModal } from './MediaPickerModal';
 import { useToast } from '../../context/ToastContext';
 import { DocumentarySection, extractYouTubeEmbedUrl, isVideoFile } from '../DocumentarySection';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 
 interface DocumentaryManagerProps {
   onRefresh: () => void;
@@ -100,50 +101,25 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
 
     try {
       setIsUploadingVideo(true);
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read video file'));
-        reader.readAsDataURL(file);
-      });
-
-      const uploadRes = await fetch('/api/upload-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          dataUrl: base64Data,
-          category: 'videos',
-        }),
-      });
-
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json().catch(() => ({}));
-        throw new Error(errData.error || 'Server failed to store uploaded video');
-      }
-
-      const uploadJson = await uploadRes.json();
-      const videoUrl = uploadJson.url;
+      const uploaded = await uploadMediaFileToServer(file, 'videos');
+      const videoUrl = uploaded.url;
 
       setEpisodeForm((prev) => ({ ...prev, youtube_url: videoUrl }));
 
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-
-      // Track in Media Library
+      // Track in Media Library with server URL
       await createMediaLibraryItem({
         title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: file.name,
+        file_name: uploaded.fileName,
         file_type: 'video',
-        mime_type: file.type || 'video/mp4',
+        mime_type: uploaded.mimeType,
         url: videoUrl,
-        source: 'Documentary Series Upload',
-        size_text: sizeText,
+        source: 'Documentary Series Server Upload',
+        size_text: uploaded.sizeText,
         category: 'Documentary Series',
-        description: `Uploaded for Documentary Series episode on ${new Date().toLocaleDateString()}`,
+        description: `Saved to server disk for Documentary Series episode on ${new Date().toLocaleDateString()}`,
       });
 
-      showSuccess('Video Uploaded', `"${file.name}" saved and assigned to this episode.`);
+      showSuccess('Video Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {
       console.error('Failed to upload video for episode:', err);
       showError('Upload Failed', err?.message || 'Could not upload video clip.');

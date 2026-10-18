@@ -139,7 +139,7 @@ function syncUploadDirectories(): void {
   try {
     const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
     const localDataUploadDir = path.join(DATA_DIR, 'uploads');
-    const categories = ['videos', 'images', 'audio'];
+    const categories = ['videos', 'images', 'audio', 'documents'];
     for (const base of [publicUploadDir, localDataUploadDir]) {
       for (const cat of categories) {
         const catDir = path.join(base, cat);
@@ -193,7 +193,7 @@ app.get('/sitemap.xml', (_req, res) => {
 // Dedicated streaming endpoint for uploaded media with HTTP 206 Range support and multi-path fallback
 app.get('/uploads/:category/:filename', (req, res) => {
   const { category, filename } = req.params;
-  const safeCategory = ['videos', 'images', 'audio'].includes(category) ? category : 'videos';
+  const safeCategory = ['videos', 'images', 'audio', 'documents'].includes(category) ? category : 'documents';
   const safeFilename = path.basename(filename);
 
   const storage = getStorageDetails();
@@ -228,15 +228,31 @@ app.get('/uploads/:category/:filename', (req, res) => {
     '.mp3': 'audio/mpeg',
     '.wav': 'audio/wav',
     '.ogg': 'audio/ogg',
+    '.aac': 'audio/aac',
+    '.flac': 'audio/flac',
+    '.m4a': 'audio/mp4',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
     '.png': 'image/png',
     '.webp': 'image/webp',
     '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.avif': 'image/avif',
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.csv': 'text/csv',
+    '.json': 'application/json',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.zip': 'application/zip',
   };
 
   if (mimeMap[ext]) {
     res.setHeader('Content-Type', mimeMap[ext]);
+  }
+
+  if (req.query.download === '1') {
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
   }
 
   res.setHeader('Accept-Ranges', 'bytes');
@@ -793,19 +809,19 @@ app.all('/api/audio-proxy', (req, res) => {
 // Media Upload & Static Clip Storage API
 // ----------------------------------------------------
 
-// Direct upload of short video clips, audio dubs, and images
+// Direct upload of short video clips, audio dubs, images, and documents
 app.post('/api/upload-media', (req, res) => {
   try {
-    const { filename, dataUrl, category = 'videos' } = req.body;
+    const { filename, dataUrl, category = 'documents' } = req.body;
     if (!dataUrl || typeof dataUrl !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid dataUrl parameter' });
     }
 
-    const safeCategory = ['videos', 'images', 'audio'].includes(category) ? category : 'videos';
+    const safeCategory = ['videos', 'images', 'audio', 'documents'].includes(category) ? category : 'documents';
 
     // Robust extraction of base64 payload without fragile regex
     let buffer: Buffer;
-    let ext = 'mp4';
+    let ext = 'bin';
 
     const base64Marker = ';base64,';
     const markerIdx = dataUrl.indexOf(base64Marker);
@@ -815,15 +831,26 @@ app.post('/api/upload-media', (req, res) => {
       const rawBase64 = dataUrl.substring(markerIdx + base64Marker.length);
       buffer = Buffer.from(rawBase64, 'base64');
 
-      if (mime.includes('quicktime') || mime.includes('mov')) ext = 'mov';
+      if (mime.includes('pdf')) ext = 'pdf';
+      else if (mime.includes('quicktime') || mime.includes('mov')) ext = 'mov';
       else if (mime.includes('webm')) ext = 'webm';
       else if (mime.includes('mp4') || mime.includes('m4v')) ext = 'mp4';
       else if (mime.includes('ogg') || mime.includes('ogv')) ext = 'ogv';
       else if (mime.includes('jpeg') || mime.includes('jpg')) ext = 'jpg';
       else if (mime.includes('png')) ext = 'png';
       else if (mime.includes('webp')) ext = 'webp';
+      else if (mime.includes('gif')) ext = 'gif';
+      else if (mime.includes('svg')) ext = 'svg';
+      else if (mime.includes('avif')) ext = 'avif';
       else if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3';
       else if (mime.includes('wav')) ext = 'wav';
+      else if (mime.includes('aac')) ext = 'aac';
+      else if (mime.includes('flac')) ext = 'flac';
+      else if (mime.includes('word') || mime.includes('msword') || mime.includes('document')) ext = 'docx';
+      else if (mime.includes('plain') || mime.includes('text')) ext = 'txt';
+      else if (mime.includes('csv')) ext = 'csv';
+      else if (mime.includes('json')) ext = 'json';
+      else if (mime.includes('zip')) ext = 'zip';
     } else {
       buffer = Buffer.from(dataUrl, 'base64');
     }
@@ -977,11 +1004,12 @@ app.post('/api/delete-media', (req, res) => {
 // List uploaded media items
 app.get('/api/uploaded-media-list', (_req, res) => {
   try {
-    const categories = ['videos', 'images', 'audio'];
+    const categories = ['videos', 'images', 'audio', 'documents'];
     const result: Record<string, Array<{ name: string; url: string; size: number; mtime: string }>> = {
       videos: [],
       images: [],
       audio: [],
+      documents: [],
     };
 
     categories.forEach((cat) => {

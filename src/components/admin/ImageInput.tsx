@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Link2, Grid, RotateCcw, Check, Image as ImageIcon, AlertCircle, FolderArchive, Sparkles } from 'lucide-react';
 import { ARCHIVE_IMAGE_PRESETS, FALLBACK_IMAGE, normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { trackMediaUpload, getMediaLibraryItems, MediaLibraryItem } from '../../db/sqlite';
 import { MediaPickerModal } from './MediaPickerModal';
 
@@ -54,15 +55,24 @@ export const ImageInput: React.FC<ImageInputProps> = ({
       setIsProcessing(true);
       setUploadError(null);
       setImgError(false);
-      const optimizedBase64 = await optimizeImageFile(file, 1440, 0.88);
-      onChange(optimizedBase64);
-      // Automatically register in unified media library
+
+      let finalUrl = '';
+      try {
+        const uploaded = await uploadMediaFileToServer(file, 'images');
+        finalUrl = uploaded.url;
+      } catch (uploadErr) {
+        console.warn('Server image upload failed, falling back to optimized base64:', uploadErr);
+        finalUrl = await optimizeImageFile(file, 1440, 0.88);
+      }
+
+      onChange(finalUrl);
+      // Automatically register in unified media library with server URL
       trackMediaUpload({
         title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
         file_name: file.name,
         file_type: 'image',
         mime_type: file.type || 'image/jpeg',
-        url: optimizedBase64,
+        url: finalUrl,
         source: label || 'Component Upload',
         category: 'Uploaded Images',
       });

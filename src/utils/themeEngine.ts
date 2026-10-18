@@ -101,6 +101,24 @@ export function resolveColorHex(scheme?: string, customHex?: string): string {
   return PRESET_COLOR_MAP[scheme] || customHex || '#f59e0b';
 }
 
+const DISPLAY_FONT_MAP: Record<string, string> = {
+  syne: "'Syne', 'Bebas Neue', 'Oswald', sans-serif",
+  'space-grotesk': "'Space Grotesk', sans-serif",
+  outfit: "'Outfit', 'Barlow Condensed', sans-serif",
+  bebas: "'Bebas Neue', 'Oswald', cursive, sans-serif",
+  inter: "'Inter', sans-serif",
+  jakarta: "'Plus Jakarta Sans', sans-serif",
+};
+
+const BODY_FONT_MAP: Record<string, string> = {
+  jakarta: "'Plus Jakarta Sans', sans-serif",
+  inter: "'Inter', sans-serif",
+  'space-grotesk': "'Space Grotesk', sans-serif",
+  outfit: "'Outfit', sans-serif",
+  mono: "'JetBrains Mono', 'Barlow Condensed', monospace",
+  system: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+};
+
 export function applyThemeToDOM(
   colorHex: string,
   fontPreset: string = 'syne',
@@ -121,9 +139,18 @@ export function applyThemeToDOM(
   root.style.setProperty('--accent-text-color', palette.textColor);
   root.style.setProperty('--accent-rgb', palette.rgb);
 
-  // Apply font presets
+  // Apply font presets and explicit font family CSS variables
   root.setAttribute('data-font-preset', fontPreset);
   root.setAttribute('data-body-font-preset', bodyFontPreset);
+  root.style.setProperty(
+    '--font-display',
+    DISPLAY_FONT_MAP[fontPreset] || DISPLAY_FONT_MAP.syne
+  );
+  root.style.setProperty(
+    '--font-sans',
+    BODY_FONT_MAP[bodyFontPreset] || BODY_FONT_MAP.jakarta
+  );
+
   if (colorSchemeName) {
     root.setAttribute('data-color-scheme', colorSchemeName);
   }

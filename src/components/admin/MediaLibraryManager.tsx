@@ -47,6 +47,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 import { ImageInput } from './ImageInput';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { extractYouTubeEmbedUrl } from '../DocumentarySection';
 
 interface MediaLibraryManagerProps {
@@ -140,84 +141,34 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     setUploadSuccess(null);
 
     try {
-      const isImage = file.type.startsWith('image/');
-      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-      const isAudio = file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3') || file.name.toLowerCase().endsWith('.wav');
-      const isVideo =
-        file.type.startsWith('video/') ||
-        file.name.toLowerCase().endsWith('.mp4') ||
-        file.name.toLowerCase().endsWith('.mov') ||
-        file.name.toLowerCase().endsWith('.webm') ||
-        file.name.toLowerCase().endsWith('.m4v') ||
-        file.name.toLowerCase().endsWith('.ogv');
-
-      let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'other';
-      if (isImage) fileType = 'image';
-      else if (isPdf || file.type.includes('document') || file.type.includes('text') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
-        fileType = 'document';
-      } else if (isAudio) fileType = 'audio';
-      else if (isVideo) fileType = 'video';
-
-      let fileUrl = '';
-      if (isVideo) {
-        // Read file as base64 to send to backend upload API (prevents localStorage quota overflow)
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read video file'));
-          reader.readAsDataURL(file);
-        });
-
-        const uploadRes = await fetch('/api/upload-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            dataUrl: base64Data,
-            category: 'videos',
-          }),
-        });
-
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Server failed to store uploaded video file');
-        }
-
-        const uploadJson = await uploadRes.json();
-        fileUrl = uploadJson.url;
-      } else if (isImage) {
-        // Optimize image
-        fileUrl = await optimizeImageFile(file, 1600, 0.9);
-      } else {
-        // Read file as base64 data URI (preserves PDF, Audio, Docs)
-        fileUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsDataURL(file);
-        });
-      }
-
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+      // Directly upload media file or document to server disk storage
+      const uploaded = await uploadMediaFileToServer(file, customCategory);
 
       const title = customTitle.trim() || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      const category = customCategory || (fileType === 'document' ? 'Documents' : 'Uploads');
+      const category = customCategory || (
+        uploaded.fileType === 'document' ? 'Documents' :
+        uploaded.fileType === 'image' ? 'Images' :
+        uploaded.fileType === 'audio' ? 'Audio' :
+        uploaded.fileType === 'video' ? 'Videos' : 'Uploads'
+      );
 
       await createMediaLibraryItem({
         title,
-        file_name: file.name,
-        file_type: fileType,
-        mime_type: file.type || 'application/octet-stream',
-        url: fileUrl,
-        source: 'Media Tab Upload',
-        size_text: sizeText,
+        file_name: uploaded.fileName,
+        file_type: uploaded.fileType,
+        mime_type: uploaded.mimeType,
+        url: uploaded.url,
+        source: 'Server Disk Upload',
+        size_text: uploaded.sizeText,
         category,
-        description: customDescription.trim() || `Uploaded via Media Tab on ${new Date().toLocaleDateString()}`,
+        description: customDescription.trim() || `Saved to server disk on ${new Date().toLocaleDateString()}`,
       });
 
-      setUploadSuccess(`Successfully uploaded "${file.name}"!`);
-      showSuccess('Media File Uploaded', `"${file.name}" was saved into persistent SQLite.`);
+      setUploadSuccess(`Successfully saved "${file.name}" to server disk!`);
+      showSuccess(
+        'Media Saved to Server',
+        `"${file.name}" was uploaded directly to server storage (${uploaded.sizeText}).`
+      );
       setCustomTitle('');
       setCustomDescription('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -642,7 +593,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                       {isUploading ? 'Uploading & saving media file...' : 'Click to Browse or Drag Files Here'}
                     </span>
                     <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 max-w-md">
-                      Supports videos (MP4, MOV, WebM), images (PNG, SVG, JPG, WebP), documents (PDF, DOC), and audio. Videos and large media files are automatically saved to persistent storage.
+                      Supports documents (PDF, DOCX, TXT, CSV), images (JPG, PNG, WebP, SVG), audio (MP3, WAV), and videos (MP4, MOV). All media files and documents are saved directly to server disk storage instead of browser local storage.
                     </span>
                   </label>
                 </div>
@@ -1224,32 +1175,54 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   )}
                 </div>
               ) : previewItem.file_type === 'document' ? (
-                <div className="p-8 text-center space-y-4 max-w-md">
-                  <div className="w-20 h-20 rounded bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto shadow-inner">
-                    <FileText className="w-10 h-10" />
-                  </div>
+                <div className="p-4 sm:p-6 text-center space-y-4 w-full max-w-2xl">
+                  {previewItem.url.toLowerCase().endsWith('.pdf') || previewItem.mime_type === 'application/pdf' ? (
+                    <div className="w-full h-80 sm:h-96 rounded border border-neutral-200 dark:border-white/10 overflow-hidden bg-neutral-900">
+                      <iframe
+                        src={previewItem.url}
+                        title={previewItem.title}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto shadow-inner">
+                      <FileText className="w-10 h-10" />
+                    </div>
+                  )}
                   <div>
-                    <h4 className="text-base font-bold text-white">{previewItem.title}</h4>
-                    <p className="text-xs text-neutral-400 mt-1">{previewItem.file_name || 'Document File'}</p>
+                    <h4 className="text-base font-bold text-neutral-950 dark:text-white">{previewItem.title}</h4>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{previewItem.file_name || 'Document File'}</p>
+                    <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-mono">
+                      Stored on server disk ({previewItem.size_text || 'Server file'})
+                    </span>
                   </div>
-                  <div className="flex items-center justify-center gap-3 pt-2">
+                  <div className="flex items-center justify-center flex-wrap gap-2.5 pt-2">
                     <a
                       href={previewItem.url}
-                      download={previewItem.file_name || 'document.pdf'}
+                      download={previewItem.file_name || 'document'}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded bg-amber-400 text-neutral-950 font-bold text-xs font-mono cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold text-xs font-mono cursor-pointer transition-colors shadow-sm"
                     >
                       <Download className="w-4 h-4" />
-                      <span>Download PDF</span>
+                      <span>Download Document</span>
+                    </a>
+                    <a
+                      href={previewItem.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded border border-neutral-300 dark:border-white/20 text-neutral-800 dark:text-white font-bold text-xs font-mono cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Open in Tab</span>
                     </a>
                     <button
                       type="button"
                       onClick={() => handleCopyUrl(previewItem)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded border border-white/20 text-white font-bold text-xs font-mono cursor-pointer hover:bg-white/10"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded border border-neutral-300 dark:border-white/20 text-neutral-800 dark:text-white font-bold text-xs font-mono cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
                     >
                       <Copy className="w-4 h-4" />
-                      <span>Copy Document Link</span>
+                      <span>Copy Link</span>
                     </button>
                   </div>
                 </div>

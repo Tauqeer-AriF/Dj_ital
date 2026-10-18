@@ -22,6 +22,7 @@ import {
 import { ConfirmModal } from './ConfirmModal';
 import { MediaPickerModal } from './MediaPickerModal';
 import { FALLBACK_IMAGE, normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { isVideoFile } from '../DocumentarySection';
 import { useToast } from '../../context/ToastContext';
 
@@ -92,81 +93,33 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
         file.name.toLowerCase().endsWith('.webm') ||
         file.name.toLowerCase().endsWith('.m4v');
 
-      let finalUrl = '';
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+      // Upload media directly to server disk storage
+      const uploaded = await uploadMediaFileToServer(file, isVideo ? 'videos' : 'images');
+      const finalUrl = uploaded.url;
 
-      if (isVideo) {
-        // Upload video file via backend storage API
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read video file'));
-          reader.readAsDataURL(file);
-        });
+      // Auto-register in SQLite Media Library with server URL
+      await createMediaLibraryItem({
+        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+        file_name: uploaded.fileName,
+        file_type: uploaded.fileType,
+        mime_type: uploaded.mimeType,
+        url: finalUrl,
+        source: 'Gallery Manager Server Upload',
+        size_text: uploaded.sizeText,
+        category: isVideo ? 'Video Clips' : 'Gallery Archives',
+        description: `Saved to server storage for visual gallery on ${new Date().toLocaleDateString()}`,
+      });
 
-        const uploadRes = await fetch('/api/upload-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            dataUrl: base64Data,
-            category: 'videos',
-          }),
-        });
+      setFormData((prev) => ({
+        ...prev,
+        image_url: finalUrl,
+        category: isVideo && prev.category === 'Vital Fest' ? 'Video Clips & Visuals' : prev.category,
+      }));
 
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Server failed to save uploaded video file');
-        }
-
-        const uploadJson = await uploadRes.json();
-        finalUrl = uploadJson.url;
-
-        // Auto-register in SQLite Media Library
-        await createMediaLibraryItem({
-          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-          file_name: file.name,
-          file_type: 'video',
-          mime_type: file.type || 'video/mp4',
-          url: finalUrl,
-          source: 'Gallery Manager Upload',
-          size_text: sizeText,
-          category: 'Video Clips',
-          description: `Uploaded for visual gallery on ${new Date().toLocaleDateString()}`,
-        });
-
-        setFormData((prev) => ({
-          ...prev,
-          image_url: finalUrl,
-          category: prev.category === 'Vital Fest' ? 'Video Clips & Visuals' : prev.category,
-        }));
-
-        showSuccess('Video Clip Uploaded', `"${file.name}" saved and assigned to this gallery item.`);
-      } else {
-        // Optimize image
-        finalUrl = await optimizeImageFile(file, 1600, 0.9);
-
-        // Auto-register in SQLite Media Library
-        await createMediaLibraryItem({
-          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-          file_name: file.name,
-          file_type: 'image',
-          mime_type: file.type || 'image/jpeg',
-          url: finalUrl,
-          source: 'Gallery Manager Upload',
-          size_text: sizeText,
-          category: 'Gallery Archives',
-          description: `Uploaded for visual gallery on ${new Date().toLocaleDateString()}`,
-        });
-
-        setFormData((prev) => ({
-          ...prev,
-          image_url: finalUrl,
-        }));
-
-        showSuccess('Photo Uploaded', `"${file.name}" processed and assigned.`);
-      }
+      showSuccess(
+        isVideo ? 'Video Clip Uploaded to Server' : 'Photo Uploaded to Server',
+        `"${file.name}" stored on server filesystem (${uploaded.sizeText}).`
+      );
     } catch (err: any) {
       console.error('Failed to upload file for gallery:', err);
       showError('Upload Failed', err?.message || 'Could not upload media file.');

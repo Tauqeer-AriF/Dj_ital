@@ -33,6 +33,7 @@ import { ImageInput } from './ImageInput';
 import { MediaPickerModal } from './MediaPickerModal';
 import { isVideoFile } from '../DocumentarySection';
 import { useToast } from '../../context/ToastContext';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 
 export const isAudioFile = (url?: string) => {
   if (!url) return false;
@@ -102,30 +103,8 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
     try {
       setIsUploadingAudio(true);
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read audio file'));
-        reader.readAsDataURL(file);
-      });
-
-      const uploadRes = await fetch('/api/upload-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          dataUrl: base64Data,
-          category: 'audio',
-        }),
-      });
-
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json().catch(() => ({}));
-        throw new Error(errData.error || 'Server failed to store uploaded audio');
-      }
-
-      const uploadJson = await uploadRes.json();
-      const audioUrl = uploadJson.url;
+      const uploaded = await uploadMediaFileToServer(file, 'audio');
+      const audioUrl = uploaded.url;
 
       setMixFormData((prev) => ({
         ...prev,
@@ -135,22 +114,19 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
         title: prev.title || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
       }));
 
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-
       await createMediaLibraryItem({
         title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: file.name,
+        file_name: uploaded.fileName,
         file_type: 'audio',
-        mime_type: file.type || 'audio/mpeg',
+        mime_type: uploaded.mimeType,
         url: audioUrl,
-        source: 'Audio Manager Upload',
-        size_text: sizeText,
+        source: 'Audio Manager Server Upload',
+        size_text: uploaded.sizeText,
         category: 'Audio Broadcasts',
-        description: `Uploaded for Live Sets & Radio Archives on ${new Date().toLocaleDateString()}`,
+        description: `Saved to server disk for Live Sets & Radio Archives on ${new Date().toLocaleDateString()}`,
       });
 
-      showSuccess('Audio Uploaded', `"${file.name}" saved and set as audio stream.`);
+      showSuccess('Audio Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {
       console.error('Failed to upload audio:', err);
       showError('Upload Failed', err?.message || 'Could not upload audio file.');
@@ -167,30 +143,8 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
     try {
       setIsUploadingVideo(true);
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read video file'));
-        reader.readAsDataURL(file);
-      });
-
-      const uploadRes = await fetch('/api/upload-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          dataUrl: base64Data,
-          category: 'videos',
-        }),
-      });
-
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json().catch(() => ({}));
-        throw new Error(errData.error || 'Server failed to store uploaded video');
-      }
-
-      const uploadJson = await uploadRes.json();
-      const videoUrl = uploadJson.url;
+      const uploaded = await uploadMediaFileToServer(file, 'videos');
+      const videoUrl = uploaded.url;
 
       setVideoFormData((prev) => ({
         ...prev,
@@ -198,22 +152,19 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
         title: prev.title || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
       }));
 
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-
       await createMediaLibraryItem({
         title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: file.name,
+        file_name: uploaded.fileName,
         file_type: 'video',
-        mime_type: file.type || 'video/mp4',
+        mime_type: uploaded.mimeType,
         url: videoUrl,
-        source: 'Media Gallery Video Upload',
-        size_text: sizeText,
+        source: 'Media Gallery Video Server Upload',
+        size_text: uploaded.sizeText,
         category: 'Video Clips',
-        description: `Uploaded for Video Clips & Recaps on ${new Date().toLocaleDateString()}`,
+        description: `Saved to server disk for Video Clips & Recaps on ${new Date().toLocaleDateString()}`,
       });
 
-      showSuccess('Video Uploaded', `"${file.name}" saved and set as video source.`);
+      showSuccess('Video Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {
       console.error('Failed to upload video:', err);
       showError('Upload Failed', err?.message || 'Could not upload video clip.');

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { MediaLibraryItem, getMediaLibraryItems, createMediaLibraryItem } from '../../db/sqlite';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 
 interface MediaPickerModalProps {
   isOpen: boolean;
@@ -114,83 +115,37 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       setIsUploading(true);
       setUploadError(null);
 
-      const isImage = file.type.startsWith('image/');
-      const isVideo =
-        file.type.startsWith('video/') ||
-        file.name.toLowerCase().endsWith('.mp4') ||
-        file.name.toLowerCase().endsWith('.mov') ||
-        file.name.toLowerCase().endsWith('.webm');
-
-      let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'other';
-      if (isImage) fileType = 'image';
-      else if (isVideo) fileType = 'video';
-      else fileType = 'document';
-
-      let fileUrl = '';
-      if (isVideo) {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read video file'));
-          reader.readAsDataURL(file);
-        });
-
-        const uploadRes = await fetch('/api/upload-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            dataUrl: base64Data,
-            category: 'videos',
-          }),
-        });
-
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Server failed to store uploaded video');
-        }
-
-        const uploadJson = await uploadRes.json();
-        fileUrl = uploadJson.url;
-      } else if (isImage) {
-        fileUrl = await optimizeImageFile(file, 1600, 0.9);
-      } else {
-        fileUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsDataURL(file);
-        });
-      }
-
-      const sizeKb = Math.round(file.size / 1024);
-      const sizeText = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+      // Upload file directly to server disk storage
+      const uploaded = await uploadMediaFileToServer(file);
       const titleClean = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
 
-      const categoryName = isImage ? 'Uploaded Images' : isVideo ? 'Video Clips' : 'Documents';
+      const categoryName =
+        uploaded.fileType === 'document' ? 'Documents' :
+        uploaded.fileType === 'video' ? 'Video Clips' :
+        uploaded.fileType === 'audio' ? 'Audio Files' : 'Uploaded Images';
 
       const newId = await createMediaLibraryItem({
         title: titleClean,
-        file_name: file.name,
-        file_type: fileType,
-        mime_type: file.type || (isVideo ? 'video/mp4' : 'application/octet-stream'),
-        url: fileUrl,
-        source: 'Quick Picker Upload',
-        size_text: sizeText,
+        file_name: uploaded.fileName,
+        file_type: uploaded.fileType,
+        mime_type: uploaded.mimeType,
+        url: uploaded.url,
+        source: 'Quick Picker Server Upload',
+        size_text: uploaded.sizeText,
         category: categoryName,
-        description: `Direct upload into picker modal on ${new Date().toLocaleDateString()}`,
+        description: `Direct upload to server storage on ${new Date().toLocaleDateString()}`,
       });
 
-      // Automatically select the freshly uploaded asset
-      onSelect(fileUrl, {
+      // Automatically select the freshly uploaded asset with server URL
+      onSelect(uploaded.url, {
         id: newId,
         title: titleClean,
-        file_name: file.name,
-        file_type: fileType,
-        mime_type: file.type || (isVideo ? 'video/mp4' : 'application/octet-stream'),
-        url: fileUrl,
-        source: 'Quick Picker Upload',
-        size_text: sizeText,
+        file_name: uploaded.fileName,
+        file_type: uploaded.fileType,
+        mime_type: uploaded.mimeType,
+        url: uploaded.url,
+        source: 'Quick Picker Server Upload',
+        size_text: uploaded.sizeText,
         category: categoryName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -203,6 +158,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
 
   if (!isOpen) return null;
 
