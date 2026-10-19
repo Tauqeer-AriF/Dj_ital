@@ -1,6 +1,7 @@
 {
-  "updatedAt": "2026-10-19T09:13:26.465Z",
-  "updatedBy": "Previous Data Restored & Safeguarded",
-  "sizeBytes": 2561368,
-  "isSeed": false
+  "updatedAt": "2026-10-19T10:03:13.353Z",
+  "updatedBy": "admin-bundle-restore",
+  "sizeBytes": 4467372,
+  "isSeed": false,
+  "restoredFrom": "dj-ital-website-backup-2026-10-19T10-01-54.djbundle"
 }

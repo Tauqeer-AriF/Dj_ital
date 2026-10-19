@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-10-19T08:52:05.505Z",
-  "updatedBy": "Previous Data Restored & Safeguarded",
-  "sizeBytes": 2561368,
+  "updatedAt": "2026-10-19T10:03:13.353Z",
+  "updatedBy": "admin-bundle-restore",
+  "sizeBytes": 4467372,
   "isSeed": false,
-  "note": "Restored user previous database including all 8 events, 4 documentary episodes, 11 media library assets, and custom settings."
+  "restoredFrom": "dj-ital-website-backup-2026-10-19T10-01-54.djbundle"
 }

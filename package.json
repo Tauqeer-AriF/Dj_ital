@@ -37,5 +37,10 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.2.14",
+    "@rolldown/binding-linux-x64-musl": "^1.2.14",
+    "@rolldown/binding-wasm32-wasi": "^1.2.14"
   }
 }
