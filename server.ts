@@ -297,6 +297,41 @@ function getStorageDetails(): StorageStatus {
   };
 }
 
+function mirrorDatabaseToAllLocations(databaseBase64: string, meta: any, primaryDataDir?: string): void {
+  const mirrorDirs = new Set<string>();
+  mirrorDirs.add(LOCAL_DATA_DIR);
+  mirrorDirs.add(path.resolve(process.cwd(), 'data'));
+  mirrorDirs.add(PROTECTED_SEED_DIR);
+  mirrorDirs.add(path.resolve(process.cwd(), 'seed_data'));
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
+  if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
+  if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
+  if (fs.existsSync('/data')) mirrorDirs.add('/data');
+
+  const metaStr = JSON.stringify(meta, null, 2);
+
+  for (const dir of mirrorDirs) {
+    if (testDirectoryWritable(dir)) {
+      try {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64);
+        safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64.bak'), databaseBase64);
+        safeWriteFileWithSync(path.join(dir, 'db_meta.json'), metaStr);
+        // Synchronize custom backup copy so 1-click restore always has latest user data
+        safeWriteFileWithSync(path.join(dir, 'djital_db_previous_custom_data.b64'), databaseBase64);
+        safeWriteFileWithSync(path.join(dir, 'db_meta_custom.json'), metaStr);
+
+        const backupDir = path.join(dir, 'backups');
+        if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+        safeWriteFileWithSync(path.join(backupDir, 'djital_db_previous_custom_data.b64'), databaseBase64);
+        safeWriteFileWithSync(path.join(backupDir, 'db_meta_custom.json'), metaStr);
+      } catch (err: any) {
+        console.warn(`[Storage Mirror] Warning writing to ${dir}:`, err.message);
+      }
+    }
+  }
+}
+
 function ensureDatabaseSeeded(): void {
   const storage = getStorageDetails();
   const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
@@ -305,43 +340,54 @@ function ensureDatabaseSeeded(): void {
   const fileExists = fs.existsSync(dbFile);
   const fileSize = fileExists ? fs.statSync(dbFile).size : 0;
 
-  // ONLY seed if active DB file is missing, empty, or has no custom user data
-  if (!fileExists || fileSize < 100) {
-    const { seedDbPath, seedMetaPath, isCustom, updatedAt } = findLatestDatabase();
+  let currentIsSeed = true;
+  if (fileExists && fs.existsSync(dbMetaFile)) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(dbMetaFile, 'utf-8'));
+      currentIsSeed = Boolean(meta.isSeed);
+    } catch {}
+  }
+
+  // Find latest database from all potential volume/repo locations
+  const { seedDbPath, seedMetaPath, isCustom, updatedAt } = findLatestDatabase();
+
+  // If DB file is missing, empty, OR if active file is an un-updated baseline while we have custom user data:
+  if (!fileExists || fileSize < 100 || (currentIsSeed && isCustom && seedDbPath && seedDbPath !== dbFile)) {
     if (seedDbPath && fs.existsSync(seedDbPath) && seedDbPath !== dbFile) {
       try {
-        fs.copyFileSync(seedDbPath, dbFile);
+        const b64 = fs.readFileSync(seedDbPath, 'utf-8');
+        let metaObj = {
+          updatedAt: updatedAt || new Date().toISOString(),
+          updatedBy: isCustom ? 'database-recovery' : 'system-seed',
+          isSeed: !isCustom,
+        };
         if (seedMetaPath && fs.existsSync(seedMetaPath)) {
-          fs.copyFileSync(seedMetaPath, dbMetaFile);
-        } else {
-          fs.writeFileSync(
-            dbMetaFile,
-            JSON.stringify(
-              {
-                updatedAt: updatedAt || new Date().toISOString(),
-                updatedBy: isCustom ? 'database-recovery' : 'system-seed',
-                isSeed: !isCustom,
-              },
-              null,
-              2
-            ),
-            'utf-8'
-          );
+          try {
+            metaObj = JSON.parse(fs.readFileSync(seedMetaPath, 'utf-8'));
+          } catch {}
         }
+        safeWriteFileWithSync(dbFile, b64);
+        safeWriteFileWithSync(dbMetaFile, JSON.stringify(metaObj, null, 2));
+
+        // Mirror to all data and seed directories so redeployment keeps custom data
+        mirrorDatabaseToAllLocations(b64, metaObj);
         console.log(`[Storage] Initialized database at "${storage.resolvedDataDir}" from "${seedDbPath}" (Custom data preserved: ${isCustom ? 'YES' : 'NO'})`);
       } catch (err: any) {
         console.error(`[Storage] Error initializing database at ${storage.resolvedDataDir}:`, err.message);
       }
     }
   } else {
-    // If database exists in storage, make sure backup copy also exists
+    // Database already exists in storage and is active.
+    // Ensure all backup and repository seed directories are synchronized with this active database!
     try {
-      const backupDir = path.join(storage.resolvedDataDir, 'backups');
-      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      const bakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
-      if (!fs.existsSync(bakFile) || fs.statSync(bakFile).size !== fileSize) {
-        fs.copyFileSync(dbFile, bakFile);
+      const activeB64 = fs.readFileSync(dbFile, 'utf-8');
+      let activeMeta = { updatedAt: new Date().toISOString(), isSeed: currentIsSeed };
+      if (fs.existsSync(dbMetaFile)) {
+        try {
+          activeMeta = JSON.parse(fs.readFileSync(dbMetaFile, 'utf-8'));
+        } catch {}
       }
+      mirrorDatabaseToAllLocations(activeB64, activeMeta, storage.resolvedDataDir);
     } catch {}
   }
 }
@@ -638,24 +684,7 @@ app.post('/api/db/save', (req, res) => {
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
     // 2. Multi-directory mirror write to ensure data persists across container redeployments and volume types
-    const mirrorDirs = new Set<string>();
-    mirrorDirs.add(LOCAL_DATA_DIR);
-    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
-    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
-    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
-    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
-    if (fs.existsSync('/data')) mirrorDirs.add('/data');
-
-    for (const dir of mirrorDirs) {
-      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
-        try {
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64);
-          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64.bak'), databaseBase64);
-          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
-        } catch {}
-      }
-    }
+    mirrorDatabaseToAllLocations(databaseBase64, meta, storage.resolvedDataDir);
 
     console.log(`[Storage] Saved database snapshot directly to volume (${meta.sizeBytes} bytes, ${storage.mountSource})`);
 
@@ -937,24 +966,8 @@ app.post('/api/restore/bundle', async (req, res) => {
     };
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
-    // Mirror write to ensure persistence
-    const mirrorDirs = new Set<string>();
-    mirrorDirs.add(LOCAL_DATA_DIR);
-    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
-    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
-    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
-    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
-    if (fs.existsSync('/data')) mirrorDirs.add('/data');
-
-    for (const dir of mirrorDirs) {
-      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
-        try {
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), restoredDbB64);
-          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
-        } catch {}
-      }
-    }
+    // Mirror write to ensure persistence across deployments
+    mirrorDatabaseToAllLocations(restoredDbB64, meta, storage.resolvedDataDir);
 
     return res.json({
       success: true,
@@ -1145,6 +1158,7 @@ app.post('/api/db/import', (req, res) => {
       isSeed: false,
     };
     fs.writeFileSync(primaryMetaFile, JSON.stringify(meta, null, 2), 'utf-8');
+    mirrorDatabaseToAllLocations(b64, meta, storage.resolvedDataDir);
 
     return res.json({
       success: true,
@@ -1385,24 +1399,8 @@ app.post('/api/db/restore-snapshot', (req, res) => {
     };
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
-    // Mirror to all data directories
-    const mirrorDirs = new Set<string>();
-    mirrorDirs.add(LOCAL_DATA_DIR);
-    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
-    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
-    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
-    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
-    if (fs.existsSync('/data')) mirrorDirs.add('/data');
-
-    for (const dir of mirrorDirs) {
-      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
-        try {
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), b64Data);
-          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
-        } catch {}
-      }
-    }
+    // Mirror to all data and seed directories
+    mirrorDatabaseToAllLocations(b64Data, meta, storage.resolvedDataDir);
 
     console.log(`[Storage] Restored snapshot "${snapshotId}" to volume (${b64Data.length} bytes)`);
 
