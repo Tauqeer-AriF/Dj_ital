@@ -466,6 +466,37 @@ let initPromise: Promise<Database> | null = null;
 let lastServerTimestamp: string = '';
 let isSavingToServer: boolean = false;
 
+// Listeners for database saving state
+export type SavingListener = (isSaving: boolean, message?: string) => void;
+const savingListeners = new Set<SavingListener>();
+
+export function isSavingDatabase(): boolean {
+  return isSavingToServer;
+}
+
+export function subscribeSaving(listener: SavingListener): () => void {
+  savingListeners.add(listener);
+  return () => savingListeners.delete(listener);
+}
+
+export function notifySavingState(isSaving: boolean, message?: string) {
+  isSavingToServer = isSaving;
+  savingListeners.forEach((fn) => {
+    try {
+      fn(isSaving, message);
+    } catch (e) {
+      console.error('Error in Saving listener:', e);
+    }
+  });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('djital:saving-state', {
+        detail: { isSaving, message },
+      })
+    );
+  }
+}
+
 // Listeners for reactive updates
 type DbListener = () => void;
 const listeners = new Set<DbListener>();
@@ -514,7 +545,7 @@ export function getServerSaveRejection() {
  */
 export async function saveDatabaseToStorage(db: Database, customTimestamp?: string): Promise<boolean> {
   try {
-    isSavingToServer = true;
+    notifySavingState(true, 'Saving changes to database...');
     const data = db.export();
     const b64 = uint8ArrayToBase64(data);
     const timestamp = customTimestamp || new Date().toISOString();
@@ -540,7 +571,7 @@ export async function saveDatabaseToStorage(db: Database, customTimestamp?: stri
     console.error('Failed to save SQLite to server:', err);
     return false;
   } finally {
-    isSavingToServer = false;
+    notifySavingState(false);
   }
 }
 

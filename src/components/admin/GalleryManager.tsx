@@ -11,6 +11,7 @@ import {
   Trash2,
   Edit2,
   Video,
+  Loader2,
 } from 'lucide-react';
 import {
   GalleryData,
@@ -25,6 +26,8 @@ import { FALLBACK_IMAGE, normalizeImageUrl, optimizeImageFile } from '../../util
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { isVideoFile } from '../DocumentarySection';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface GalleryManagerProps {
   gallery: GalleryData[];
@@ -33,7 +36,10 @@ interface GalleryManagerProps {
 
 export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { withSaving } = useSaving();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
 
@@ -131,32 +137,43 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
-      if (editingItem) {
-        await updateGalleryItem(editingItem.id, formData);
-        showSuccess('Gallery Item Updated', `"${formData.title || 'Archive Item'}" was saved successfully.`);
-      } else {
-        await createGalleryItem(formData);
-        showSuccess('New Record Added', `"${formData.title || 'New media'}" was added to the gallery.`);
-      }
+      await withSaving(async () => {
+        if (editingItem) {
+          await updateGalleryItem(editingItem.id, formData);
+          showSuccess('Gallery Item Updated', `"${formData.title || 'Archive Item'}" was saved successfully.`);
+        } else {
+          await createGalleryItem(formData);
+          showSuccess('New Record Added', `"${formData.title || 'New media'}" was added to the gallery.`);
+        }
+      }, editingItem ? `Saving changes to "${formData.title || 'gallery item'}"...` : `Adding "${formData.title || 'new item'}" to gallery...`);
       setIsModalOpen(false);
       onRefresh();
     } catch (err: any) {
       console.error('Failed to save gallery item:', err);
       showError('Failed to Save Gallery Item', err?.message || 'A database error occurred.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const confirmDelete = async () => {
-    if (deleteCandidateId !== null) {
+    if (deleteCandidateId !== null && !isDeleting) {
+      setIsDeleting(true);
       try {
-        await deleteGalleryItem(deleteCandidateId);
-        showSuccess('Item Deleted', 'The item was removed from the gallery.');
-        setDeleteCandidateId(null);
-        onRefresh();
+        await withSaving(async () => {
+          await deleteGalleryItem(deleteCandidateId);
+          showSuccess('Item Deleted', 'The item was removed from the gallery.');
+          setDeleteCandidateId(null);
+          onRefresh();
+        }, 'Deleting gallery item from database...');
       } catch (err: any) {
         console.error('Failed to delete gallery item:', err);
         showError('Failed to Delete Item', err?.message || 'A database error occurred.');
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -266,7 +283,11 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl overflow-hidden my-8">
+          <div className="relative w-full max-w-2xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl overflow-hidden my-8">
+            <ComponentLoadingOverlay
+              isSaving={isSaving}
+              message={editingItem ? 'Saving changes to gallery asset...' : 'Adding asset to gallery...'}
+            />
             <div className="p-6 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-display font-bold text-neutral-950 dark:text-white">
@@ -453,16 +474,24 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-40"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isUploadingMedia}
-                  className="px-5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                  disabled={isSaving || isUploadingMedia}
+                  className="flex items-center gap-2 px-5 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                 >
-                  {editingItem ? 'Save Changes' : 'Create Record'}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
+                      <span>{editingItem ? 'Saving Changes...' : 'Creating Record...'}</span>
+                    </>
+                  ) : (
+                    <span>{editingItem ? 'Save Changes' : 'Create Record'}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -477,6 +506,8 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
         message="Are you sure you want to delete this record from the archive? This will update the local SQLite database."
         confirmLabel="Delete"
         isDestructive
+        isLoading={isDeleting}
+        loadingLabel="Deleting Item..."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteCandidateId(null)}
       />

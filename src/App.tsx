@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { SavingProvider } from './context/SavingContext';
 import {
   getProfile,
   getEvents,
@@ -408,6 +409,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <SavingProvider>
         {isLoading ? (
         <AppLoader
           logoUrl={profile?.logo_url || profile?.epk_logo_png}
@@ -577,6 +579,7 @@ export default function App() {
           />
         </div>
       )}
+        </SavingProvider>
       </ToastProvider>
     </ThemeProvider>
   );

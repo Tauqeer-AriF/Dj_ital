@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import { ReleaseData, createRelease, updateRelease, deleteRelease } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface ReleasesManagerProps {
   releases: ReleaseData[];
@@ -11,7 +13,10 @@ interface ReleasesManagerProps {
 
 export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { withSaving } = useSaving();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
 
@@ -64,32 +69,43 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
-      if (editingRelease) {
-        await updateRelease(editingRelease.id, formData);
-        showSuccess('Release Updated Successfully', `"${formData.title}" has been saved.`);
-      } else {
-        await createRelease(formData);
-        showSuccess('New Release Catalogued Successfully', `"${formData.title}" was added to the discography.`);
-      }
+      await withSaving(async () => {
+        if (editingRelease) {
+          await updateRelease(editingRelease.id, formData);
+          showSuccess('Release Updated Successfully', `"${formData.title}" has been saved.`);
+        } else {
+          await createRelease(formData);
+          showSuccess('New Release Catalogued Successfully', `"${formData.title}" was added to the discography.`);
+        }
+      }, editingRelease ? `Updating release "${formData.title}"...` : `Cataloging release "${formData.title}"...`);
       setIsModalOpen(false);
       onRefresh();
     } catch (err: any) {
       console.error('Failed to save release:', err);
       showError('Failed to Save Release', err?.message || 'A database error occurred.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const confirmDelete = async () => {
-    if (deleteCandidateId !== null) {
+    if (deleteCandidateId !== null && !isDeleting) {
+      setIsDeleting(true);
       try {
-        await deleteRelease(deleteCandidateId);
-        showSuccess('Release Removed', 'The release was deleted from SQLite.');
-        setDeleteCandidateId(null);
-        onRefresh();
+        await withSaving(async () => {
+          await deleteRelease(deleteCandidateId);
+          showSuccess('Release Removed', 'The release was deleted from SQLite.');
+          setDeleteCandidateId(null);
+          onRefresh();
+        }, 'Deleting release from catalog...');
       } catch (err: any) {
         console.error('Failed to delete release:', err);
         showError('Failed to Delete Release', err?.message || 'A database error occurred.');
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -167,6 +183,10 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-4">
+            <ComponentLoadingOverlay
+              isSaving={isSaving}
+              message={editingRelease ? 'Saving release changes...' : 'Cataloging new release...'}
+            />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
               <h4 className="text-lg font-display font-bold">
                 {editingRelease ? 'Edit Release' : 'Add New Release'}
@@ -274,15 +294,24 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer"
+                  disabled={isSaving}
+                  className="px-4 py-2.5 rounded text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white text-xs font-medium cursor-pointer disabled:opacity-40"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                 >
-                  {editingRelease ? 'Save Changes' : 'Create Release'}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
+                      <span>{editingRelease ? 'Saving Changes...' : 'Creating Release...'}</span>
+                    </>
+                  ) : (
+                    <span>{editingRelease ? 'Save Changes' : 'Create Release'}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -298,6 +327,8 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
         confirmLabel="Delete Release"
         cancelLabel="Keep Release"
         isDestructive
+        isLoading={isDeleting}
+        loadingLabel="Deleting Release..."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteCandidateId(null)}
       />

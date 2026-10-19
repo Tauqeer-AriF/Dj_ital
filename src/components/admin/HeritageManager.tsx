@@ -23,6 +23,7 @@ import {
   AlertCircle,
   MoveUp,
   MoveDown,
+  Loader2,
 } from 'lucide-react';
 import {
   HeritageSettingsData,
@@ -48,6 +49,8 @@ import {
 import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import { HeritageVaSection } from '../HeritageVaSection';
 
 interface HeritageManagerProps {
@@ -84,9 +87,11 @@ const COLOR_OPTIONS = [
 
 export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { withSaving } = useSaving();
   const [activeTab, setActiveTab] = useState<SubTab>('general');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
   // Database Data States
@@ -97,6 +102,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   // Credential Modal State
   const [isCredModalOpen, setIsCredModalOpen] = useState(false);
+  const [isSavingCred, setIsSavingCred] = useState(false);
+  const [isDeletingCred, setIsDeletingCred] = useState(false);
   const [editingCred, setEditingCred] = useState<HeritageCredentialData | null>(null);
   const [deleteCredId, setDeleteCredId] = useState<number | null>(null);
   const [credForm, setCredForm] = useState({
@@ -109,6 +116,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   // Chapter Modal State
   const [isChapModalOpen, setIsChapModalOpen] = useState(false);
+  const [isSavingChap, setIsSavingChap] = useState(false);
+  const [isDeletingChap, setIsDeletingChap] = useState(false);
   const [editingChap, setEditingChap] = useState<HeritageChapterData | null>(null);
   const [deleteChapId, setDeleteChapId] = useState<number | null>(null);
   const [chapForm, setChapForm] = useState({
@@ -121,6 +130,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   // Milestone Modal State
   const [isMileModalOpen, setIsMileModalOpen] = useState(false);
+  const [isSavingMile, setIsSavingMile] = useState(false);
+  const [isDeletingMile, setIsDeletingMile] = useState(false);
   const [editingMile, setEditingMile] = useState<HeritageMilestoneData | null>(null);
   const [deleteMileId, setDeleteMileId] = useState<number | null>(null);
   const [mileForm, setMileForm] = useState({
@@ -162,12 +173,14 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   const handleSaveSettings = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!settings) return;
+    if (!settings || isSaving) return;
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      await updateHeritageSettings(settings);
-      showSuccess('Heritage Updated', 'All general section text and exhibition settings saved successfully.');
-      onRefresh();
+      await withSaving(async () => {
+        await updateHeritageSettings(settings);
+        showSuccess('Heritage Updated', 'All general section text and exhibition settings saved successfully.');
+        onRefresh();
+      }, 'Saving heritage settings to database...');
     } catch (err: any) {
       console.error('Error saving heritage settings:', err);
       showError('Save Failed', err?.message || 'Failed to save settings.');
@@ -177,17 +190,20 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
   };
 
   const handleResetToDefaults = async () => {
+    if (isResetting) return;
+    setIsResetting(true);
     try {
-      setIsSaving(true);
-      await resetHeritageSettings();
-      await loadData();
-      showSuccess('Reset Complete', 'Heritage settings have been reset to factory defaults.');
-      setShowResetModal(false);
-      onRefresh();
+      await withSaving(async () => {
+        await resetHeritageSettings();
+        await loadData();
+        showSuccess('Reset Complete', 'Heritage settings have been reset to factory defaults.');
+        setShowResetModal(false);
+        onRefresh();
+      }, 'Resetting heritage archive to defaults...');
     } catch (err: any) {
       showError('Reset Failed', err?.message || 'Could not reset heritage settings.');
     } finally {
-      setIsSaving(false);
+      setIsResetting(false);
     }
   };
 

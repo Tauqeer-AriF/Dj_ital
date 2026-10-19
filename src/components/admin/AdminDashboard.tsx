@@ -34,9 +34,11 @@ import {
   HardDrive,
   HelpCircle,
   Radio as RadioIcon,
+  Loader2,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
 import {
   ProfileData,
   EventData,
@@ -112,10 +114,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isTogglingLive, setIsTogglingLive] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [storageStatus, setStorageStatus] = useState<{ isPersistent: boolean; resolvedDataDir: string; isWritable: boolean } | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, recentlySaved, withSaving } = useSaving();
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
 
@@ -211,17 +215,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleToggleLive = async () => {
+    if (isTogglingLive) return;
+    setIsTogglingLive(true);
     try {
-      const nextStatus = profile?.is_live_on_air ? 0 : 1;
-      await updateProfile({ is_live_on_air: nextStatus });
-      onRefreshData();
-      if (nextStatus) {
-        showSuccess('LIVE BROADCAST ACTIVE', '🔴 Station is now LIVE ON AIR! Broadcast beacon active on site.');
-      } else {
-        showSuccess('STATION OFF AIR', 'Station set to OFF AIR. Public site switched to Archive Vault & Dubplates.');
-      }
+      await withSaving(async () => {
+        const nextStatus = profile?.is_live_on_air ? 0 : 1;
+        await updateProfile({ is_live_on_air: nextStatus });
+        onRefreshData();
+        if (nextStatus) {
+          showSuccess('LIVE BROADCAST ACTIVE', '🔴 Station is now LIVE ON AIR! Broadcast beacon active on site.');
+        } else {
+          showSuccess('STATION OFF AIR', 'Station set to OFF AIR. Public site switched to Archive Vault & Dubplates.');
+        }
+      }, 'Updating station broadcast transmission status...');
     } catch (err: any) {
       showError('Failed to change broadcast status', err?.message || 'Database error');
+    } finally {
+      setIsTogglingLive(false);
     }
   };
 
@@ -269,21 +279,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               type="button"
               onClick={handleToggleLive}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer ${
+              disabled={isTogglingLive}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
                 profile?.is_live_on_air
                   ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse ring-2 ring-red-400/50'
                   : 'bg-neutral-200 dark:bg-white/10 hover:bg-emerald-500 hover:text-neutral-950 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-white/10'
               }`}
               title={profile?.is_live_on_air ? 'Click to stop broadcasting and go Off Air' : 'Click to Go Live and broadcast stream to listeners'}
             >
-              <span className={`w-2 h-2 rounded-full ${profile?.is_live_on_air ? 'bg-white' : 'bg-neutral-500'}`} />
+              {isTogglingLive ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <span className={`w-2 h-2 rounded-full ${profile?.is_live_on_air ? 'bg-white' : 'bg-neutral-500'}`} />
+              )}
               <span className="hidden sm:inline">
-                {profile?.is_live_on_air ? '🔴 ON AIR (CLICK TO GO OFF AIR)' : '⚪ OFF AIR (CLICK TO GO LIVE)'}
+                {isTogglingLive
+                  ? 'SAVING STATUS...'
+                  : profile?.is_live_on_air
+                  ? '🔴 ON AIR (CLICK TO GO OFF AIR)'
+                  : '⚪ OFF AIR (CLICK TO GO LIVE)'}
               </span>
               <span className="sm:hidden">
-                {profile?.is_live_on_air ? '🔴 ON AIR' : '⚪ OFF AIR'}
+                {isTogglingLive ? 'SAVING...' : profile?.is_live_on_air ? '🔴 ON AIR' : '⚪ OFF AIR'}
               </span>
             </button>
+
+            {/* Global Live Save Status Indicator */}
+            {isSaving ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-mono font-bold animate-pulse shrink-0"
+              >
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500 shrink-0" />
+                <span className="hidden sm:inline">Saving to Database...</span>
+                <span className="sm:hidden">Saving...</span>
+              </div>
+            ) : recentlySaved ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold shrink-0 animate-in fade-in"
+              >
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="hidden sm:inline">All Changes Saved</span>
+                <span className="sm:hidden">Saved</span>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -374,6 +416,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          {/* Real-time Save Progress Banner across all tabs */}
+          {isSaving && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mb-6 p-3.5 rounded border border-amber-500/40 bg-amber-500/10 dark:bg-amber-400/10 text-amber-900 dark:text-amber-200 flex items-center justify-between shadow-sm animate-in fade-in duration-150"
+            >
+              <div className="flex items-center gap-2.5">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-500 shrink-0" />
+                <span className="text-xs font-mono font-bold">
+                  {savingMessage || 'Saving changes to database...'}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono opacity-80 hidden sm:inline flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-amber-500" />
+                <span>Persisting to SQLite storage</span>
+              </span>
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Welcome Banner */}

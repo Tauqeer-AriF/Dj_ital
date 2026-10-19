@@ -10,10 +10,12 @@ import {
   Clock,
   Phone,
   MessageCircle,
+  Loader2,
 } from 'lucide-react';
 import { BookingData, updateBookingStatus, deleteBooking } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
 
 interface BookingsManagerProps {
   bookings: BookingData[];
@@ -22,29 +24,42 @@ interface BookingsManagerProps {
 
 export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { withSaving } = useSaving();
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  const [savingBookingId, setSavingBookingId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
+    setSavingBookingId(id);
     try {
-      await updateBookingStatus(id, newStatus);
-      showSuccess('Status Updated', `Booking status changed to "${newStatus}".`);
-      onRefresh();
+      await withSaving(async () => {
+        await updateBookingStatus(id, newStatus);
+        showSuccess('Status Updated', `Booking status changed to "${newStatus}".`);
+        onRefresh();
+      }, `Updating booking status to "${newStatus}"...`);
     } catch (err: any) {
       console.error('Failed to update booking status:', err);
       showError('Failed to Update Status', err?.message || 'A database error occurred.');
+    } finally {
+      setSavingBookingId(null);
     }
   };
 
   const confirmDelete = async () => {
-    if (deleteCandidateId !== null) {
+    if (deleteCandidateId !== null && !isDeleting) {
+      setIsDeleting(true);
       try {
-        await deleteBooking(deleteCandidateId);
-        showSuccess('Booking Enquiry Deleted', 'Record was removed from SQLite.');
-        setDeleteCandidateId(null);
-        onRefresh();
+        await withSaving(async () => {
+          await deleteBooking(deleteCandidateId);
+          showSuccess('Booking Enquiry Deleted', 'Record was removed from SQLite.');
+          setDeleteCandidateId(null);
+          onRefresh();
+        }, 'Deleting booking enquiry from database...');
       } catch (err: any) {
         console.error('Failed to delete booking:', err);
         showError('Failed to Delete Booking', err?.message || 'A database error occurred.');
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -186,19 +201,29 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
                     <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 font-bold">
                       Status:
                     </span>
-                    <select
-                      value={b.status}
-                      onChange={(e) => handleStatusChange(b.id, e.target.value)}
-                      className="px-3 py-1.5 rounded bg-neutral-100 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/15 dark:text-white text-xs font-bold focus:outline-none cursor-pointer"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Declined">Declined</option>
-                    </select>
+                    <div className="relative flex items-center">
+                      <select
+                        value={b.status}
+                        disabled={savingBookingId === b.id}
+                        onChange={(e) => handleStatusChange(b.id, e.target.value)}
+                        className="px-3 py-1.5 rounded bg-neutral-100 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/15 dark:text-white text-xs font-bold focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Declined">Declined</option>
+                      </select>
+                      {savingBookingId === b.id && (
+                        <div className="ml-2 flex items-center gap-1 text-[11px] font-mono text-amber-500 animate-pulse">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Saving...</span>
+                        </div>
+                      )}
+                    </div>
 
                     <button
                       onClick={() => handleDelete(b.id)}
-                      className="p-1.5 rounded text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
+                      disabled={savingBookingId === b.id}
+                      className="p-1.5 rounded text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer disabled:opacity-40"
                       aria-label="Delete booking"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -251,6 +276,8 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, onRe
         confirmLabel="Delete Enquiry"
         cancelLabel="Keep Record"
         isDestructive
+        isLoading={isDeleting}
+        loadingLabel="Deleting Enquiry..."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteCandidateId(null)}
       />
