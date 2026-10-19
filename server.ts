@@ -763,6 +763,25 @@ app.get(['/api/backup/bundle', '/api/backup/download-bundle'], async (_req, res)
       }
     }
 
+    // 3b. Add site images from public/images/ to guarantee complete standalone website restoration
+    const publicImagesDir = path.resolve(__dirname, 'public', 'images');
+    let siteImagesCount = 0;
+    let siteImagesTotalBytes = 0;
+    if (fs.existsSync(publicImagesDir)) {
+      const imgFiles = fs.readdirSync(publicImagesDir);
+      for (const imgFile of imgFiles) {
+        const imgPath = path.join(publicImagesDir, imgFile);
+        try {
+          const stat = fs.statSync(imgPath);
+          if (stat.isFile()) {
+            zip.addLocalFile(imgPath, 'images');
+            siteImagesCount++;
+            siteImagesTotalBytes += stat.size;
+          }
+        } catch {}
+      }
+    }
+
     // 4. Inspect DB to include record counts in manifest
     let tableCounts: Record<string, number> = {};
     try {
@@ -783,6 +802,8 @@ app.get(['/api/backup/bundle', '/api/backup/download-bundle'], async (_req, res)
     }
 
     // 5. Generate backup manifest
+    const totalMediaCount = uploadFilesCount + siteImagesCount;
+    const totalMediaBytes = uploadTotalBytes + siteImagesTotalBytes;
     const manifest = {
       manifestVersion: '2.0',
       appName: 'DJ Ital Sound System & Vital Fest',
@@ -791,9 +812,13 @@ app.get(['/api/backup/bundle', '/api/backup/download-bundle'], async (_req, res)
       databaseBase64SizeBytes: b64.length,
       uploadedFilesCount: uploadFilesCount,
       uploadedFilesTotalBytes: uploadTotalBytes,
+      siteImagesCount,
+      siteImagesTotalBytes,
+      totalMediaCount,
+      totalMediaBytes,
       tableCounts,
       checksumSha256: crypto.createHash('sha256').update(dbBinary).digest('hex'),
-      description: 'Complete website backup bundle containing full SQLite database, all uploaded media assets, and configuration metadata.',
+      description: 'Complete website backup bundle containing full SQLite database, all uploaded media assets, site images, and configuration metadata.',
     };
     zip.addFile('backup_manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8'));
 
@@ -861,12 +886,22 @@ app.post('/api/restore/bundle', async (req, res) => {
         restoredDbB64 = bin.toString('base64');
       }
 
-      // Restore uploads
+      // Restore uploads and site images
       const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
+      const publicImagesDir = path.resolve(__dirname, 'public', 'images');
       for (const entry of entries) {
         if (!entry.isDirectory && (entry.entryName.startsWith('uploads/') || entry.entryName.startsWith('public/uploads/'))) {
           const relativePath = entry.entryName.replace(/^(public\/)?uploads\//, '');
           const destPath = path.join(publicUploadDir, relativePath);
+          const destDir = path.dirname(destPath);
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+          fs.writeFileSync(destPath, entry.getData());
+          filesRestoredCount++;
+        } else if (!entry.isDirectory && (entry.entryName.startsWith('images/') || entry.entryName.startsWith('public/images/'))) {
+          const relativePath = entry.entryName.replace(/^(public\/)?images\//, '');
+          const destPath = path.join(publicImagesDir, relativePath);
           const destDir = path.dirname(destPath);
           if (!fs.existsSync(destDir)) {
             fs.mkdirSync(destDir, { recursive: true });
@@ -978,6 +1013,23 @@ app.get('/api/backup/summary', async (_req, res) => {
       }
     }
 
+    // Site images count
+    const publicImagesDir = path.resolve(__dirname, 'public', 'images');
+    let siteImagesCount = 0;
+    let siteImagesTotalBytes = 0;
+    if (fs.existsSync(publicImagesDir)) {
+      const imgFiles = fs.readdirSync(publicImagesDir);
+      for (const imgFile of imgFiles) {
+        try {
+          const stat = fs.statSync(path.join(publicImagesDir, imgFile));
+          if (stat.isFile()) {
+            siteImagesCount++;
+            siteImagesTotalBytes += stat.size;
+          }
+        } catch {}
+      }
+    }
+
     // Inspect database record counts
     let recordCounts: Record<string, number> = {};
     if (dbExists) {
@@ -1008,6 +1060,10 @@ app.get('/api/backup/summary', async (_req, res) => {
       isSeed: Boolean(meta?.isSeed),
       uploadedFilesCount,
       uploadedFilesTotalBytes,
+      siteImagesCount,
+      siteImagesTotalBytes,
+      totalMediaCount: uploadedFilesCount + siteImagesCount,
+      totalMediaBytes: uploadedFilesTotalBytes + siteImagesTotalBytes,
       recordCounts,
       hasPreviousCustomData,
       isPersistent: storage.isPersistent,

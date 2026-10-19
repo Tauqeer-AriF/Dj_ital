@@ -14,6 +14,7 @@ import {
   Radio,
   Download,
   Upload,
+  RotateCcw,
   Lock,
   Layers,
   Cloud,
@@ -81,6 +82,7 @@ interface AdminDashboardProps {
 type TabType =
   | 'overview'
   | 'security'
+  | 'backup_restore'
   | 'storage'
   | 'heritage'
   | 'documentary'
@@ -227,7 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4 text-amber-500" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
-    { id: 'storage', label: 'Backup & Restore', icon: <HardDrive className="w-4 h-4" /> },
+    { id: 'backup_restore', label: 'Backup & Restore', icon: <RotateCcw className="w-4 h-4 text-emerald-500" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
     {
       id: 'documentary',
@@ -567,6 +569,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     >
                       Open SQLite Query Tool
                     </button>
+                    <button
+                      onClick={() => setActiveTab('backup_restore')}
+                      className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Backup & Restore</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -577,7 +586,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <AdminHelp onNavigateTab={(tab) => setActiveTab(tab as TabType)} />
           )}
           {activeTab === 'security' && <SecurityManager />}
-          {activeTab === 'storage' && <BackupRestoreManager onRefresh={onRefreshData} />}
+          {(activeTab === 'backup_restore' || activeTab === 'storage') && (
+            <BackupRestoreManager onRefresh={onRefreshData} />
+          )}
           {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}
           {activeTab === 'documentary' && <DocumentaryManager onRefresh={onRefreshData} />}
           {activeTab === 'media' && <MediaLibraryManager onRefresh={onRefreshData} />}

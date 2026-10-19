@@ -922,14 +922,14 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-neutral-500 font-mono">Also available in: Storage & Volume Manager tab</span>
+            <span className="text-[11px] text-neutral-500 font-mono">Also available in: Backup & Restore tab</span>
             {onNavigateTab && (
               <button
                 type="button"
-                onClick={() => onNavigateTab('storage')}
+                onClick={() => onNavigateTab('backup_restore')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
               >
-                <span>Open Storage Manager</span>
+                <span>Open Backup & Restore</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}

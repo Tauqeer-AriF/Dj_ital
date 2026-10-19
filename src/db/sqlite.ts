@@ -754,7 +754,7 @@ function addColumnIfNotExists(db: Database, table: string, column: string, def: 
   }
 }
 
-function ensureSchemaMigrations(db: Database) {
+export function ensureSchemaMigrations(db: Database) {
   try {
     // Check if site_media exists
     db.run(`
