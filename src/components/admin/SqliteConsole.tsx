@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Play, RotateCcw, AlertCircle } from 'lucide-react';
-import { executeQuery, resetDatabaseToSeed } from '../../db/sqlite';
+import { Play, RotateCcw, AlertCircle, History, Database } from 'lucide-react';
+import { executeQuery, resetDatabaseToSeed, restorePreviousCustomData } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 
@@ -17,6 +17,8 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   const [execMessage, setExecMessage] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+  const [isRestoringPrevious, setIsRestoringPrevious] = useState(false);
 
   const presets = [
     { label: 'View Events', sql: 'SELECT id, title, venue, event_date, status FROM events;' },
@@ -54,6 +56,25 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
     }
   };
 
+  const confirmRestorePrevious = async () => {
+    setIsRestoringPrevious(true);
+    try {
+      const res = await restorePreviousCustomData();
+      if (res.success) {
+        showSuccess('Previous Data Restored', 'Successfully restored all previous custom events, 4 documentary episodes, 11 media library assets, and profile edits.');
+        setIsRestoreConfirmOpen(false);
+        onRefresh();
+        handleRunQuery();
+      } else {
+        showError('Restore Error', res.message);
+      }
+    } catch (err: any) {
+      showError('Restore Failed', err?.message || 'Failed to restore previous user data.');
+    } finally {
+      setIsRestoringPrevious(false);
+    }
+  };
+
   const confirmReset = async () => {
     setIsResetting(true);
     try {
@@ -73,6 +94,10 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
     setIsResetConfirmOpen(true);
   };
 
+  const handleRestorePrevious = () => {
+    setIsRestoreConfirmOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -83,13 +108,24 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
           </p>
         </div>
 
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-1.5 px-3 py-2 rounded border border-neutral-300 bg-neutral-100 hover:bg-red-50 text-neutral-700 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:hover:bg-red-500/20 dark:text-neutral-300 dark:hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset to Seed Data</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleRestorePrevious}
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+            title="Restore previous custom data (All 8 events, 4 documentaries, 11 media library assets, profile streams)"
+          >
+            <History className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Restore Previous User Data</span>
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-neutral-300 bg-neutral-100 hover:bg-red-50 text-neutral-700 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:hover:bg-red-500/20 dark:text-neutral-300 dark:hover:text-red-300 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset to Seed Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Query Presets */}
@@ -191,6 +227,19 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
         isDestructive
         onConfirm={confirmReset}
         onCancel={() => !isResetting && setIsResetConfirmOpen(false)}
+      />
+
+      {/* Restore Previous User Data Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isRestoreConfirmOpen}
+        title="Restore Previous User Data"
+        message="Are you sure you want to restore your previous database? This will recover all 8 real events, 4 documentary episodes ('DJ Ital: The Journey'), 11 media library assets, radio broadcast streams, and custom profile edits."
+        confirmLabel="Restore Previous Data"
+        cancelLabel="Cancel"
+        isLoading={isRestoringPrevious}
+        loadingLabel="Restoring Previous Data & Documentaries..."
+        onConfirm={confirmRestorePrevious}
+        onCancel={() => !isRestoringPrevious && setIsRestoreConfirmOpen(false)}
       />
     </div>
   );

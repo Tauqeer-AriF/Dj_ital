@@ -63,7 +63,7 @@ import { NewsletterManager } from './NewsletterManager';
 import { SecurityManager } from './SecurityManager';
 import { HeritageManager } from './HeritageManager';
 import { DocumentaryManager } from './DocumentaryManager';
-import { StorageManager } from './StorageManager';
+import { BackupRestoreManager } from './BackupRestoreManager';
 import { AdminHelp } from './AdminHelp';
 
 interface AdminDashboardProps {
@@ -227,7 +227,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4 text-amber-500" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
-    { id: 'storage', label: 'Railway Volume & Storage', icon: <HardDrive className="w-4 h-4" /> },
+    { id: 'storage', label: 'Backup & Restore', icon: <HardDrive className="w-4 h-4" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
     {
       id: 'documentary',
@@ -388,62 +388,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
                     Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customise every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
                   </p>
-
                 </div>
-              </div>
-
-              {/* Hidden file input for restoring SQLite backups */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleUploadBackup}
-                accept=".sqlite,.db"
-                className="hidden"
-                aria-label="Upload SQLite backup"
-              />
-
-              {/* Realtime Server Persistence Card */}
-              <div className="p-6 rounded sound-cabinet border border-amber-400/40 bg-gradient-to-br from-amber-500/5 via-neutral-900/10 to-amber-500/10 dark:bg-neutral-900/80 shadow-md space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
-                      <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      <span>Direct Server Realtime Persistence</span>
-                    </div>
-                    <h3 className="font-display font-bold text-base sm:text-lg text-neutral-950 dark:text-white">
-                      Instant Server Synchronization (Zero Local Storage)
-                    </h3>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-                      Every CRUD operation you perform on events, releases, audio, gallery, or profile immediately commits directly to the server database in realtime.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      onClick={handleRestoreClick}
-                      disabled={isSyncing}
-                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded border border-amber-400/40 hover:bg-amber-400/10 text-xs font-medium text-amber-900 dark:text-amber-300 transition-colors cursor-pointer"
-                      title="Upload and restore a previous .sqlite database backup"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Restore Backup</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadDb}
-                      className="flex items-center gap-1.5 px-3.5 py-2.5 rounded border border-neutral-300 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
-                      title="Download complete database backup file"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download .sqlite</span>
-                    </button>
-                  </div>
-                </div>
-
-                {syncFeedback && (
-                  <div className="p-3 rounded bg-amber-400/15 border border-amber-400/40 text-xs text-amber-950 dark:text-amber-200 font-medium">
-                    {syncFeedback}
-                  </div>
-                )}
               </div>
 
               {/* Metrics Grid */}
@@ -593,12 +538,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="pt-2 flex flex-wrap gap-2">
                     <button
-                      onClick={() => setActiveTab('storage')}
-                      className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      Railway Volume & Storage
-                    </button>
-                    <button
                       onClick={() => setActiveTab('heritage')}
                       className="px-3 py-1.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold cursor-pointer transition-colors"
                     >
@@ -638,7 +577,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <AdminHelp onNavigateTab={(tab) => setActiveTab(tab as TabType)} />
           )}
           {activeTab === 'security' && <SecurityManager />}
-          {activeTab === 'storage' && <StorageManager onRefresh={onRefreshData} />}
+          {activeTab === 'storage' && <BackupRestoreManager onRefresh={onRefreshData} />}
           {activeTab === 'heritage' && <HeritageManager onRefresh={onRefreshData} />}
           {activeTab === 'documentary' && <DocumentaryManager onRefresh={onRefreshData} />}
           {activeTab === 'media' && <MediaLibraryManager onRefresh={onRefreshData} />}

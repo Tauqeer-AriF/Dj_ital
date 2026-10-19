@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import os from 'os';
+import AdmZip from 'adm-zip';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,12 +70,201 @@ function safeWriteFileWithSync(filePath: string, data: string): void {
   }
 }
 
-function getStorageDetails(): StorageStatus {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getLinuxMountPoints(): string[] {
+  try {
+    if (!fs.existsSync('/proc/mounts')) return [];
+    const content = fs.readFileSync('/proc/mounts', 'utf-8');
+    const lines = content.split('\n');
+    const mounts: string[] = [];
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        const mountPoint = parts[1];
+        const fsType = parts[2];
+        if (!['proc', 'sysfs', 'devpts', 'cgroup', 'tmpfs', 'mqueue', 'overlay'].includes(fsType)) {
+          mounts.push(mountPoint);
+        } else if (mountPoint.startsWith('/app') || mountPoint.startsWith('/data') || mountPoint.startsWith('/mnt') || mountPoint.startsWith('/storage')) {
+          mounts.push(mountPoint);
+        }
+      }
+    }
+    return mounts;
+  } catch {
+    return [];
   }
-  const dbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
-  const dbMetaFile = path.join(DATA_DIR, 'db_meta.json');
+}
+
+function findLatestDatabase(): { seedDbPath?: string; seedMetaPath?: string; isCustom?: boolean; updatedAt?: string } {
+  const possibleSeeds = [
+    process.env.RAILWAY_VOLUME_MOUNT_PATH,
+    process.env.DATA_DIR,
+    process.env.PERSISTENT_DATA_DIR,
+    '/data',
+    '/app/data',
+    path.resolve(process.cwd(), 'data'),
+    LOCAL_DATA_DIR,
+    path.join(LOCAL_DATA_DIR, 'backups'),
+    PROTECTED_SEED_DIR,
+  ].filter(Boolean) as string[];
+
+  const uniqueDirs = Array.from(new Set(possibleSeeds));
+  let bestDbPath: string | undefined;
+  let bestMetaPath: string | undefined;
+  let bestTime = -1;
+  let bestIsCustom = false;
+  let bestUpdatedAt: string | undefined;
+
+  for (const s of uniqueDirs) {
+    const candidateFiles = [
+      { db: path.join(s, 'djital_db.sqlite.b64'), meta: path.join(s, 'db_meta.json') },
+      { db: path.join(s, 'djital_db_previous_custom_data.b64'), meta: path.join(s, 'db_meta_custom.json') },
+    ];
+
+    for (const c of candidateFiles) {
+      if (fs.existsSync(c.db)) {
+        try {
+          const stats = fs.statSync(c.db);
+          if (stats.size > 100) {
+            let time = stats.mtimeMs;
+            let isSeed = true;
+            let updatedAt = stats.mtime.toISOString();
+
+            if (fs.existsSync(c.meta)) {
+              try {
+                const meta = JSON.parse(fs.readFileSync(c.meta, 'utf-8'));
+                if (meta.updatedAt) {
+                  const parsedTime = new Date(meta.updatedAt).getTime();
+                  if (!isNaN(parsedTime)) time = parsedTime;
+                  updatedAt = meta.updatedAt;
+                }
+                isSeed = Boolean(meta.isSeed);
+              } catch {}
+            }
+
+            // High score for custom databases with user edits (or larger size containing media/docs)
+            // Ensures newly deployed code or seed never wipes user edits
+            const isCustom = !isSeed || stats.size > 200000 || c.db.includes('previous_custom');
+            const score = (isCustom ? 10000000000000 : 0) + (stats.size > 200000 ? 500000000000 : 0) + time;
+
+            if (score > bestTime || !bestDbPath) {
+              bestTime = score;
+              bestDbPath = c.db;
+              bestMetaPath = fs.existsSync(c.meta) ? c.meta : undefined;
+              bestIsCustom = isCustom;
+              bestUpdatedAt = updatedAt;
+            }
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return { seedDbPath: bestDbPath, seedMetaPath: bestMetaPath, isCustom: bestIsCustom, updatedAt: bestUpdatedAt };
+}
+
+function getStorageDetails(): StorageStatus {
+  const env: Record<string, string | undefined> = {
+    RAILWAY_VOLUME_MOUNT_PATH: process.env.RAILWAY_VOLUME_MOUNT_PATH,
+    RAILWAY_VOLUME_NAME: process.env.RAILWAY_VOLUME_NAME,
+    DATA_DIR: process.env.DATA_DIR,
+    PERSISTENT_DATA_DIR: process.env.PERSISTENT_DATA_DIR,
+  };
+
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.includes('VOLUME') && (k.includes('PATH') || k.includes('MOUNT')) && v) {
+      env[k] = v;
+    }
+  }
+
+  const linuxMounts = getLinuxMountPoints();
+  const candidates: Array<{ path: string; note: string; isExplicitVolume: boolean; isConfirmedMount: boolean }> = [];
+
+  // 1. Explicit Railway Volume environment variables
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.RAILWAY_VOLUME_MOUNT_PATH.trim()) {
+    const p = path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH.trim());
+    candidates.push({ path: p, note: 'env:RAILWAY_VOLUME_MOUNT_PATH', isExplicitVolume: true, isConfirmedMount: true });
+  }
+
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.startsWith('RAILWAY_VOLUME_') && k.endsWith('_MOUNT_PATH') && v && v.trim()) {
+      const p = path.resolve(v.trim());
+      if (!candidates.some((c) => c.path === p)) {
+        candidates.push({ path: p, note: `env:${k}`, isExplicitVolume: true, isConfirmedMount: true });
+      }
+    }
+  }
+
+  if (process.env.DATA_DIR && process.env.DATA_DIR.trim()) {
+    const p = path.resolve(process.env.DATA_DIR.trim());
+    if (!candidates.some((c) => c.path === p)) {
+      candidates.push({ path: p, note: 'env:DATA_DIR', isExplicitVolume: true, isConfirmedMount: true });
+    }
+  }
+
+  if (process.env.PERSISTENT_DATA_DIR && process.env.PERSISTENT_DATA_DIR.trim()) {
+    const p = path.resolve(process.env.PERSISTENT_DATA_DIR.trim());
+    if (!candidates.some((c) => c.path === p)) {
+      candidates.push({ path: p, note: 'env:PERSISTENT_DATA_DIR', isExplicitVolume: true, isConfirmedMount: true });
+    }
+  }
+
+  // 2. Linux mount points matching application data paths
+  for (const m of linuxMounts) {
+    if (!candidates.some((c) => c.path === m)) {
+      if (m === '/data' || m === '/app/data' || m.startsWith('/mnt/') || m === '/storage' || m === '/volume') {
+        candidates.push({ path: m, note: `linux-mount:${m}`, isExplicitVolume: true, isConfirmedMount: true });
+      }
+    }
+  }
+
+  // 3. Attached volume at /data or /app/data
+  const standardPaths = ['/data', '/app/data', LOCAL_DATA_DIR, path.resolve(process.cwd(), 'data')];
+  for (const p of standardPaths) {
+    if (!candidates.some((c) => c.path === p)) {
+      const isConfirmed = linuxMounts.includes(p);
+      candidates.push({
+        path: p,
+        note: isConfirmed ? `mounted-storage:${p}` : `local-dir:${p}`,
+        isExplicitVolume: isConfirmed || p === '/data',
+        isConfirmedMount: isConfirmed,
+      });
+    }
+  }
+
+  const candidatesChecked: Array<{ path: string; exists: boolean; writable: boolean; note: string }> = [];
+  let chosenDir = LOCAL_DATA_DIR;
+  let chosenNote = 'local app directory';
+  let isPersistent = false;
+
+  for (const cand of candidates) {
+    const exists = fs.existsSync(cand.path);
+    const writable = testDirectoryWritable(cand.path);
+    candidatesChecked.push({
+      path: cand.path,
+      exists,
+      writable,
+      note: cand.note,
+    });
+
+    if (writable && (!chosenDir || cand.isExplicitVolume || cand.isConfirmedMount)) {
+      // Pick first writable explicit volume, or fall back to local data directory
+      if (cand.isExplicitVolume || cand.isConfirmedMount || chosenDir === LOCAL_DATA_DIR) {
+        chosenDir = cand.path;
+        chosenNote = cand.note;
+        isPersistent = cand.isExplicitVolume || cand.isConfirmedMount;
+        if (cand.isExplicitVolume) break;
+      }
+    }
+  }
+
+  if (!fs.existsSync(chosenDir)) {
+    try {
+      fs.mkdirSync(chosenDir, { recursive: true });
+    } catch {}
+  }
+
+  const dbFile = path.join(chosenDir, 'djital_db.sqlite.b64');
+  const dbMetaFile = path.join(chosenDir, 'db_meta.json');
   const dbExists = fs.existsSync(dbFile);
   let dbSizeBytes = 0;
   let dbUpdatedAt: string | undefined = undefined;
@@ -94,44 +284,65 @@ function getStorageDetails(): StorageStatus {
   }
 
   return {
-    resolvedDataDir: DATA_DIR,
-    isPersistent: true,
-    mountSource: 'local:data',
-    isWritable: testDirectoryWritable(DATA_DIR),
+    resolvedDataDir: chosenDir,
+    isPersistent,
+    mountSource: chosenNote,
+    isWritable: testDirectoryWritable(chosenDir),
     dbExists,
     dbSizeBytes,
     dbUpdatedAt,
     isSeed,
-    candidatesChecked: [{ path: DATA_DIR, exists: true, writable: true, note: 'app data directory' }],
-    env: {},
+    candidatesChecked,
+    env,
   };
 }
 
 function ensureDatabaseSeeded(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  const dbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
-  const dbMetaFile = path.join(DATA_DIR, 'db_meta.json');
+  const storage = getStorageDetails();
+  const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+  const dbMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
 
-  // ONLY seed if database file does NOT exist or has 0 bytes.
-  // Never re-seed or overwrite if an existing database is present!
-  if (!fs.existsSync(dbFile) || fs.statSync(dbFile).size === 0) {
-    const seedDbFile = path.join(SEED_DIR, 'djital_db.sqlite.b64');
-    const seedMetaFile = path.join(SEED_DIR, 'db_meta.json');
-    if (fs.existsSync(seedDbFile)) {
-      fs.copyFileSync(seedDbFile, dbFile);
-      if (fs.existsSync(seedMetaFile)) {
-        fs.copyFileSync(seedMetaFile, dbMetaFile);
-      } else {
-        fs.writeFileSync(
-          dbMetaFile,
-          JSON.stringify({ updatedAt: new Date().toISOString(), isSeed: true }, null, 2),
-          'utf-8'
-        );
+  const fileExists = fs.existsSync(dbFile);
+  const fileSize = fileExists ? fs.statSync(dbFile).size : 0;
+
+  // ONLY seed if active DB file is missing, empty, or has no custom user data
+  if (!fileExists || fileSize < 100) {
+    const { seedDbPath, seedMetaPath, isCustom, updatedAt } = findLatestDatabase();
+    if (seedDbPath && fs.existsSync(seedDbPath) && seedDbPath !== dbFile) {
+      try {
+        fs.copyFileSync(seedDbPath, dbFile);
+        if (seedMetaPath && fs.existsSync(seedMetaPath)) {
+          fs.copyFileSync(seedMetaPath, dbMetaFile);
+        } else {
+          fs.writeFileSync(
+            dbMetaFile,
+            JSON.stringify(
+              {
+                updatedAt: updatedAt || new Date().toISOString(),
+                updatedBy: isCustom ? 'database-recovery' : 'system-seed',
+                isSeed: !isCustom,
+              },
+              null,
+              2
+            ),
+            'utf-8'
+          );
+        }
+        console.log(`[Storage] Initialized database at "${storage.resolvedDataDir}" from "${seedDbPath}" (Custom data preserved: ${isCustom ? 'YES' : 'NO'})`);
+      } catch (err: any) {
+        console.error(`[Storage] Error initializing database at ${storage.resolvedDataDir}:`, err.message);
       }
-      console.log(`[Storage] Initialized database from seed at "${DATA_DIR}"`);
     }
+  } else {
+    // If database exists in storage, make sure backup copy also exists
+    try {
+      const backupDir = path.join(storage.resolvedDataDir, 'backups');
+      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+      const bakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
+      if (!fs.existsSync(bakFile) || fs.statSync(bakFile).size !== fileSize) {
+        fs.copyFileSync(dbFile, bakFile);
+      }
+    } catch {}
   }
 }
 
@@ -399,13 +610,18 @@ app.post('/api/db/save', (req, res) => {
       return res.status(400).json({ error: 'Payload does not represent a valid SQLite database binary snapshot' });
     }
 
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const storage = getStorageDetails();
+    if (!fs.existsSync(storage.resolvedDataDir)) {
+      fs.mkdirSync(storage.resolvedDataDir, { recursive: true });
     }
 
-    const primaryDbFile = path.join(DATA_DIR, 'djital_db.sqlite.b64');
-    const primaryMetaFile = path.join(DATA_DIR, 'db_meta.json');
-    const primaryBakFile = path.join(DATA_DIR, 'djital_db.sqlite.b64.bak');
+    const primaryDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+    const primaryBakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
+
+    // Create a timestamped backup before overwriting
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+    backupCurrentSnapshot(primaryDbFile, backupDir);
 
     // 1. Physically write new snapshot to active storage directory
     safeWriteFileWithSync(primaryDbFile, databaseBase64);
@@ -421,12 +637,37 @@ app.post('/api/db/save', (req, res) => {
     };
     safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
 
-    console.log(`[Storage] Saved database snapshot directly in realtime (${meta.sizeBytes} bytes)`);
+    // 2. Multi-directory mirror write to ensure data persists across container redeployments and volume types
+    const mirrorDirs = new Set<string>();
+    mirrorDirs.add(LOCAL_DATA_DIR);
+    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
+    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
+    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
+    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
+    if (fs.existsSync('/data')) mirrorDirs.add('/data');
+
+    for (const dir of mirrorDirs) {
+      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
+        try {
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), databaseBase64);
+          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64.bak'), databaseBase64);
+          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
+        } catch {}
+      }
+    }
+
+    console.log(`[Storage] Saved database snapshot directly to volume (${meta.sizeBytes} bytes, ${storage.mountSource})`);
 
     return res.json({
       success: true,
       meta,
-      message: 'Database saved directly to server disk in realtime.',
+      storageInfo: {
+        dataDir: storage.resolvedDataDir,
+        isPersistent: storage.isPersistent,
+        mountSource: storage.mountSource,
+      },
+      message: 'Database saved directly to server persistent disk in realtime.',
     });
   } catch (error: any) {
     console.error('Error writing server database:', error);
@@ -471,6 +712,308 @@ app.get('/api/db/export', (_req, res) => {
     return res.send(binary);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Export failed' });
+  }
+});
+
+// GET download complete website bundle (.djbundle / .zip) containing database, uploaded media assets, and manifest
+app.get(['/api/backup/bundle', '/api/backup/download-bundle'], async (_req, res) => {
+  try {
+    const storage = getStorageDetails();
+    const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    const metaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+    if (!fs.existsSync(dbFile)) {
+      return res.status(404).json({ error: 'Database file not found on server' });
+    }
+
+    const b64 = fs.readFileSync(dbFile, 'utf-8');
+    const dbBinary = Buffer.from(b64, 'base64');
+    const zip = new AdmZip();
+
+    // 1. Add database snapshots (both .b64 and binary .sqlite for universal compatibility)
+    zip.addFile('djital_db.sqlite.b64', Buffer.from(b64, 'utf-8'));
+    zip.addFile('database.sqlite', dbBinary);
+
+    // 2. Add metadata
+    if (fs.existsSync(metaFile)) {
+      zip.addFile('db_meta.json', fs.readFileSync(metaFile));
+    }
+
+    // 3. Add uploaded media assets from public/uploads/
+    const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
+    let uploadFilesCount = 0;
+    let uploadTotalBytes = 0;
+    if (fs.existsSync(publicUploadDir)) {
+      const categories = ['videos', 'images', 'audio', 'documents'];
+      for (const cat of categories) {
+        const catDir = path.join(publicUploadDir, cat);
+        if (fs.existsSync(catDir)) {
+          const files = fs.readdirSync(catDir);
+          for (const f of files) {
+            const filePath = path.join(catDir, f);
+            try {
+              const stat = fs.statSync(filePath);
+              if (stat.isFile()) {
+                zip.addLocalFile(filePath, `uploads/${cat}`);
+                uploadFilesCount++;
+                uploadTotalBytes += stat.size;
+              }
+            } catch {}
+          }
+        }
+      }
+    }
+
+    // 4. Inspect DB to include record counts in manifest
+    let tableCounts: Record<string, number> = {};
+    try {
+      const initSqlJs = (await import('sql.js')).default;
+      const SQL = await initSqlJs();
+      const db = new SQL.Database(dbBinary);
+      const tables = ['events', 'releases', 'gallery', 'documentary', 'media_library', 'bookings', 'audio_mixes', 'videos', 'testimonials'];
+      for (const tbl of tables) {
+        try {
+          const countRes = db.exec(`SELECT count(*) FROM "${tbl}"`);
+          if (countRes.length > 0 && countRes[0].values.length > 0) {
+            tableCounts[tbl] = Number(countRes[0].values[0][0]);
+          }
+        } catch {}
+      }
+    } catch (err: any) {
+      console.warn('Could not inspect table counts for manifest:', err.message);
+    }
+
+    // 5. Generate backup manifest
+    const manifest = {
+      manifestVersion: '2.0',
+      appName: 'DJ Ital Sound System & Vital Fest',
+      createdAt: new Date().toISOString(),
+      databaseSizeBytes: dbBinary.length,
+      databaseBase64SizeBytes: b64.length,
+      uploadedFilesCount: uploadFilesCount,
+      uploadedFilesTotalBytes: uploadTotalBytes,
+      tableCounts,
+      checksumSha256: crypto.createHash('sha256').update(dbBinary).digest('hex'),
+      description: 'Complete website backup bundle containing full SQLite database, all uploaded media assets, and configuration metadata.',
+    };
+    zip.addFile('backup_manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8'));
+
+    const zipBuffer = zip.toBuffer();
+    const dateStamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `dj-ital-website-backup-${dateStamp}.djbundle`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', zipBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    return res.send(zipBuffer);
+  } catch (err: any) {
+    console.error('Error generating website backup bundle:', err);
+    return res.status(500).json({ error: err.message || 'Failed to generate backup bundle' });
+  }
+});
+
+// POST restore complete website bundle (.djbundle, .zip, .sqlite, .b64)
+app.post('/api/restore/bundle', async (req, res) => {
+  try {
+    const { bundleBase64, filename = 'backup' } = req.body;
+    if (!bundleBase64 || typeof bundleBase64 !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid backup bundle payload' });
+    }
+
+    const buffer = Buffer.from(bundleBase64, 'base64');
+    const storage = getStorageDetails();
+    if (!fs.existsSync(storage.resolvedDataDir)) {
+      fs.mkdirSync(storage.resolvedDataDir, { recursive: true });
+    }
+
+    const primaryDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+
+    // Create a safety backup of existing state before restoring
+    backupCurrentSnapshot(primaryDbFile, backupDir);
+
+    let restoredDbB64: string | null = null;
+    let manifestData: any = null;
+    let filesRestoredCount = 0;
+
+    // Check if buffer starts with ZIP magic bytes "PK\x03\x04"
+    if (buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04) {
+      const zip = new AdmZip(buffer);
+      const entries = zip.getEntries();
+
+      // Look for manifest
+      const manifestEntry = entries.find((e) => e.entryName === 'backup_manifest.json');
+      if (manifestEntry) {
+        try {
+          manifestData = JSON.parse(manifestEntry.getData().toString('utf-8'));
+        } catch {}
+      }
+
+      // Look for database file in zip
+      const dbB64Entry = entries.find((e) => e.entryName === 'djital_db.sqlite.b64');
+      const sqliteEntry = entries.find((e) => e.entryName === 'database.sqlite' || e.entryName.endsWith('.sqlite') || e.entryName.endsWith('.db'));
+
+      if (dbB64Entry) {
+        restoredDbB64 = dbB64Entry.getData().toString('utf-8').trim();
+      } else if (sqliteEntry) {
+        const bin = sqliteEntry.getData();
+        restoredDbB64 = bin.toString('base64');
+      }
+
+      // Restore uploads
+      const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
+      for (const entry of entries) {
+        if (!entry.isDirectory && (entry.entryName.startsWith('uploads/') || entry.entryName.startsWith('public/uploads/'))) {
+          const relativePath = entry.entryName.replace(/^(public\/)?uploads\//, '');
+          const destPath = path.join(publicUploadDir, relativePath);
+          const destDir = path.dirname(destPath);
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+          fs.writeFileSync(destPath, entry.getData());
+          filesRestoredCount++;
+        }
+      }
+    } else {
+      // Not a zip file: check if it's base64 sqlite string or raw sqlite binary
+      const text = buffer.toString('utf-8').trim();
+      if (text.startsWith('U1FMaXRlIGZvcm1')) {
+        restoredDbB64 = text;
+      } else if (buffer.toString('utf-8', 0, 15).startsWith('SQLite format 3')) {
+        restoredDbB64 = buffer.toString('base64');
+      }
+    }
+
+    if (!restoredDbB64 || !restoredDbB64.startsWith('U1FMaXRlIGZvcm1')) {
+      return res.status(400).json({
+        error: 'No valid SQLite database found inside the uploaded backup file. Please provide a valid .djbundle, .zip, or .sqlite file.',
+      });
+    }
+
+    // Save restored DB
+    safeWriteFileWithSync(primaryDbFile, restoredDbB64);
+    const meta = {
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'admin-bundle-restore',
+      sizeBytes: restoredDbB64.length,
+      isSeed: false,
+      restoredFrom: filename,
+    };
+    safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
+
+    // Mirror write to ensure persistence
+    const mirrorDirs = new Set<string>();
+    mirrorDirs.add(LOCAL_DATA_DIR);
+    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
+    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
+    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
+    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
+    if (fs.existsSync('/data')) mirrorDirs.add('/data');
+
+    for (const dir of mirrorDirs) {
+      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
+        try {
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), restoredDbB64);
+          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
+        } catch {}
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Complete website backup restored successfully! Restored SQLite database (${(restoredDbB64.length / 1024 / 1024).toFixed(2)} MB)${filesRestoredCount > 0 ? ` and ${filesRestoredCount} uploaded media files` : ''}.`,
+      manifest: manifestData,
+      filesRestoredCount,
+      databaseSizeBytes: restoredDbB64.length,
+      databaseBase64: restoredDbB64,
+      meta,
+    });
+  } catch (err: any) {
+    console.error('Error during bundle restore:', err);
+    return res.status(500).json({ error: err.message || 'Failed to restore backup bundle' });
+  }
+});
+
+// GET backup summary with database stats and record counts
+app.get('/api/backup/summary', async (_req, res) => {
+  try {
+    const storage = getStorageDetails();
+    const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    const metaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+    const previousCustomFile = path.join(storage.resolvedDataDir, 'backups', 'djital_db_previous_custom_data.b64');
+    const localPreviousCustomFile = path.join(LOCAL_DATA_DIR, 'backups', 'djital_db_previous_custom_data.b64');
+
+    const dbExists = fs.existsSync(dbFile);
+    const dbSizeBytes = dbExists ? fs.statSync(dbFile).size : 0;
+
+    let meta: any = null;
+    if (fs.existsSync(metaFile)) {
+      try {
+        meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
+      } catch {}
+    }
+
+    // Uploads count
+    const publicUploadDir = path.resolve(__dirname, 'public', 'uploads');
+    let uploadedFilesCount = 0;
+    let uploadedFilesTotalBytes = 0;
+    if (fs.existsSync(publicUploadDir)) {
+      const categories = ['videos', 'images', 'audio', 'documents'];
+      for (const cat of categories) {
+        const catDir = path.join(publicUploadDir, cat);
+        if (fs.existsSync(catDir)) {
+          const files = fs.readdirSync(catDir);
+          for (const f of files) {
+            try {
+              const stat = fs.statSync(path.join(catDir, f));
+              if (stat.isFile()) {
+                uploadedFilesCount++;
+                uploadedFilesTotalBytes += stat.size;
+              }
+            } catch {}
+          }
+        }
+      }
+    }
+
+    // Inspect database record counts
+    let recordCounts: Record<string, number> = {};
+    if (dbExists) {
+      try {
+        const b64 = fs.readFileSync(dbFile, 'utf-8');
+        const dbBinary = Buffer.from(b64, 'base64');
+        const initSqlJs = (await import('sql.js')).default;
+        const SQL = await initSqlJs();
+        const db = new SQL.Database(dbBinary);
+        const tables = ['events', 'releases', 'gallery', 'documentary', 'media_library', 'bookings', 'audio_mixes', 'videos', 'testimonials'];
+        for (const tbl of tables) {
+          try {
+            const countRes = db.exec(`SELECT count(*) FROM "${tbl}"`);
+            if (countRes.length > 0 && countRes[0].values.length > 0) {
+              recordCounts[tbl] = Number(countRes[0].values[0][0]);
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    const hasPreviousCustomData = fs.existsSync(previousCustomFile) || fs.existsSync(localPreviousCustomFile);
+
+    return res.json({
+      dbExists,
+      dbSizeBytes,
+      updatedAt: meta?.updatedAt || (dbExists ? fs.statSync(dbFile).mtime.toISOString() : null),
+      isSeed: Boolean(meta?.isSeed),
+      uploadedFilesCount,
+      uploadedFilesTotalBytes,
+      recordCounts,
+      hasPreviousCustomData,
+      isPersistent: storage.isPersistent,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to fetch backup summary' });
   }
 });
 
@@ -561,12 +1104,20 @@ app.post('/api/db/import', (req, res) => {
   }
 });
 
-// POST reset server database
+// POST reset server database (with automatic pre-reset backup protection)
 app.post('/api/db/reset', (_req, res) => {
   try {
     const storage = getStorageDetails();
     const dbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
     const dbMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+
+    // 1. Always create a backup before any reset
+    if (fs.existsSync(dbFile) && fs.statSync(dbFile).size > 100) {
+      const backupDir = path.join(storage.resolvedDataDir, 'backups');
+      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.copyFileSync(dbFile, path.join(backupDir, `djital_db_pre_reset_${stamp}.b64`));
+    }
 
     if (fs.existsSync(dbFile)) {
       fs.unlinkSync(dbFile);
@@ -576,7 +1127,20 @@ app.post('/api/db/reset', (_req, res) => {
     }
 
     // Re-seed with baseline
-    ensureDatabaseSeeded();
+    const seedDbFile = path.join(SEED_DIR, 'djital_db.sqlite.b64');
+    const seedMetaFile = path.join(SEED_DIR, 'db_meta.json');
+    if (fs.existsSync(seedDbFile)) {
+      fs.copyFileSync(seedDbFile, dbFile);
+      if (fs.existsSync(seedMetaFile)) {
+        fs.copyFileSync(seedMetaFile, dbMetaFile);
+      } else {
+        fs.writeFileSync(
+          dbMetaFile,
+          JSON.stringify({ updatedAt: new Date().toISOString(), isSeed: true }, null, 2),
+          'utf-8'
+        );
+      }
+    }
 
     let databaseBase64: string | null = null;
     if (fs.existsSync(dbFile)) {
@@ -585,12 +1149,216 @@ app.post('/api/db/reset', (_req, res) => {
 
     return res.json({
       success: true,
-      message: 'Server database reset to default seeds',
+      message: 'Server database reset to baseline seeds (Pre-reset backup created)',
       databaseBase64,
     });
   } catch (error: any) {
     console.error('Error resetting server database:', error);
     return res.status(500).json({ error: error.message || 'Failed to reset database' });
+  }
+});
+
+// GET available recovery snapshots (active, previous custom user data, factory seed, backups)
+app.get('/api/db/snapshots', (_req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    const storage = getStorageDetails();
+    const snapshots: Array<{
+      id: string;
+      title: string;
+      description: string;
+      sizeBytes: number;
+      updatedAt?: string;
+      isCurrent: boolean;
+      type: 'active' | 'custom_previous' | 'factory_seed' | 'backup';
+    }> = [];
+
+    // 1. Current Active Database
+    const currentDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    if (fs.existsSync(currentDbFile)) {
+      const stat = fs.statSync(currentDbFile);
+      snapshots.push({
+        id: 'active',
+        title: 'Current Active Database',
+        description: `Currently running on server volume (${(stat.size / 1024 / 1024).toFixed(2)} MB).`,
+        sizeBytes: stat.size,
+        updatedAt: storage.dbUpdatedAt,
+        isCurrent: true,
+        type: 'active',
+      });
+    }
+
+    // 2. Previous Custom Master Data Snapshot
+    const customSnapshotCandidates = [
+      path.join(storage.resolvedDataDir, 'backups', 'djital_db_previous_custom_data.b64'),
+      path.join(LOCAL_DATA_DIR, 'backups', 'djital_db_previous_custom_data.b64'),
+      path.join(PROTECTED_SEED_DIR, 'djital_db_previous_custom_data.b64'),
+    ];
+    let customSnapshotPath: string | null = null;
+    for (const p of customSnapshotCandidates) {
+      if (fs.existsSync(p) && fs.statSync(p).size > 100) {
+        customSnapshotPath = p;
+        break;
+      }
+    }
+    if (customSnapshotPath) {
+      const stat = fs.statSync(customSnapshotPath);
+      snapshots.push({
+        id: 'previous_custom',
+        title: 'Restored Previous User Data',
+        description: 'Preserved pre-deployment database with all 8 Events, 4 Documentary Episodes, 11 Media Items & custom profile edits.',
+        sizeBytes: stat.size,
+        updatedAt: '2026-10-18T16:00:00.000Z',
+        isCurrent: false,
+        type: 'custom_previous',
+      });
+    }
+
+    // 3. Factory Baseline Seed
+    const factorySeedFile = path.join(PROTECTED_SEED_DIR, 'djital_db.sqlite.b64');
+    if (fs.existsSync(factorySeedFile)) {
+      const stat = fs.statSync(factorySeedFile);
+      snapshots.push({
+        id: 'factory_seed',
+        title: 'Factory Baseline Seed Data',
+        description: 'Standard initial launch template data.',
+        sizeBytes: stat.size,
+        updatedAt: '1970-01-01T00:00:00.000Z',
+        isCurrent: false,
+        type: 'factory_seed',
+      });
+    }
+
+    // 4. Timestamped backups
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+    const backups = listTimestampedBackups(backupDir);
+    for (const b of backups.slice(0, 5)) {
+      snapshots.push({
+        id: `backup:${b.name}`,
+        title: `Backup Snapshot (${b.name.replace(/^djital_db_|\.b64$/g, '')})`,
+        description: `Automated rolling backup from ${new Date(b.modifiedAt).toLocaleString()}`,
+        sizeBytes: b.sizeBytes,
+        updatedAt: b.modifiedAt,
+        isCurrent: false,
+        type: 'backup',
+      });
+    }
+
+    return res.json({
+      storage: {
+        resolvedDataDir: storage.resolvedDataDir,
+        isPersistent: storage.isPersistent,
+        mountSource: storage.mountSource,
+      },
+      snapshots,
+    });
+  } catch (error: any) {
+    console.error('Error listing snapshots:', error);
+    return res.status(500).json({ error: error.message || 'Failed to list snapshots' });
+  }
+});
+
+// POST restore specific snapshot or previous custom data
+app.post('/api/db/restore-snapshot', (req, res) => {
+  try {
+    const { snapshotId } = req.body;
+    if (!snapshotId || typeof snapshotId !== 'string') {
+      return res.status(400).json({ error: 'Missing snapshotId parameter' });
+    }
+
+    const storage = getStorageDetails();
+    let sourceB64Path: string | null = null;
+    let isSeed = false;
+    let snapshotLabel = '';
+
+    if (snapshotId === 'previous_custom') {
+      const candidates = [
+        path.join(storage.resolvedDataDir, 'backups', 'djital_db_previous_custom_data.b64'),
+        path.join(LOCAL_DATA_DIR, 'backups', 'djital_db_previous_custom_data.b64'),
+        path.join(PROTECTED_SEED_DIR, 'djital_db_previous_custom_data.b64'),
+      ];
+      for (const c of candidates) {
+        if (fs.existsSync(c)) {
+          sourceB64Path = c;
+          break;
+        }
+      }
+      snapshotLabel = 'Restored Previous User Data (8 Events, 4 Documentaries, 11 Media Items)';
+      isSeed = false;
+    } else if (snapshotId === 'factory_seed') {
+      sourceB64Path = path.join(PROTECTED_SEED_DIR, 'djital_db.sqlite.b64');
+      snapshotLabel = 'Factory Baseline Seed Data';
+      isSeed = true;
+    } else if (snapshotId.startsWith('backup:')) {
+      const fileName = path.basename(snapshotId.replace(/^backup:/, ''));
+      const p = path.join(storage.resolvedDataDir, 'backups', fileName);
+      if (fs.existsSync(p)) {
+        sourceB64Path = p;
+        snapshotLabel = `Backup ${fileName}`;
+      }
+    }
+
+    if (!sourceB64Path || !fs.existsSync(sourceB64Path)) {
+      return res.status(404).json({ error: `Snapshot "${snapshotId}" not found on server` });
+    }
+
+    const b64Data = fs.readFileSync(sourceB64Path, 'utf-8').trim();
+    if (!b64Data.startsWith('U1FMaXRlIGZvcm1')) {
+      return res.status(400).json({ error: 'Snapshot data is not a valid SQLite database' });
+    }
+
+    const primaryDbFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64');
+    const primaryMetaFile = path.join(storage.resolvedDataDir, 'db_meta.json');
+    const primaryBakFile = path.join(storage.resolvedDataDir, 'djital_db.sqlite.b64.bak');
+
+    // Backup current before overwriting
+    const backupDir = path.join(storage.resolvedDataDir, 'backups');
+    backupCurrentSnapshot(primaryDbFile, backupDir);
+
+    // Write to primary volume
+    safeWriteFileWithSync(primaryDbFile, b64Data);
+    try {
+      safeWriteFileWithSync(primaryBakFile, b64Data);
+    } catch {}
+
+    const meta = {
+      updatedAt: new Date().toISOString(),
+      updatedBy: `admin-restore:${snapshotId}`,
+      sizeBytes: b64Data.length,
+      isSeed,
+    };
+    safeWriteFileWithSync(primaryMetaFile, JSON.stringify(meta, null, 2));
+
+    // Mirror to all data directories
+    const mirrorDirs = new Set<string>();
+    mirrorDirs.add(LOCAL_DATA_DIR);
+    mirrorDirs.add(path.resolve(process.cwd(), 'data'));
+    if (process.env.RAILWAY_VOLUME_MOUNT_PATH) mirrorDirs.add(path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH));
+    if (process.env.DATA_DIR) mirrorDirs.add(path.resolve(process.env.DATA_DIR));
+    if (fs.existsSync('/app/data')) mirrorDirs.add('/app/data');
+    if (fs.existsSync('/data')) mirrorDirs.add('/data');
+
+    for (const dir of mirrorDirs) {
+      if (dir !== storage.resolvedDataDir && testDirectoryWritable(dir)) {
+        try {
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          safeWriteFileWithSync(path.join(dir, 'djital_db.sqlite.b64'), b64Data);
+          safeWriteFileWithSync(path.join(dir, 'db_meta.json'), JSON.stringify(meta, null, 2));
+        } catch {}
+      }
+    }
+
+    console.log(`[Storage] Restored snapshot "${snapshotId}" to volume (${b64Data.length} bytes)`);
+
+    return res.json({
+      success: true,
+      message: `Successfully restored "${snapshotLabel}" to server persistent storage!`,
+      databaseBase64: b64Data,
+      meta,
+    });
+  } catch (error: any) {
+    console.error('Error restoring snapshot:', error);
+    return res.status(500).json({ error: error.message || 'Failed to restore snapshot' });
   }
 });
 

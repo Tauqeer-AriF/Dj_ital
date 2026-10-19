@@ -738,11 +738,11 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
     {
       id: 'storage_persistence',
       tabKey: 'storage',
-      title: '15. Storage, Railway Volumes & Database Backups',
+      title: '15. Website Backup & Data Restore',
       badge: 'DATA PROTECTION',
       badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
       icon: <HardDrive className="w-4 h-4 text-emerald-500" />,
-      summary: 'How content auto-saves across browser sessions, and how to export/restore .sqlite backups.',
+      summary: 'How content auto-saves across browser sessions, and how to export/restore complete website bundles.',
       content: (
         <div className="space-y-4 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
           <p>
@@ -755,28 +755,24 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
               <span>Every change made in this dashboard saves instantly to your local browser storage and synchronizes asynchronously with the Node.js backend.</span>
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10 space-y-1">
-              <span className="font-bold text-neutral-900 dark:text-white font-mono block">📥 Download Offline Backup (.sqlite):</span>
-              <span>Click <strong>"Download .sqlite"</strong> in the top header at any time to save an exact replica of your entire website database to your computer.</span>
+              <span className="font-bold text-neutral-900 dark:text-white font-mono block">📥 Download Website Bundle (.djbundle):</span>
+              <span>Click <strong>"Download Whole Website Bundle"</strong> in Backup & Restore to take an exact replica of your entire website (database, events, releases, bio, and all uploaded media) into a portable package.</span>
             </div>
             <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10 space-y-1">
               <span className="font-bold text-neutral-900 dark:text-white font-mono block">🔄 1-Click Restore:</span>
-              <span>If you ever want to revert or move databases, click <strong>"Restore Backup"</strong> and select your <code className="font-mono text-[10px]">.sqlite</code> file.</span>
-            </div>
-            <div className="p-3 rounded sound-card border border-neutral-200 dark:border-white/10 space-y-1">
-              <span className="font-bold text-neutral-900 dark:text-white font-mono block">☁️ Railway Production Persistence:</span>
-              <span>In production deployment, mounting a volume at <code className="font-mono text-[10px] text-amber-500">/data</code> guarantees that your database and uploaded assets persist permanently across all container redeployments.</span>
+              <span>If you ever want to revert or move databases, upload your <code className="font-mono text-[10px]">.djbundle</code> or <code className="font-mono text-[10px]">.sqlite</code> file to restore instantly.</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Railway Volume & Storage tab</span>
+            <span className="text-[11px] text-neutral-500 font-mono">Managed via: Backup & Restore tab</span>
             {onNavigateTab && (
               <button
                 type="button"
                 onClick={() => onNavigateTab('storage')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
               >
-                <span>Open Storage Manager</span>
+                <span>Open Backup & Restore</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}

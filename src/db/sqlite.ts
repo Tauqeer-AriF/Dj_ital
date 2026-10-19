@@ -3514,6 +3514,56 @@ export async function downloadDatabaseFile(): Promise<void> {
 
 export const resetDatabaseToSeed = resetDatabaseToDefault;
 
+export async function restoreDatabaseSnapshot(snapshotId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch('/api/db/restore-snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapshotId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `Server HTTP ${res.status}` }));
+      return { success: false, message: err.error || 'Failed to restore snapshot on server' };
+    }
+
+    const json = await res.json();
+    if (!json.databaseBase64) {
+      return { success: false, message: 'Server did not return restored database snapshot' };
+    }
+
+    let SQL: any;
+    try {
+      const wasmBinary = await loadSqlWasmBinary();
+      if (wasmBinary) {
+        SQL = await initSqlJs({ wasmBinary });
+      } else {
+        SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+      }
+    } catch {
+      SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+    }
+
+    const u8 = base64ToUint8Array(json.databaseBase64);
+    const restoredDb = new SQL.Database(u8);
+    ensureSchemaMigrations(restoredDb);
+    dbInstance = restoredDb;
+    lastServerTimestamp = json.meta?.updatedAt || new Date().toISOString();
+    notifyListeners();
+
+    return {
+      success: true,
+      message: json.message || 'Snapshot successfully restored to memory and persistent disk.',
+    };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Error restoring snapshot' };
+  }
+}
+
+export async function restorePreviousCustomData(): Promise<{ success: boolean; message: string }> {
+  return restoreDatabaseSnapshot('previous_custom');
+}
+
 // ---------------------------------------------------------------------------
 // Production-Ready Admin Authentication & Password Management
 // ---------------------------------------------------------------------------
