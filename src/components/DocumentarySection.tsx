@@ -1,17 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Play, Film, Youtube, Clock, Tag, ExternalLink, X } from 'lucide-react';
 import { DocumentaryData, DocumentarySettingsData } from '../db/sqlite';
 import { normalizeImageUrl } from '../utils/imageOptimization';
 
 export function isVideoFile(url: string | null | undefined): boolean {
   if (!url) return false;
-  return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url);
+  try {
+    return /\.(mp4|webm|ogg|mov|m4v)$/i.test(new URL(url, 'http://localhost').pathname);
+  } catch {
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url);
+  }
 }
 
 export function extractYouTubeEmbedUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-  return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+    let videoId: string | null = null;
+
+    if (host === 'youtu.be') {
+      videoId = parsed.pathname.split('/').filter(Boolean)[0] || null;
+    } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+      const pathParts = parsed.pathname.split('/').filter(Boolean);
+      if (parsed.pathname === '/watch') videoId = parsed.searchParams.get('v');
+      else if (['embed', 'v', 'shorts', 'live'].includes(pathParts[0])) videoId = pathParts[1] || null;
+    } else if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+      const videoId = parsed.pathname.split('/').filter(Boolean).find((part) => /^\d+$/.test(part));
+      return videoId ? `https://player.vimeo.com/video/${videoId}?autoplay=1` : null;
+    }
+
+    return videoId && /^[\w-]{11}$/.test(videoId)
+      ? `https://www.youtube.com/embed/${videoId}?autoplay=1`
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface DocumentarySectionProps {
@@ -22,6 +47,20 @@ export interface DocumentarySectionProps {
 
 export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings, episodes }) => {
   const [activeEpisode, setActiveEpisode] = useState<DocumentaryData | null>(null);
+
+  useEffect(() => {
+    if (!activeEpisode) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActiveEpisode(null);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [activeEpisode]);
 
   if (!settings.is_section_visible) return null;
 
@@ -144,64 +183,71 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
       </div>
 
       {/* Video Modal Player */}
-      {activeEpisode && (
+      {activeEpisode && createPortal(
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200"
+          aria-label={`${activeEpisode.badge_label || `Episode ${activeEpisode.episode_number}`}: ${activeEpisode.title}`}
+          onClick={() => setActiveEpisode(null)}
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/90 p-3 pt-16 backdrop-blur-xl animate-in fade-in duration-200 sm:p-6"
         >
-          <div className="relative w-full max-w-4xl rounded-2xl bg-neutral-950 border border-white/20 overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 text-white">
-              <div className="flex items-center gap-2">
-                <Film className="w-5 h-5 text-amber-400" />
-                <h3 className="font-display font-bold text-base uppercase">
-                  {activeEpisode.badge_label || `Episode ${activeEpisode.episode_number}`}: {activeEpisode.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setActiveEpisode(null)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <button
+            type="button"
+            onClick={() => setActiveEpisode(null)}
+            aria-label="Close documentary player"
+            className="fixed right-3 top-3 z-[122] flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-neutral-900 text-white shadow-xl transition-colors hover:bg-neutral-700 sm:right-6 sm:top-6"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div
+            className="relative my-auto w-full max-w-4xl overflow-hidden rounded-xl border border-white/20 bg-neutral-950 shadow-2xl sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex min-h-14 items-center gap-2 border-b border-white/10 px-4 py-3 pr-14 text-white sm:px-6">
+              <Film className="h-5 w-5 shrink-0 text-amber-400" />
+              <h3 className="min-w-0 break-words font-display text-sm font-bold uppercase sm:text-base">
+                {activeEpisode.badge_label || `Episode ${activeEpisode.episode_number}`}: {activeEpisode.title}
+              </h3>
             </div>
 
-            <div className="aspect-video bg-black flex items-center justify-center">
+            <div className="flex aspect-video max-h-[calc(100dvh-8rem)] items-center justify-center bg-black">
               {isVideoFile(activeEpisode.youtube_url) ? (
                 <video
                   src={activeEpisode.youtube_url}
                   controls
                   autoPlay
-                  className="w-full h-full object-contain"
+                  playsInline
+                  className="h-full w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeEpisode.youtube_url) ? (
                 <iframe
                   src={extractYouTubeEmbedUrl(activeEpisode.youtube_url)!}
                   title={activeEpisode.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
               ) : (
-                <div className="text-center p-8 space-y-4">
-                  <Film className="w-12 h-12 text-amber-400 mx-auto opacity-60" />
+                <div className="space-y-4 p-8 text-center">
+                  <Film className="mx-auto h-12 w-12 text-amber-400 opacity-60" />
                   <p className="text-sm font-mono text-neutral-400">
-                    Direct video playback unavailable. Visit external stream below.
+                    This video source cannot be embedded. Open it in a new tab instead.
                   </p>
                   <a
                     href={activeEpisode.youtube_url || settings.youtube_series_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-amber-400 text-neutral-950 font-mono text-xs font-bold uppercase"
+                    className="inline-flex items-center gap-2 rounded bg-amber-400 px-5 py-2.5 font-mono text-xs font-bold uppercase text-neutral-950"
                   >
                     <span>Open External Video</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="h-4 w-4" />
                   </a>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

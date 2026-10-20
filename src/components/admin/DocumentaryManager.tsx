@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Video,
   Plus,
@@ -169,6 +170,20 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!testVideoUrl) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setTestVideoUrl(null);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [testVideoUrl]);
 
   // Save Settings
   const handleSaveSettings = async (e?: React.FormEvent) => {
@@ -1231,49 +1246,75 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
       {/* ------------------------------------------------------------- */}
       {/* VIDEO PREVIEW TEST MODAL */}
       {/* ------------------------------------------------------------- */}
-      {testVideoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl rounded sound-cabinet bg-neutral-950 border border-white/20 overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 text-white">
-              <div className="flex items-center gap-2">
-                {isVideoFile(testVideoUrl.url) ? (
-                  <Film className="w-5 h-5 text-amber-400" />
-                ) : (
-                  <Youtube className="w-5 h-5 text-red-500" />
-                )}
-                <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-white">
-                  Preview: {testVideoUrl.title}
-                </span>
-              </div>
-              <button
-                onClick={() => setTestVideoUrl(null)}
-                className="p-1 rounded text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {testVideoUrl && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Preview: ${testVideoUrl.title}`}
+          onClick={() => setTestVideoUrl(null)}
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/90 p-3 pt-16 backdrop-blur-xl animate-in fade-in duration-200 sm:p-6"
+        >
+          <button
+            type="button"
+            onClick={() => setTestVideoUrl(null)}
+            aria-label="Close documentary video preview"
+            className="fixed right-3 top-3 z-[122] flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-neutral-900 text-white shadow-xl transition-colors hover:bg-neutral-700 sm:right-6 sm:top-6"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div
+            className="relative my-auto w-full max-w-4xl overflow-hidden rounded-xl border border-white/20 bg-neutral-950 shadow-2xl sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex min-h-14 items-center gap-2 border-b border-white/10 px-4 py-3 pr-14 text-white sm:px-6">
+              {isVideoFile(testVideoUrl.url) ? (
+                <Film className="h-5 w-5 shrink-0 text-amber-400" />
+              ) : (
+                <Youtube className="h-5 w-5 shrink-0 text-red-500" />
+              )}
+              <span className="min-w-0 break-words font-display text-sm font-black uppercase tracking-wide text-white">
+                Preview: {testVideoUrl.title}
+              </span>
             </div>
 
-            <div className="relative aspect-video bg-black flex items-center justify-center">
+            <div className="relative flex aspect-video max-h-[calc(100dvh-8rem)] items-center justify-center bg-black">
               {isVideoFile(testVideoUrl.url) ? (
                 <video
                   src={testVideoUrl.url}
                   controls
                   autoPlay
                   playsInline
-                  className="w-full h-full object-contain"
+                  className="h-full w-full object-contain"
                 />
-              ) : (
+              ) : extractYouTubeEmbedUrl(testVideoUrl.url) ? (
                 <iframe
-                  src={extractYouTubeEmbedUrl(testVideoUrl.url) || undefined}
+                  src={extractYouTubeEmbedUrl(testVideoUrl.url)!}
                   title={testVideoUrl.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
+              ) : (
+                <div className="space-y-4 p-8 text-center">
+                  <Film className="mx-auto h-12 w-12 text-amber-400 opacity-60" />
+                  <p className="text-sm font-mono text-neutral-400">
+                    This video source cannot be embedded. Open it in a new tab instead.
+                  </p>
+                  <a
+                    href={testVideoUrl.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded bg-amber-400 px-5 py-2.5 font-mono text-xs font-bold uppercase text-neutral-950"
+                  >
+                    <span>Open External Video</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Modal */}
