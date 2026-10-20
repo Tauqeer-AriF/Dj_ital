@@ -310,7 +310,7 @@ function AppContent() {
         slideshowInterval={data.profile.slideshow_interval}
         slideshowImages={data.profile.slideshow_images}
       />
-      <div className="relative z-10">
+      <div className="public-site-content relative z-10">
         <Navbar profile={data.profile} onOpenEpk={() => setIsEpkOpen(true)} />
         <main>
           <Hero
@@ -360,6 +360,7 @@ function AppContent() {
           profile={data.profile}
           onOpenEpk={() => setIsEpkOpen(true)}
         />
+        <div className="public-site-shimmer" aria-hidden="true" />
       </div>
       <MainAudioPlayer
         profile={data.profile}

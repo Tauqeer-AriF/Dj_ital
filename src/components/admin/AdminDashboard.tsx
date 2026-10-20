@@ -264,12 +264,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           )}
 
-          <button
-            onClick={onClose}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hover-shimmer px-3.5 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-semibold text-xs transition-colors cursor-pointer shadow-sm"
           >
             View Live Site
-          </button>
+          </a>
         </div>
       </header>
 

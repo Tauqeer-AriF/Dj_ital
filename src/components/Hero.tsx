@@ -140,7 +140,7 @@ export const Hero: React.FC<HeroProps> = ({
                   </span>
                 </div>
               </div>
-              <div className="relative aspect-[16/11] overflow-hidden group">
+              <div className="hero-photo-shimmer relative aspect-[16/11] overflow-hidden group">
                 <img
                   src={resolvedHeroImage}
                   alt="DJ Ital at the Technics turntables"
@@ -149,6 +149,7 @@ export const Hero: React.FC<HeroProps> = ({
                   }}
                   className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover:scale-105'}`}
                 />
+                <div aria-hidden="true" className="hero-photo-sheen" />
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-transparent to-transparent pointer-events-none" />
 
                 {/* Status Badge */}
@@ -461,7 +462,7 @@ export const Hero: React.FC<HeroProps> = ({
                 </div>
 
                 {/* Photo + Interactive Spinning Vinyl Deck Stack */}
-                <div className="relative rounded overflow-hidden aspect-[4/3] bg-neutral-900 group">
+                <div className="hero-photo-shimmer relative rounded overflow-hidden aspect-[4/3] bg-neutral-900 group">
                   <img
                     src={resolvedHeroImage}
                     alt="DJ Ital at the vinyl turntables in Hackney studio"
@@ -470,6 +471,7 @@ export const Hero: React.FC<HeroProps> = ({
                     }}
                     className={`w-full h-full object-cover object-center filter brightness-95 transition-transform duration-700 ${isPlaying && isLiveOnAir ? 'scale-105' : 'group-hover:scale-105'}`}
                   />
+                  <div aria-hidden="true" className="hero-photo-sheen" />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-transparent to-transparent pointer-events-none" />
 
                   {/* Vital Fest Official Interactive Logo / Audio Trigger */}
