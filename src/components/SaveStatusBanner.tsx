@@ -43,10 +43,7 @@ export const SaveStatusBanner: React.FC = () => {
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />
         <div className="flex-1">
-          <p>
-            Your latest changes were saved on this device but NOT on the server (server kept a larger
-            database). Force save or reload the server version.
-          </p>
+          <p>Your latest changes were NOT saved to the server. Retry the server save before leaving this page.</p>
           {failed && <p className="mt-1 text-red-400">Force save failed. Please try again.</p>}
           <div className="mt-3 flex gap-2">
             <button

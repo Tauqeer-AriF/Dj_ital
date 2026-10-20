@@ -472,7 +472,7 @@ export async function saveDatabaseToServer(customTimestamp?: string): Promise<vo
       setServerSaveRejection(null);
     } else {
       setServerSaveRejection(result.message);
-      console.warn('Could not sync DB to server (running local in-memory fallback):', result.message);
+      console.error('Could not persist the database snapshot to the server:', result.message);
       throw new Error(result.message);
     }
   } finally {
@@ -570,47 +570,50 @@ export async function initDatabase(): Promise<Database> {
       locateFile: () => '/sql-wasm.wasm',
     });
 
-    let dbData: Uint8Array | null = null;
+    const response = await fetch('/api/db/load', { cache: 'no-store' });
+    let dbData: Uint8Array;
+    let isFactorySeed = false;
 
-    // Try loading saved database from server API first
-    try {
-      const res = await fetch('/api/db/load');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          dbData = base64ToUint8Array(json.data);
-        }
+    if (response.ok) {
+      const result: unknown = await response.json();
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('success' in result) ||
+        result.success !== true ||
+        !('data' in result) ||
+        typeof result.data !== 'string' ||
+        !result.data.trim()
+      ) {
+        throw new Error('The server returned an invalid database snapshot.');
       }
-    } catch {
-      // ignore
-    }
-
-    // Fallback: static bundle
-    if (!dbData) {
-      try {
-        const res = await fetch('/djital_db.sqlite.b64');
-        if (res.ok) {
-          const text = await res.text();
-          if (text) {
-            dbData = base64ToUint8Array(text);
-          }
-        }
-      } catch {
-        // ignore
+      dbData = base64ToUint8Array(result.data);
+    } else if (response.status === 404) {
+      const seedResponse = await fetch('/djital_db.sqlite.b64', { cache: 'no-store' });
+      if (!seedResponse.ok) {
+        throw new Error(`Could not load the factory database seed (HTTP ${seedResponse.status}).`);
       }
-    }
-
-    if (dbData) {
-      dbInstance = new SQL.Database(dbData);
+      const seed = await seedResponse.text();
+      if (!seed.trim()) throw new Error('The factory database seed is empty.');
+      dbData = base64ToUint8Array(seed);
+      isFactorySeed = true;
     } else {
-      dbInstance = new SQL.Database();
+      throw new Error(`Could not load the server database (HTTP ${response.status}).`);
     }
 
+    dbInstance = new SQL.Database(dbData);
     ensureSchemaMigrations(dbInstance);
+    if (isFactorySeed) await saveDatabaseToServer();
     return dbInstance;
   })();
 
-  return initPromise;
+  try {
+    return await initPromise;
+  } catch (error) {
+    initPromise = null;
+    dbInstance = null;
+    throw error;
+  }
 }
 
 export function getDatabase(): Database {

@@ -16,10 +16,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isProd = process.env.NODE_ENV === 'production';
+const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_PROJECT_ID);
 
 // Use Railway's mounted volume when DATA_DIR is configured, while preserving
 // the existing project-local paths for development.
 const configuredDataDir = process.env.DATA_DIR;
+if (isRailway && !configuredDataDir) {
+  throw new Error('DATA_DIR must point to the Railway persistent volume (for example, /data).');
+}
 const DATA_DIR = path.resolve(configuredDataDir || path.resolve(__dirname, 'data'));
 const UPLOADS_DIR = path.resolve(
   process.env.UPLOADS_DIR ||
@@ -350,7 +354,9 @@ app.post('/api/db/save', async (req: Request, res: Response) => {
     }
 
     const dbPath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
-    fs.writeFileSync(dbPath, data, 'utf8');
+    const temporaryDbPath = `${dbPath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(temporaryDbPath, data, 'utf8');
+    fs.renameSync(temporaryDbPath, dbPath);
 
     const meta = {
       updatedAt: timestamp || new Date().toISOString(),
@@ -358,7 +364,10 @@ app.post('/api/db/save', async (req: Request, res: Response) => {
       sizeBytes: data.length,
       isSeed: false,
     };
-    fs.writeFileSync(path.resolve(DATA_DIR, 'db_meta.json'), JSON.stringify(meta, null, 2), 'utf8');
+    const metaPath = path.resolve(DATA_DIR, 'db_meta.json');
+    const temporaryMetaPath = `${metaPath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(temporaryMetaPath, JSON.stringify(meta, null, 2), 'utf8');
+    fs.renameSync(temporaryMetaPath, metaPath);
     await applyInitialAdminPasswordReset();
 
     res.json({ success: true, timestamp: meta.updatedAt });

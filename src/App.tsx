@@ -53,6 +53,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { SavingProvider } from './context/SavingContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { SaveStatusBanner } from './components/SaveStatusBanner';
 
 interface AppData {
   profile: ProfileData;
@@ -368,7 +369,10 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <SavingProvider>
-            <AppContent />
+            <>
+              <AppContent />
+              <SaveStatusBanner />
+            </>
           </SavingProvider>
         </ToastProvider>
       </ThemeProvider>
