@@ -68,13 +68,8 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
         <ScrollReveal variant="fade-up" className={`relative ${isDropdownOpen ? 'z-50' : 'z-30'}`}>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
             <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
-                <span className="text-amber-600 dark:text-amber-400 font-black">[ PHOTOGRAPHIC ARCHIVE // 1991—2026 ]</span>
-                <span aria-hidden="true" className="opacity-60">·</span>
-                <span>EAST LONDON RAVE CHRONICLE</span>
-              </div>
               <h2 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-display font-black text-neutral-950 dark:text-white tracking-tight uppercase leading-tight sm:leading-[0.95] break-words">
-                Sound System & Rave Gallery
+                Rave Gallery
               </h2>
               <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base font-normal leading-relaxed">
                 Photographic highlights across 35 years: Vital Fest dancefloors, 1990s pirate radio studios,

@@ -101,7 +101,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenEpk }) => {
                   <a href="#audio-media" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Live Sets & Media Gallery</a>
                 </li>
                 <li>
-                  <a href="#releases" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Releases & Audio Dubplates</a>
+                  <a href="#releases" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Releases</a>
                 </li>
                 <li>
                   <a href="#heritage" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">V&A Museum Exhibition</a>
