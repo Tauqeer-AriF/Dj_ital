@@ -127,6 +127,19 @@ export const Hero: React.FC<HeroProps> = ({
           {/* Cinematic Dubplate Showcase Card */}
           <ScrollReveal variant="scale-up" delay={150}>
             <div className={`relative rounded sound-cabinet overflow-hidden shadow-2xl transition-all duration-500 ${isPlaying && isLiveOnAir ? 'ring-2 ring-red-500/50 shadow-[0_0_40px_rgba(239,68,68,0.3)]' : ''}`}>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pt-4 pb-3.5 border-b border-neutral-200 dark:border-white/15 text-xs font-industrial">
+                <div className="flex items-center gap-2 text-neutral-900 dark:text-white font-black tracking-wider">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isPlaying && isLiveOnAir ? 'bg-red-500 animate-ping' : (isLiveOnAir ? 'bg-amber-400' : 'bg-neutral-500')}`} />
+                  <span>[ CDJS 3000's ]</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-neutral-700 dark:text-white text-[11px] font-bold">
+                  <span className="text-neutral-500 dark:text-white/80">33⅓ / 45 RPM</span>
+                  <span aria-hidden="true">·</span>
+                  <span className={`${isLiveOnAir ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-500'} font-bold`}>
+                    {isLiveOnAir ? `${signatureBpm} BPM` : 'OFF AIR'}
+                  </span>
+                </div>
+              </div>
               <div className="relative aspect-[16/11] overflow-hidden group">
                 <img
                   src={resolvedHeroImage}
