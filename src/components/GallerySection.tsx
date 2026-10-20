@@ -286,8 +286,9 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              type="button"
               onClick={() => setLightboxItem(null)}
-              className="hardware-btn absolute top-4 right-4 p-2 rounded bg-neutral-800 text-white hover:bg-amber-400 hover:text-neutral-950 transition-colors z-10 cursor-pointer"
+              className="absolute right-4 top-4 z-10 rounded bg-neutral-800 p-2 text-white transition-colors hover:bg-amber-400 hover:text-neutral-950 cursor-pointer"
               aria-label="Close Lightbox"
             >
               <X className="w-5 h-5" />
@@ -337,6 +338,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                 ARCHIVE REF #GAL-{lightboxItem.id}
               </div>
             </div>
+
           </div>
         </div>
       )}
