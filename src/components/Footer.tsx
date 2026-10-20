@@ -110,7 +110,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenEpk }) => {
                   <a href="#documentary" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">"The Journey" Documentary</a>
                 </li>
                 <li>
-                  <a href="#gallery" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Sound System Gallery</a>
+                  <a href="#gallery" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Rave Gallery</a>
                 </li>
                 <li>
                   <a href="#booking" className="text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Direct Bookings & Enquiries</a>
