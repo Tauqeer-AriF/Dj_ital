@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
 // Ensure data and uploads directories exist
@@ -343,8 +343,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`[Server] DJ Ital Production App running on http://localhost:${PORT} (${isProd ? 'production' : 'development'})`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server] DJ Ital Production App running on http://0.0.0.0:${PORT} (${isProd ? 'production' : 'development'})`);
   });
 }
 
