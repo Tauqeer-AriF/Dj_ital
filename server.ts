@@ -3,6 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'url';
+import { createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
 import AdmZip from 'adm-zip';
 import dotenv from 'dotenv';
 import initSqlJs from 'sql.js';
@@ -10,11 +13,17 @@ import { createServer as createViteServer } from 'vite';
 
 dotenv.config();
 
+type SqlDatabase = InstanceType<Awaited<ReturnType<typeof initSqlJs>>['Database']>;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const configuredUploadLimit = Number(process.env.MAX_MEDIA_UPLOAD_BYTES);
+const MAX_MEDIA_UPLOAD_BYTES = Number.isSafeInteger(configuredUploadLimit) && configuredUploadLimit > 0
+  ? configuredUploadLimit
+  : 1024 * 1024 * 1024;
 const isProd = process.env.NODE_ENV === 'production';
 const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_PROJECT_ID);
 
@@ -261,6 +270,28 @@ function writeFileAtomically(targetPath: string, contents: Buffer | string): voi
   const temporaryPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(temporaryPath, contents);
   fs.renameSync(temporaryPath, targetPath);
+}
+
+function isUploadReferenced(database: SqlDatabase, url: string): boolean {
+  const tables = database.exec(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+  );
+  for (const [rawTableName] of tables[0]?.values || []) {
+    const tableName = String(rawTableName);
+    if (tableName === 'deleted_media_urls') continue;
+    const escapedTableName = tableName.replace(/"/g, '""');
+    const columns = database.exec(`PRAGMA table_info("${escapedTableName}")`);
+    for (const column of columns[0]?.values || []) {
+      const columnName = String(column[1]);
+      const escapedColumnName = columnName.replace(/"/g, '""');
+      const matches = database.exec(
+        `SELECT 1 FROM "${escapedTableName}" WHERE instr(CAST("${escapedColumnName}" AS TEXT), ?) > 0 LIMIT 1`,
+        [url]
+      );
+      if (matches.length > 0 && matches[0].values.length > 0) return true;
+    }
+  }
+  return false;
 }
 
 function saveSafetyBundle(): string {
@@ -538,32 +569,186 @@ app.post('/api/db/save', async (req: Request, res: Response) => {
   }
 });
 
-// 7. Media file upload
-app.post('/api/upload', (req: Request, res: Response) => {
+app.post('/api/uploads/delete-unreferenced', async (req: Request, res: Response) => {
+  const urls = req.body?.urls;
+  if (!Array.isArray(urls) || urls.some((url: unknown) => typeof url !== 'string')) {
+    return res.status(400).json({ success: false, error: 'A list of upload URLs is required.' });
+  }
+  if (urls.length > 1000) {
+    return res.status(400).json({ success: false, error: 'Cannot clean up more than 1000 uploads at once.' });
+  }
+
+  const databasePath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
+  if (!fs.existsSync(databasePath)) {
+    return res.status(503).json({ success: false, error: 'The saved database is unavailable; upload files were not deleted.' });
+  }
+
+  let database: SqlDatabase | null = null;
   try {
-    const { filename, fileData, mimeType } = req.body;
-    if (!fileData) {
-      return res.status(400).json({ success: false, error: 'Missing fileData in request' });
+    const SQL = await initSqlJs({
+      locateFile: (file) => path.resolve(__dirname, 'node_modules', 'sql.js', 'dist', file),
+    });
+    database = new SQL.Database(Buffer.from(fs.readFileSync(databasePath, 'utf8').trim(), 'base64'));
+
+    let deleted = 0;
+    let missing = 0;
+    let retainedReferenced = 0;
+    let skipped = 0;
+    for (const url of new Set(urls as string[])) {
+      const match = /^\/uploads\/(\d{13}_[a-f0-9]{16}_[a-zA-Z0-9._-]+)$/.exec(url);
+      if (!match) {
+        skipped += 1;
+        continue;
+      }
+
+      const cleanupAuthorization = database.exec(
+        'SELECT 1 FROM deleted_media_urls WHERE url = ? LIMIT 1',
+        [url]
+      );
+      if (cleanupAuthorization.length === 0 || cleanupAuthorization[0].values.length === 0) {
+        skipped += 1;
+        continue;
+      }
+
+      if (isUploadReferenced(database, url)) {
+        retainedReferenced += 1;
+        continue;
+      }
+
+      const targetPath = path.resolve(UPLOADS_DIR, match[1]);
+      if (path.dirname(targetPath) !== path.resolve(UPLOADS_DIR)) {
+        skipped += 1;
+        continue;
+      }
+      if (!fs.existsSync(targetPath)) {
+        missing += 1;
+        continue;
+      }
+      if (!fs.statSync(targetPath).isFile()) {
+        skipped += 1;
+        continue;
+      }
+      fs.unlinkSync(targetPath);
+      deleted += 1;
     }
 
-    const cleanBase64 = fileData.replace(/^data:[^;]+;base64,/, '');
-    const buffer = Buffer.from(cleanBase64, 'base64');
-    const safeName = `${Date.now()}_${(filename || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    return res.json({ success: true, deleted, missing, retainedReferenced, skipped });
+  } catch (err: unknown) {
+    console.error('Failed to clean up unreferenced media uploads:', err);
+    return res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to clean up uploaded files.',
+    });
+  } finally {
+    database?.close();
+  }
+});
+
+// 7. Media file upload
+app.post('/api/upload', async (req: Request, res: Response) => {
+  let temporaryPath: string | null = null;
+  try {
+    const contentType = req.get('content-type')?.split(';')[0].trim().toLowerCase();
+    let filename = 'upload';
+    let mimeType = 'application/octet-stream';
+    let byteCount = 0;
+    const fileId = `${Date.now()}_${randomBytes(8).toString('hex')}`;
+
+    if (contentType === 'application/json') {
+      const body = req.body as { filename?: unknown; fileData?: unknown; mimeType?: unknown };
+      if (typeof body?.fileData !== 'string' || !body.fileData) {
+        return res.status(400).json({ success: false, error: 'Missing fileData in request.' });
+      }
+      filename = typeof body.filename === 'string' ? body.filename : filename;
+      mimeType = typeof body.mimeType === 'string' ? body.mimeType : mimeType;
+      const cleanBase64 = body.fileData.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      byteCount = buffer.length;
+      if (byteCount > MAX_MEDIA_UPLOAD_BYTES) {
+        return res.status(413).json({ success: false, error: 'File exceeds the configured upload limit.' });
+      }
+      if (byteCount === 0) {
+        return res.status(400).json({ success: false, error: 'The uploaded file is empty.' });
+      }
+      const safeName = `${fileId}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-180) || 'upload'}`;
+      const filePath = path.resolve(UPLOADS_DIR, safeName);
+      temporaryPath = `${filePath}.tmp`;
+      fs.writeFileSync(temporaryPath, buffer, { flag: 'wx' });
+      fs.renameSync(temporaryPath, filePath);
+      temporaryPath = null;
+      return res.json({
+        success: true,
+        url: `/uploads/${safeName}`,
+        filename: safeName,
+        sizeBytes: byteCount,
+        mimeType,
+      });
+    }
+
+    if (contentType !== 'application/octet-stream') {
+      return res.status(415).json({ success: false, error: 'Upload must use application/octet-stream.' });
+    }
+    const encodedFilename = req.get('x-upload-filename');
+    if (encodedFilename) filename = decodeURIComponent(encodedFilename);
+    const encodedMimeType = req.get('x-upload-mime-type');
+    if (encodedMimeType) mimeType = decodeURIComponent(encodedMimeType);
+    if (filename.length > 255 || filename.includes('\0')) {
+      return res.status(400).json({ success: false, error: 'Invalid uploaded filename.' });
+    }
+    if (!/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)) mimeType = 'application/octet-stream';
+    const contentLength = Number(req.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > MAX_MEDIA_UPLOAD_BYTES) {
+      req.resume();
+      return res.status(413).json({
+        success: false,
+        error: `File exceeds the ${Math.round(MAX_MEDIA_UPLOAD_BYTES / (1024 * 1024))} MB upload limit.`,
+      });
+    }
+    const safeName = `${fileId}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-180) || 'upload'}`;
     const filePath = path.resolve(UPLOADS_DIR, safeName);
+    temporaryPath = `${filePath}.tmp`;
+    const sizeLimiter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        byteCount += chunk.length;
+        if (byteCount > MAX_MEDIA_UPLOAD_BYTES) {
+          const error = new Error('UPLOAD_FILE_TOO_LARGE') as NodeJS.ErrnoException;
+          error.code = 'LIMIT_FILE_SIZE';
+          callback(error);
+          return;
+        }
+        callback(null, chunk);
+      },
+    });
+    await pipeline(req, sizeLimiter, createWriteStream(temporaryPath, { flags: 'wx' }));
 
-    fs.writeFileSync(filePath, buffer);
-    const publicUrl = `/uploads/${safeName}`;
-
+    if (byteCount === 0) {
+      fs.unlinkSync(temporaryPath);
+      temporaryPath = null;
+      return res.status(400).json({ success: false, error: 'The uploaded file is empty.' });
+    }
+    fs.renameSync(temporaryPath, filePath);
+    temporaryPath = null;
     res.json({
       success: true,
-      url: publicUrl,
+      url: `/uploads/${safeName}`,
       filename: safeName,
-      sizeBytes: buffer.length,
-      mimeType: mimeType || 'application/octet-stream',
+      sizeBytes: byteCount,
+      mimeType,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (temporaryPath && fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+    const error = err as NodeJS.ErrnoException;
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        error: `File exceeds the ${Math.round(MAX_MEDIA_UPLOAD_BYTES / (1024 * 1024))} MB upload limit.`,
+      });
+    }
     console.error('Upload error:', err);
-    res.status(500).json({ success: false, error: err.message || 'File upload failed' });
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'File upload failed.',
+    });
   }
 });
 

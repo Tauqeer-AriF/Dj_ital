@@ -18,7 +18,6 @@ import {
   createGalleryItem,
   updateGalleryItem,
   deleteGalleryItem,
-  createMediaLibraryItem,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { MediaPickerModal } from './MediaPickerModal';
@@ -100,21 +99,12 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
         file.name.toLowerCase().endsWith('.m4v');
 
       // Upload media directly to server disk storage
-      const uploaded = await uploadMediaFileToServer(file, isVideo ? 'videos' : 'images');
-      const finalUrl = uploaded.url;
-
-      // Auto-register in SQLite Media Library with server URL
-      await createMediaLibraryItem({
-        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: uploaded.fileName,
-        file_type: uploaded.fileType,
-        mime_type: uploaded.mimeType,
-        url: finalUrl,
-        source: 'Gallery Manager Server Upload',
-        size_text: uploaded.sizeText,
+      const uploaded = await uploadMediaFileToServer(file, isVideo ? 'videos' : 'images', undefined, {
         category: isVideo ? 'Video Clips' : 'Gallery Archives',
-        description: `Saved to server storage for visual gallery on ${new Date().toLocaleDateString()}`,
+        source: 'Gallery Manager',
+        description: `Uploaded for visual gallery on ${new Date().toLocaleDateString()}`,
       });
+      const finalUrl = uploaded.url;
 
       setFormData((prev) => ({
         ...prev,

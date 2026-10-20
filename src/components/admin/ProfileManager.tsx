@@ -219,9 +219,15 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
       setIsUploadingLogo(true);
       setLogoError(null);
       let logoUrl = '';
+      let registeredByUpload = false;
       try {
-        const uploaded = await uploadMediaFileToServer(file, 'images');
+        const uploaded = await uploadMediaFileToServer(file, 'images', undefined, {
+          title: `Official Brand Logo (${file.name})`,
+          category: 'Branding',
+          source: 'Brand Logo Customiser',
+        });
         logoUrl = uploaded.url;
+        registeredByUpload = true;
       } catch (uploadErr) {
         console.warn('Server logo upload failed, falling back to optimized base64:', uploadErr);
         logoUrl = await optimizeImageFile(file, 800, 0.95);
@@ -232,15 +238,17 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
         logo_url: logoUrl,
         epk_logo_png: logoUrl,
       }));
-      trackMediaUpload({
-        title: `Official Brand Logo (${file.name})`,
-        file_name: file.name,
-        file_type: 'image',
-        mime_type: file.type || 'image/png',
-        url: logoUrl,
-        source: 'Brand Logo Customiser',
-        category: 'Branding',
-      });
+      if (!registeredByUpload) {
+        await trackMediaUpload({
+          title: `Official Brand Logo (${file.name})`,
+          file_name: file.name,
+          file_type: 'image',
+          mime_type: file.type || 'image/png',
+          url: logoUrl,
+          source: 'Brand Logo Customiser',
+          category: 'Branding',
+        });
+      }
     } catch (err: any) {
       setLogoError(err?.message || 'Failed to process logo file');
     } finally {

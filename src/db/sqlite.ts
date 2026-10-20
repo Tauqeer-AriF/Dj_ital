@@ -1365,6 +1365,45 @@ export async function createMediaLibraryItem(data: Partial<MediaLibraryItem>): P
   return id;
 }
 
+export async function createMediaLibraryItems(items: Partial<MediaLibraryItem>[]): Promise<number[]> {
+  if (items.length === 0) return [];
+  const db = await initDatabase();
+  const now = new Date().toISOString();
+  const ids: number[] = [];
+
+  db.run('BEGIN TRANSACTION');
+  try {
+    for (const data of items) {
+      db.run(
+        `INSERT INTO media_library (title, file_name, file_type, mime_type, url, source, size_text, category, description, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          data.title || 'Untitled Asset',
+          data.file_name || 'asset',
+          data.file_type || 'image',
+          data.mime_type || 'image/jpeg',
+          data.url || '/images/dj_ital_hero_1790112374509.jpg',
+          data.source || 'Upload',
+          data.size_text || '1.2 MB',
+          data.category || 'General',
+          data.description || '',
+          now,
+          now,
+        ]
+      );
+      const idRes = db.exec('SELECT last_insert_rowid() as id');
+      ids.push(idRes[0].values[0][0] as number);
+    }
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
+
+  await saveDatabaseToServer();
+  return ids;
+}
+
 export async function updateMediaLibraryItem(id: number, data: Partial<MediaLibraryItem>): Promise<void> {
   const db = await initDatabase();
   const entries = Object.entries(data).filter(([k]) => k !== 'id');
@@ -1379,10 +1418,137 @@ export async function updateMediaLibraryItem(id: number, data: Partial<MediaLibr
   await saveDatabaseToServer();
 }
 
-export async function deleteMediaLibraryItem(id: number): Promise<void> {
+export interface MediaFileCleanupResult {
+  deleted: number;
+  missing: number;
+  retainedReferenced: number;
+  skipped: number;
+  error?: string;
+}
+
+async function cleanupUnreferencedMediaFiles(urls: string[]): Promise<MediaFileCleanupResult> {
+  const result: MediaFileCleanupResult = {
+    deleted: 0,
+    missing: 0,
+    retainedReferenced: 0,
+    skipped: 0,
+  };
+  const uniqueUrls = Array.from(new Set(urls.filter((url) => url.startsWith('/uploads/'))));
+  if (uniqueUrls.length === 0) return result;
+
+  try {
+    const response = await fetch('/api/uploads/delete-unreferenced', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: uniqueUrls }),
+    });
+    const body: unknown = await response.json();
+    if (!response.ok || typeof body !== 'object' || body === null || !('success' in body) || body.success !== true) {
+      const message =
+        typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
+          ? body.error
+          : `Server rejected upload cleanup (HTTP ${response.status}).`;
+      return { ...result, error: message };
+    }
+
+    return {
+      deleted: 'deleted' in body && typeof body.deleted === 'number' ? body.deleted : 0,
+      missing: 'missing' in body && typeof body.missing === 'number' ? body.missing : 0,
+      retainedReferenced:
+        'retainedReferenced' in body && typeof body.retainedReferenced === 'number'
+          ? body.retainedReferenced
+          : 0,
+      skipped: 'skipped' in body && typeof body.skipped === 'number' ? body.skipped : 0,
+    };
+  } catch (error) {
+    return {
+      ...result,
+      error: error instanceof Error ? error.message : 'Could not contact the server to remove uploaded files.',
+    };
+  }
+}
+
+function queueMediaFilesForCleanup(db: Database, urls: string[]): void {
+  const eligibleUrls = Array.from(new Set(urls.filter((url) =>
+    /^\/uploads\/\d{13}_[a-f0-9]{16}_[a-zA-Z0-9._-]+$/.test(url)
+  )));
+  const deletedAt = new Date().toISOString();
+  for (const url of eligibleUrls) {
+    db.run(
+      'INSERT OR REPLACE INTO deleted_media_urls (url, deleted_at) VALUES (?, ?)',
+      [url, deletedAt]
+    );
+  }
+}
+
+export async function deleteMediaLibraryItem(id: number): Promise<MediaFileCleanupResult> {
   const db = await initDatabase();
-  db.run('DELETE FROM media_library WHERE id = ?', [id]);
+  const urlResult = db.exec('SELECT url FROM media_library WHERE id = ?', [id]);
+  const urls = urlResult[0]?.values.map(([url]) => String(url)) || [];
+  db.run('BEGIN TRANSACTION');
+  try {
+    queueMediaFilesForCleanup(db, urls);
+    db.run('DELETE FROM media_library WHERE id = ?', [id]);
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
   await saveDatabaseToServer();
+  return cleanupUnreferencedMediaFiles(urls);
+}
+
+export async function updateMediaLibraryItemsCategory(ids: number[], category: string): Promise<void> {
+  const uniqueIds = Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0)));
+  if (uniqueIds.length === 0) return;
+  const db = await initDatabase();
+  db.run('BEGIN TRANSACTION');
+  try {
+    const now = new Date().toISOString();
+    for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+      const chunk = uniqueIds.slice(offset, offset + 500);
+      const placeholders = chunk.map(() => '?').join(', ');
+      db.run(
+        `UPDATE media_library SET category = ?, updated_at = ? WHERE id IN (${placeholders})`,
+        [category.trim() || 'General', now, ...chunk]
+      );
+    }
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
+  await saveDatabaseToServer();
+}
+
+export async function deleteMediaLibraryItems(ids: number[]): Promise<MediaFileCleanupResult> {
+  const uniqueIds = Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0)));
+  if (uniqueIds.length === 0) {
+    return { deleted: 0, missing: 0, retainedReferenced: 0, skipped: 0 };
+  }
+  const db = await initDatabase();
+  const urls: string[] = [];
+  for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+    const chunk = uniqueIds.slice(offset, offset + 500);
+    const placeholders = chunk.map(() => '?').join(', ');
+    const urlResult = db.exec(`SELECT url FROM media_library WHERE id IN (${placeholders})`, chunk);
+    urls.push(...(urlResult[0]?.values.map(([url]) => String(url)) || []));
+  }
+  db.run('BEGIN TRANSACTION');
+  try {
+    queueMediaFilesForCleanup(db, urls);
+    for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+      const chunk = uniqueIds.slice(offset, offset + 500);
+      const placeholders = chunk.map(() => '?').join(', ');
+      db.run(`DELETE FROM media_library WHERE id IN (${placeholders})`, chunk);
+    }
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
+  await saveDatabaseToServer();
+  return cleanupUnreferencedMediaFiles(urls);
 }
 
 // SECURITY & AUTH

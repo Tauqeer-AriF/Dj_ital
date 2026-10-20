@@ -35,8 +35,11 @@ import {
   MediaLibraryItem,
   getMediaLibraryItems,
   createMediaLibraryItem,
+  createMediaLibraryItems,
   updateMediaLibraryItem,
   deleteMediaLibraryItem,
+  updateMediaLibraryItemsCategory,
+  deleteMediaLibraryItems,
   SiteMediaData,
   getSiteMedia,
   updateSiteMedia,
@@ -50,7 +53,7 @@ import { useSaving } from '../../context/SavingContext';
 import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import { ImageInput } from './ImageInput';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
-import { uploadMediaFileToServer } from '../../utils/mediaUpload';
+import { MAX_MEDIA_UPLOAD_BYTES, uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { extractYouTubeEmbedUrl } from '../DocumentarySection';
 import { copyTextToClipboard } from '../../utils/clipboard';
 
@@ -75,6 +78,8 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
 
   // Direct Upload Form state
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isFileDragging, setIsFileDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
@@ -83,11 +88,16 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   const [customUrl, setCustomUrl] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [bulkCategory, setBulkCategory] = useState('General');
 
   // Modals state
   const [previewItem, setPreviewItem] = useState<MediaLibraryItem | null>(null);
   const [editingItem, setEditingItem] = useState<MediaLibraryItem | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Site Media Slots state
@@ -101,6 +111,8 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     try {
       const media = await getMediaLibraryItems();
       setItems(media);
+      const currentIds = new Set(media.map((item) => item.id));
+      setSelectedItemIds((selected) => new Set(Array.from(selected).filter((id) => currentIds.has(id))));
     } catch (err) {
       console.error('Failed to load media library:', err);
     } finally {
@@ -140,53 +152,167 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   };
 
   // Direct File Upload handler (handles Images, PDFs, Docs, Audio)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileUpload = async (files: FileList | File[]) => {
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length === 0) return;
+    const oversized = selectedFiles.filter((file) => file.size > MAX_MEDIA_UPLOAD_BYTES);
+    const empty = selectedFiles.filter((file) => file.size === 0);
+    if (oversized.length || empty.length) {
+      const messages = [
+        oversized.length ? `${oversized.length} file(s) exceed the ${Math.round(MAX_MEDIA_UPLOAD_BYTES / (1024 * 1024))} MB limit` : '',
+        empty.length ? `${empty.length} file(s) are empty` : '',
+      ].filter(Boolean);
+      showError(
+        'Some Files Cannot Be Uploaded',
+        `${messages.join('; ')}.${selectedFiles.length > oversized.length + empty.length ? ' Other selected files will still upload.' : ''}`
+      );
+    }
+    const filesToUpload = selectedFiles.filter(
+      (file) => file.size > 0 && file.size <= MAX_MEDIA_UPLOAD_BYTES
+    );
+    if (filesToUpload.length === 0) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     setUploadError(null);
     setUploadSuccess(null);
+    setBatchProgress({ current: 0, total: filesToUpload.length });
+    const uploadedItems: Partial<MediaLibraryItem>[] = [];
+    const failures: string[] = [];
+
+    for (const [index, file] of filesToUpload.entries()) {
+      setBatchProgress({ current: index + 1, total: filesToUpload.length });
+      try {
+        const uploaded = await uploadMediaFileToServer(file, customCategory, setUploadProgress, {
+          registerInLibrary: false,
+        });
+        const title = (filesToUpload.length === 1 ? customTitle.trim() : '') ||
+          file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const category = customCategory || (
+          uploaded.fileType === 'document' ? 'Documents' :
+          uploaded.fileType === 'image' ? 'Images' :
+          uploaded.fileType === 'audio' ? 'Audio' :
+          uploaded.fileType === 'video' ? 'Videos' : 'Uploads'
+        );
+        uploadedItems.push({
+          title,
+          file_name: uploaded.fileName,
+          file_type: uploaded.fileType,
+          mime_type: uploaded.mimeType,
+          url: uploaded.url,
+          source: 'Server Disk Upload',
+          size_text: uploaded.sizeText,
+          category,
+          description: (filesToUpload.length === 1 ? customDescription.trim() : '') ||
+            `Saved to server disk on ${new Date().toLocaleDateString()}`,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed.';
+        failures.push(`${file.name}: ${message}`);
+      }
+    }
 
     try {
-      // Directly upload media file or document to server disk storage
-      const uploaded = await uploadMediaFileToServer(file, customCategory);
-
-      const title = customTitle.trim() || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      const category = customCategory || (
-        uploaded.fileType === 'document' ? 'Documents' :
-        uploaded.fileType === 'image' ? 'Images' :
-        uploaded.fileType === 'audio' ? 'Audio' :
-        uploaded.fileType === 'video' ? 'Videos' : 'Uploads'
-      );
-
-      await createMediaLibraryItem({
-        title,
-        file_name: uploaded.fileName,
-        file_type: uploaded.fileType,
-        mime_type: uploaded.mimeType,
-        url: uploaded.url,
-        source: 'Server Disk Upload',
-        size_text: uploaded.sizeText,
-        category,
-        description: customDescription.trim() || `Saved to server disk on ${new Date().toLocaleDateString()}`,
-      });
-
-      setUploadSuccess(`Successfully saved "${file.name}" to server disk!`);
-      showSuccess(
-        'Media Saved to Server',
-        `"${file.name}" was uploaded directly to server storage (${uploaded.sizeText}).`
-      );
-      setCustomTitle('');
-      setCustomDescription('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      await loadLibrary();
-      onRefresh();
-    } catch (err: any) {
-      setUploadError(err?.message || 'Failed to upload media file');
-      showError('Failed to Upload Media', err?.message || 'An error occurred during upload.');
+      let uploadedCount = 0;
+      if (uploadedItems.length > 0) {
+        try {
+          await withSaving(
+            async () => {
+              await createMediaLibraryItems(uploadedItems);
+            },
+            `Registering ${uploadedItems.length} uploaded file(s) in the media library...`
+          );
+          uploadedCount = uploadedItems.length;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Could not save uploaded files to the media library.';
+          failures.push(`${uploadedItems.length} uploaded file(s) could not be registered: ${message}`);
+        }
+      }
+      if (uploadedCount > 0) {
+        const message = `Uploaded ${uploadedCount} of ${filesToUpload.length} file(s) to server storage.`;
+        setUploadSuccess(message);
+        showSuccess('Media Upload Complete', message);
+        setCustomTitle('');
+        setCustomDescription('');
+        await loadLibrary();
+        onRefresh();
+      }
+      if (failures.length > 0) {
+        const details = failures.slice(0, 3).join('\n');
+        const message = `${failures.length} file(s) failed. ${details}`;
+        setUploadError(message);
+        showError('Some Uploads Failed', message);
+      }
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
+      setBatchProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleItemSelection = (id: number) => {
+    setSelectedItemIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkCategoryUpdate = async () => {
+    const ids = Array.from(selectedItemIds);
+    if (ids.length === 0) return;
+    setIsBulkActionRunning(true);
+    try {
+      await withSaving(async () => {
+        await updateMediaLibraryItemsCategory(ids, bulkCategory);
+        setSelectedItemIds(new Set());
+        await loadLibrary();
+        onRefresh();
+      }, `Updating category for ${ids.length} media item(s)...`);
+      showSuccess('Bulk Category Updated', `Updated ${ids.length} media item(s) to "${bulkCategory}".`);
+    } catch (err) {
+      showError('Bulk Update Failed', err instanceof Error ? err.message : 'Could not update media categories.');
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedItemIds);
+    if (ids.length === 0) return;
+    setIsBulkActionRunning(true);
+    try {
+      const cleanup = await withSaving(async () => {
+        const result = await deleteMediaLibraryItems(ids);
+        setSelectedItemIds(new Set());
+        setIsBulkDeleteConfirmOpen(false);
+        await loadLibrary();
+        onRefresh();
+        return result;
+      }, `Deleting ${ids.length} media item(s)...`);
+      showSuccess(
+        'Media Items Deleted',
+        `Removed ${ids.length} item(s) from the library and ${cleanup.deleted} uploaded file(s) from disk.` +
+          (cleanup.retainedReferenced ? ` Kept ${cleanup.retainedReferenced} file(s) still referenced by site content.` : '')
+      );
+      if (cleanup.error) showError('Upload Cleanup Incomplete', cleanup.error);
+    } catch (err) {
+      showError('Bulk Delete Failed', err instanceof Error ? err.message : 'Could not delete selected media items.');
+      await loadLibrary();
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkCopyUrls = async () => {
+    const selected = items.filter((item) => selectedItemIds.has(item.id));
+    try {
+      await copyTextToClipboard(selected.map((item) => item.url).join('\n'));
+      showSuccess('Media Links Copied', `Copied ${selected.length} media link(s) to the clipboard.`);
+    } catch (err) {
+      showError('Copy Failed', err instanceof Error ? err.message : 'Could not copy selected media links.');
     }
   };
 
@@ -201,24 +327,32 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
 
     try {
       const url = customUrl.trim();
-      let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'image';
+      const fileName = url.split('/').pop()?.split('?')[0] || 'external-asset';
+      const extension = fileName.split('.').pop()?.toLowerCase() || '';
+      let fileType: 'image' | 'document' | 'audio' | 'video' | 'other' = 'other';
+      let mimeType = 'application/octet-stream';
 
-      if (url.toLowerCase().endsWith('.pdf') || url.includes('.pdf')) {
-        fileType = 'document';
-      } else if (url.includes('soundcloud') || url.includes('mixcloud') || url.endsWith('.mp3')) {
+      if (/\.(png|jpe?g|gif|webp|svg|avif)$/i.test(fileName)) {
+        fileType = 'image';
+        mimeType = extension === 'svg' ? 'image/svg+xml' : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+      } else if (/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i.test(fileName) || /soundcloud|mixcloud/i.test(url)) {
         fileType = 'audio';
-      } else if (url.includes('youtube') || url.includes('vimeo') || url.endsWith('.mp4')) {
+        mimeType = 'audio/mpeg';
+      } else if (/\.(mp4|mov|webm|m4v|ogv|avi|mkv)$/i.test(fileName) || /youtube|youtu\.be|vimeo/i.test(url)) {
         fileType = 'video';
+        mimeType = 'video/mp4';
+      } else if (/\.(csv|doc|docm|docx|dot|dotx|epub|log|md|odf|odp|ods|odt|pages|pdf|ppt|pptm|pptx|rtf|tex|tsv|txt|xls|xlsb|xlsm|xlsx|xlt|xml|yaml|yml)$/i.test(fileName)) {
+        fileType = 'document';
+        mimeType = extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
       }
 
-      const fileName = url.split('/').pop()?.split('?')[0] || 'external-asset';
       const title = customTitle.trim() || fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
 
       await createMediaLibraryItem({
         title,
         file_name: fileName,
         file_type: fileType,
-        mime_type: fileType === 'document' ? 'application/pdf' : 'image/jpeg',
+        mime_type: mimeType,
         url,
         source: 'External Link',
         size_text: 'Remote Asset',
@@ -271,14 +405,20 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     const targetId = deleteCandidateId;
     try {
       setDeleteCandidateId(null);
-      await withSaving(async () => {
+      const cleanup = await withSaving(async () => {
         // Optimistically remove from state for immediate UI feedback
         setItems((prev) => prev.filter((i) => i.id !== targetId));
-        await deleteMediaLibraryItem(targetId);
-        showSuccess('Media Item Deleted', 'Asset removed from library.');
+        const result = await deleteMediaLibraryItem(targetId);
         await loadLibrary();
         onRefresh();
+        return result;
       }, 'Deleting media asset from database...');
+      showSuccess(
+        'Media Item Deleted',
+        `Asset removed from the library${cleanup.deleted ? ' and uploaded file removed from disk' : ''}.` +
+          (cleanup.retainedReferenced ? ' The file was kept because site content still references it.' : '')
+      );
+      if (cleanup.error) showError('Upload Cleanup Incomplete', cleanup.error);
     } catch (err: any) {
       console.error('Failed to delete media item:', err);
       showError('Failed to Delete Media', err?.message || 'A database error occurred.');
@@ -370,6 +510,17 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
       });
   }, [items, selectedType, selectedCategory, searchQuery, sortBy]);
 
+  const visibleItemIds = filteredItems.map((item) => item.id);
+  const allVisibleSelected = visibleItemIds.length > 0 && visibleItemIds.every((id) => selectedItemIds.has(id));
+  const toggleVisibleSelection = () => {
+    setSelectedItemIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) visibleItemIds.forEach((id) => next.delete(id));
+      else visibleItemIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
   // Statistics
   const stats = useMemo(() => {
     const total = items.length;
@@ -377,7 +528,8 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     const documents = items.filter((i) => i.file_type === 'document').length;
     const audio = items.filter((i) => i.file_type === 'audio').length;
     const video = items.filter((i) => i.file_type === 'video').length;
-    return { total, images, documents, audio, video };
+    const other = items.filter((i) => i.file_type === 'other').length;
+    return { total, images, documents, audio, video, other };
   }, [items]);
 
   // Unique categories list
@@ -466,7 +618,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-neutral-200 dark:border-white/10 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-neutral-200 dark:border-white/10 text-xs font-mono">
           <div className="p-3 rounded bg-neutral-50 dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/10 space-y-0.5">
             <div className="text-[10px] uppercase text-neutral-500 font-bold">Total Assets</div>
             <div className="text-xl font-display font-black text-neutral-950 dark:text-white">{stats.total}</div>
@@ -482,6 +634,10 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
           <div className="p-3 rounded bg-neutral-50 dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/10 space-y-0.5">
             <div className="text-[10px] uppercase text-emerald-600 dark:text-emerald-400 font-bold">Audio & Video</div>
             <div className="text-xl font-display font-black text-emerald-400">{stats.audio + stats.video}</div>
+          </div>
+          <div className="p-3 rounded bg-neutral-50 dark:bg-neutral-950/60 border border-neutral-200 dark:border-white/10 space-y-0.5">
+            <div className="text-[10px] uppercase text-neutral-500 font-bold">Other Files</div>
+            <div className="text-xl font-display font-black text-neutral-500">{stats.other}</div>
           </div>
         </div>
       </div>
@@ -597,14 +753,33 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*,.mp4,.mov,.webm,.m4v"
-                    onChange={handleFileUpload}
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files?.length) void handleFileUpload(e.target.files);
+                    }}
                     className="hidden"
                     id="media-center-file-input"
                   />
                   <label
                     htmlFor="media-center-file-input"
-                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 rounded cursor-pointer bg-neutral-50/50 dark:bg-neutral-950/40 hover:bg-amber-400/5 transition-all text-center group"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsFileDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsFileDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsFileDragging(false);
+                      if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files);
+                    }}
+                    className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded cursor-pointer bg-neutral-50/50 dark:bg-neutral-950/40 transition-all text-center group ${
+                      isFileDragging
+                        ? 'border-amber-400 bg-amber-400/10'
+                        : 'border-neutral-300 dark:border-white/20 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-amber-400/5'
+                    }`}
                   >
                     <Upload
                       className={`w-9 h-9 text-neutral-400 group-hover:text-amber-400 transition-colors mb-2.5 ${
@@ -612,11 +787,24 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                       }`}
                     />
                     <span className="text-sm font-bold text-neutral-900 dark:text-white">
-                      {isUploading ? 'Uploading & saving media file...' : 'Click to Browse or Drag Files Here'}
+                      {isUploading
+                        ? `Uploading file ${batchProgress?.current || 1} of ${batchProgress?.total || 1}...`
+                        : 'Click to Browse or Drag Multiple Files Here'}
                     </span>
                     <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 max-w-md">
-                      Supports documents (PDF, DOCX, TXT, CSV), images (JPG, PNG, WebP, SVG), audio (MP3, WAV), and videos (MP4, MOV). All media files and documents are saved directly to server disk storage instead of browser local storage.
+                      Upload any file type up to {Math.round(MAX_MEDIA_UPLOAD_BYTES / (1024 * 1024))} MB, including images, audio, video, PDFs, Office files, spreadsheets, presentations, and archives. Files are streamed directly to persistent server storage.
                     </span>
+                    {isUploading && (
+                      <div className="mt-3 w-full max-w-md space-y-1.5">
+                        <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                          <div
+                            className="h-full rounded-full bg-amber-400 transition-[width] duration-150"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">{uploadProgress}% uploaded</span>
+                      </div>
+                    )}
                   </label>
                 </div>
               ) : (
@@ -671,6 +859,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                 { id: 'document', label: `Docs (${stats.documents})` },
                 { id: 'audio', label: `Audio (${stats.audio})` },
                 { id: 'video', label: `Videos (${stats.video})` },
+                { id: 'other', label: `Other files (${stats.other})` },
               ].map((pill) => (
                 <button
                   key={pill.id}
@@ -737,6 +926,65 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
             </div>
           </div>
 
+          {filteredItems.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-800 dark:text-neutral-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleVisibleSelection}
+                  aria-label="Select all visible media items"
+                  className="h-4 w-4 accent-amber-400"
+                />
+                Select visible ({filteredItems.length})
+                {selectedItemIds.size > 0 && <span className="text-amber-600 dark:text-amber-400">· {selectedItemIds.size} selected</span>}
+              </label>
+              {selectedItemIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={bulkCategory}
+                    onChange={(e) => setBulkCategory(e.target.value)}
+                    aria-label="Bulk category"
+                    placeholder="Category"
+                    className="w-36 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 dark:border-white/15 dark:bg-neutral-950 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBulkCategoryUpdate}
+                    disabled={isBulkActionRunning || isSaving}
+                    className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white/10 dark:hover:bg-white/20"
+                  >
+                    Apply Category
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkCopyUrls}
+                    disabled={isBulkActionRunning}
+                    className="inline-flex items-center gap-1.5 rounded border border-neutral-300 px-3 py-1.5 text-xs font-bold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:border-white/15 dark:text-neutral-200 dark:hover:bg-white/10"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy Links
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                    disabled={isBulkActionRunning || isSaving}
+                    className="inline-flex items-center gap-1.5 rounded bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-500 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedItemIds(new Set())}
+                    disabled={isBulkActionRunning}
+                    className="rounded px-2 py-1.5 text-xs text-neutral-600 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Results Summary & Media Grid / List */}
           {isLoading ? (
             <div className="py-20 text-center text-xs font-mono text-neutral-500">
@@ -773,10 +1021,23 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                 return (
                   <div
                     key={item.id}
-                    className="group rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900/60 hover:border-amber-400/60 dark:hover:border-amber-400/60 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    className={`group rounded border bg-white dark:bg-neutral-900/60 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+                      selectedItemIds.has(item.id)
+                        ? 'border-amber-400 ring-2 ring-amber-400/30'
+                        : 'border-neutral-200 dark:border-white/10 hover:border-amber-400/60 dark:hover:border-amber-400/60'
+                    }`}
                   >
                     {/* Media Preview Box */}
                     <div className="relative aspect-[16/10] bg-neutral-950 overflow-hidden flex items-center justify-center border-b border-neutral-200 dark:border-white/10 group/thumb">
+                      <label className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-white/30 bg-black/70 text-white shadow backdrop-blur-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.has(item.id)}
+                          onChange={() => toggleItemSelection(item.id)}
+                          aria-label={`Select ${item.title}`}
+                          className="h-4 w-4 accent-amber-400"
+                        />
+                      </label>
                       {isImage ? (
                         <img
                           src={normalizeImageUrl(item.url)}
@@ -942,6 +1203,15 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                 <table className="w-full text-left text-xs">
                   <thead className="bg-neutral-50 dark:bg-neutral-950/80 border-b border-neutral-200 dark:border-white/10 text-[11px] font-mono font-bold text-neutral-500 uppercase">
                     <tr>
+                      <th className="p-3.5">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={toggleVisibleSelection}
+                          aria-label="Select all visible media items"
+                          className="h-4 w-4 accent-amber-400"
+                        />
+                      </th>
                       <th className="p-3.5">Asset</th>
                       <th className="p-3.5">Type & Category</th>
                       <th className="p-3.5">Source</th>
@@ -951,7 +1221,16 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   </thead>
                   <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
                     {filteredItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-white/5 transition-colors">
+                      <tr key={item.id} className={`${selectedItemIds.has(item.id) ? 'bg-amber-400/10' : ''} hover:bg-neutral-50/50 dark:hover:bg-white/5 transition-colors`}>
+                        <td className="p-3.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.has(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            aria-label={`Select ${item.title}`}
+                            className="h-4 w-4 accent-amber-400"
+                          />
+                        </td>
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded bg-neutral-950 border border-neutral-800 shrink-0 flex items-center justify-center overflow-hidden">
@@ -1373,6 +1652,17 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
         isDestructive={true}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteCandidateId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={isBulkDeleteConfirmOpen}
+        title="Delete Selected Media Items?"
+        message={`This will remove ${selectedItemIds.size} selected item(s) from the Media Library. This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedItemIds.size} Items`}
+        isDestructive={true}
+        isLoading={isBulkActionRunning}
+        onConfirm={handleBulkDelete}
+        onCancel={() => !isBulkActionRunning && setIsBulkDeleteConfirmOpen(false)}
       />
 
       {/* MODAL 4: RESET ALL SLOTS CONFIRMATION */}

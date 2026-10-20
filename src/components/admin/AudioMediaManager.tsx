@@ -26,7 +26,6 @@ import {
   createVideo,
   updateVideo,
   deleteVideo,
-  createMediaLibraryItem,
   subscribeDb,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
@@ -107,7 +106,11 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
     try {
       setIsUploadingAudio(true);
-      const uploaded = await uploadMediaFileToServer(file, 'audio');
+      const uploaded = await uploadMediaFileToServer(file, 'audio', undefined, {
+        category: 'Audio Broadcasts',
+        source: 'Audio Manager',
+        description: `Uploaded for Live Sets & Radio Archives on ${new Date().toLocaleDateString()}`,
+      });
       const audioUrl = uploaded.url;
 
       setMixFormData((prev) => ({
@@ -117,18 +120,6 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
         platform: 'Direct Audio',
         title: prev.title || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
       }));
-
-      await createMediaLibraryItem({
-        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: uploaded.fileName,
-        file_type: 'audio',
-        mime_type: uploaded.mimeType,
-        url: audioUrl,
-        source: 'Audio Manager Server Upload',
-        size_text: uploaded.sizeText,
-        category: 'Audio Broadcasts',
-        description: `Saved to server disk for Live Sets & Radio Archives on ${new Date().toLocaleDateString()}`,
-      });
 
       showSuccess('Audio Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {
@@ -147,7 +138,11 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
 
     try {
       setIsUploadingVideo(true);
-      const uploaded = await uploadMediaFileToServer(file, 'videos');
+      const uploaded = await uploadMediaFileToServer(file, 'videos', undefined, {
+        category: 'Video Clips',
+        source: 'Audio & Video Manager',
+        description: `Uploaded for Video Clips & Recaps on ${new Date().toLocaleDateString()}`,
+      });
       const videoUrl = uploaded.url;
 
       setVideoFormData((prev) => ({
@@ -155,18 +150,6 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
         video_url: videoUrl,
         title: prev.title || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
       }));
-
-      await createMediaLibraryItem({
-        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: uploaded.fileName,
-        file_type: 'video',
-        mime_type: uploaded.mimeType,
-        url: videoUrl,
-        source: 'Media Gallery Video Server Upload',
-        size_text: uploaded.sizeText,
-        category: 'Video Clips',
-        description: `Saved to server disk for Video Clips & Recaps on ${new Date().toLocaleDateString()}`,
-      });
 
       showSuccess('Video Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {

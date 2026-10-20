@@ -42,7 +42,10 @@ export const ImageInput: React.FC<ImageInputProps> = ({
 
     try {
       setIsUploading(true);
-      const res = await uploadMediaFileToServer(file);
+      const res = await uploadMediaFileToServer(file, undefined, undefined, {
+        category: 'Images',
+        source: 'Dashboard Image Upload',
+      });
       onChange(res.url);
       showSuccess('Uploaded Successfully', `${file.name} uploaded.`);
     } catch (err: any) {

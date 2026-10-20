@@ -38,7 +38,6 @@ import {
   updateDocumentary,
   deleteDocumentary,
   resetDocumentaries,
-  createMediaLibraryItem,
 } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
@@ -106,23 +105,14 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
 
     try {
       setIsUploadingVideo(true);
-      const uploaded = await uploadMediaFileToServer(file, 'videos');
+      const uploaded = await uploadMediaFileToServer(file, 'videos', undefined, {
+        category: 'Documentary Series',
+        source: 'Documentary Manager',
+        description: `Uploaded for Documentary Series on ${new Date().toLocaleDateString()}`,
+      });
       const videoUrl = uploaded.url;
 
       setEpisodeForm((prev) => ({ ...prev, youtube_url: videoUrl }));
-
-      // Track in Media Library with server URL
-      await createMediaLibraryItem({
-        title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-        file_name: uploaded.fileName,
-        file_type: 'video',
-        mime_type: uploaded.mimeType,
-        url: videoUrl,
-        source: 'Documentary Series Server Upload',
-        size_text: uploaded.sizeText,
-        category: 'Documentary Series',
-        description: `Saved to server disk for Documentary Series episode on ${new Date().toLocaleDateString()}`,
-      });
 
       showSuccess('Video Uploaded to Server', `"${file.name}" saved to server disk (${uploaded.sizeText}).`);
     } catch (err: any) {
