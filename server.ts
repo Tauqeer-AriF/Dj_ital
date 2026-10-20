@@ -36,6 +36,15 @@ app.use('/public', express.static(path.resolve(__dirname, 'public')));
 // API Routes
 // ---------------------------------------------------------------------------
 
+// Health check endpoint (for Railway, Cloud Run, uptime monitors)
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // 1. Get database backup summary
 app.get('/api/backup/summary', (_req: Request, res: Response) => {
   try {
