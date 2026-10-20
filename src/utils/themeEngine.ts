@@ -1,162 +1,81 @@
-// Helper to calculate contrast, hover, and focus shades from any Hex color
+export type AccentColorKey = 'amber' | 'emerald' | 'cyan' | 'fuchsia' | 'rose' | 'violet' | 'lime' | 'sky';
 
-export interface ColorPalette {
-  primary: string;
-  hover: string;
-  focus: string;
-  glow: string;
-  subtle: string;
-  textColor: string;
-  rgb: string;
+export interface ThemeColorDef {
+  key: AccentColorKey;
+  label: string;
+  hex: string;
+  cssVar: string;
+  tailwindClass: string;
 }
 
-// Convert Hex to RGB
-export function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  let cleaned = hex.replace('#', '').trim();
-  if (cleaned.length === 3) {
-    cleaned = cleaned.split('').map(c => c + c).join('');
-  }
-  const num = parseInt(cleaned, 16);
-  if (isNaN(num)) {
-    return { r: 245, g: 158, b: 11 }; // Fallback to Amber
-  }
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255,
-  };
-}
-
-// Compute luminance (0 to 1) to determine high-contrast text color
-export function getLuminance(r: number, g: number, b: number): number {
-  const a = [r, g, b].map(v => {
-    v /= 255;
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  });
-  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-}
-
-// Lighten or darken color for snappy hover states
-export function adjustBrightness(hex: string, percent: number): string {
-  const { r, g, b } = hexToRgb(hex);
-  const adjust = (val: number) => {
-    const res = Math.round(val + (255 - val) * (percent / 100));
-    return Math.min(255, Math.max(0, res));
-  };
-  const darken = (val: number) => {
-    const res = Math.round(val * (1 + percent / 100));
-    return Math.min(255, Math.max(0, res));
-  };
-
-  const newR = percent > 0 ? adjust(r) : darken(r);
-  const newG = percent > 0 ? adjust(g) : darken(g);
-  const newB = percent > 0 ? adjust(b) : darken(b);
-
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
-}
-
-export function generateColorPalette(hexColor: string): ColorPalette {
-  const { r, g, b } = hexToRgb(hexColor);
-  const luminance = getLuminance(r, g, b);
-  
-  // Contrast text color
-  const textColor = luminance > 0.45 ? '#09090b' : '#ffffff';
-
-  // Hover shade: lighten for dark colors, slightly darken for very light colors
-  const hover = luminance > 0.75 ? adjustBrightness(hexColor, -15) : adjustBrightness(hexColor, 20);
-  const focus = `rgba(${r}, ${g}, ${b}, 0.55)`;
-  const glow = `rgba(${r}, ${g}, ${b}, 0.38)`;
-  const subtle = `rgba(${r}, ${g}, ${b}, 0.16)`;
-
-  return {
-    primary: hexColor,
-    hover,
-    focus,
-    glow,
-    subtle,
-    textColor,
-    rgb: `${r}, ${g}, ${b}`,
-  };
-}
-
-export const PRESET_COLOR_MAP: Record<string, string> = {
-  amber: '#f59e0b',
-  emerald: '#10b981',
-  cyan: '#06b6d4',
-  crimson: '#ef4444',
-  violet: '#8b5cf6',
-  'acid-lime': '#84cc16',
-  monochrome: '#ffffff',
-  custom: '#f59e0b',
+export const themeColors: Record<AccentColorKey, ThemeColorDef> = {
+  amber: {
+    key: 'amber',
+    label: 'Jungle Gold / Amber',
+    hex: '#f59e0b',
+    cssVar: '38, 92%, 50%',
+    tailwindClass: 'text-amber-500',
+  },
+  emerald: {
+    key: 'emerald',
+    label: 'Rave Emerald / Green',
+    hex: '#10b981',
+    cssVar: '160, 84%, 39%',
+    tailwindClass: 'text-emerald-500',
+  },
+  cyan: {
+    key: 'cyan',
+    label: 'Laser Cyan / Blue',
+    hex: '#06b6d4',
+    cssVar: '189, 94%, 43%',
+    tailwindClass: 'text-cyan-500',
+  },
+  fuchsia: {
+    key: 'fuchsia',
+    label: 'Neon Fuchsia',
+    hex: '#d946ef',
+    cssVar: '292, 84%, 61%',
+    tailwindClass: 'text-fuchsia-500',
+  },
+  rose: {
+    key: 'rose',
+    label: 'Soundclash Red / Rose',
+    hex: '#f43f5e',
+    cssVar: '350, 89%, 60%',
+    tailwindClass: 'text-rose-500',
+  },
+  violet: {
+    key: 'violet',
+    label: 'Sub-bass Violet',
+    hex: '#8b5cf6',
+    cssVar: '258, 90%, 66%',
+    tailwindClass: 'text-violet-500',
+  },
+  lime: {
+    key: 'lime',
+    label: 'Dub Acid Lime',
+    hex: '#84cc16',
+    cssVar: '84, 81%, 44%',
+    tailwindClass: 'text-lime-500',
+  },
+  sky: {
+    key: 'sky',
+    label: 'Pirate Radio Sky',
+    hex: '#0ea5e9',
+    cssVar: '199, 89%, 48%',
+    tailwindClass: 'text-sky-500',
+  },
 };
 
-export function resolveColorHex(scheme?: string, customHex?: string): string {
-  if (!scheme) {
-    return '#f59e0b';
-  }
-  if (scheme === 'custom') {
-    return customHex || '#f59e0b';
-  }
-  return PRESET_COLOR_MAP[scheme] || customHex || '#f59e0b';
-}
-
-const DISPLAY_FONT_MAP: Record<string, string> = {
-  syne: "'Syne', 'Bebas Neue', 'Oswald', sans-serif",
-  'space-grotesk': "'Space Grotesk', sans-serif",
-  outfit: "'Outfit', 'Barlow Condensed', sans-serif",
-  bebas: "'Bebas Neue', 'Oswald', cursive, sans-serif",
-  inter: "'Inter', sans-serif",
-  jakarta: "'Plus Jakarta Sans', sans-serif",
-};
-
-const BODY_FONT_MAP: Record<string, string> = {
-  jakarta: "'Plus Jakarta Sans', sans-serif",
-  inter: "'Inter', sans-serif",
-  'space-grotesk': "'Space Grotesk', sans-serif",
-  outfit: "'Outfit', sans-serif",
-  mono: "'JetBrains Mono', 'Barlow Condensed', monospace",
-  system: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-};
-
-export function applyThemeToDOM(
-  colorHex: string,
-  fontPreset: string = 'syne',
-  bodyFontPreset: string = 'jakarta',
-  colorSchemeName?: string
-) {
+export function applyThemeColor(colorKey: AccentColorKey | string, customHex?: string) {
   if (typeof document === 'undefined') return;
-
-  const palette = generateColorPalette(colorHex);
   const root = document.documentElement;
 
-  // Apply CSS Variables directly on root
-  root.style.setProperty('--accent-primary', palette.primary);
-  root.style.setProperty('--accent-hover', palette.hover);
-  root.style.setProperty('--accent-focus', palette.focus);
-  root.style.setProperty('--accent-glow', palette.glow);
-  root.style.setProperty('--accent-subtle', palette.subtle);
-  root.style.setProperty('--accent-text-color', palette.textColor);
-  root.style.setProperty('--accent-rgb', palette.rgb);
+  const resolvedKey = (colorKey in themeColors ? colorKey : 'amber') as AccentColorKey;
+  const def = themeColors[resolvedKey];
+  const targetHex = customHex || def.hex;
 
-  // Apply font presets and explicit font family CSS variables
-  root.setAttribute('data-font-preset', fontPreset);
-  root.setAttribute('data-body-font-preset', bodyFontPreset);
-  root.style.setProperty(
-    '--font-display',
-    DISPLAY_FONT_MAP[fontPreset] || DISPLAY_FONT_MAP.syne
-  );
-  root.style.setProperty(
-    '--font-sans',
-    BODY_FONT_MAP[bodyFontPreset] || BODY_FONT_MAP.jakarta
-  );
-
-  if (colorSchemeName) {
-    root.setAttribute('data-color-scheme', colorSchemeName);
-  }
-}
-
-export function initSavedTheme() {
-  if (typeof window === 'undefined') return;
-  applyThemeToDOM('#f59e0b', 'syne', 'jakarta', 'amber');
+  root.style.setProperty('--accent-color', targetHex);
+  root.style.setProperty('--accent-glow', `${targetHex}33`);
+  root.setAttribute('data-accent-theme', resolvedKey);
 }

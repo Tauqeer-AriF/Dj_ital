@@ -87,12 +87,14 @@ const COLOR_OPTIONS = [
 
 export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
-  const { withSaving } = useSaving();
+  const { isSaving: isGlobalSaving, savingMessage, withSaving } = useSaving();
   const [activeTab, setActiveTab] = useState<SubTab>('general');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+
+  const savingActive = isSaving || isGlobalSaving || isResetting;
 
   // Database Data States
   const [settings, setSettings] = useState<HeritageSettingsData | null>(null);
@@ -242,16 +244,18 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
     }
 
     try {
-      if (editingCred) {
-        await updateHeritageCredential(editingCred.id, credForm);
-        showSuccess('Credential Updated', `"${credForm.title}" saved.`);
-      } else {
-        await createHeritageCredential(credForm);
-        showSuccess('Credential Added', `"${credForm.title}" added to heritage credentials.`);
-      }
-      setIsCredModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingCred) {
+          await updateHeritageCredential(editingCred.id, credForm);
+          showSuccess('Credential Updated', `"${credForm.title}" saved.`);
+        } else {
+          await createHeritageCredential(credForm);
+          showSuccess('Credential Added', `"${credForm.title}" added to heritage credentials.`);
+        }
+        setIsCredModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving archival credential to database...');
     } catch (err: any) {
       showError('Save Failed', err?.message || 'Could not save credential.');
     }
@@ -260,11 +264,13 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
   const handleDeleteCred = async () => {
     if (!deleteCredId) return;
     try {
-      await deleteHeritageCredential(deleteCredId);
-      showSuccess('Credential Deleted', 'Credential card removed.');
-      setDeleteCredId(null);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        await deleteHeritageCredential(deleteCredId);
+        showSuccess('Credential Deleted', 'Credential card removed.');
+        setDeleteCredId(null);
+        await loadData();
+        onRefresh();
+      }, 'Deleting archival credential from database...');
     } catch (err: any) {
       showError('Delete Failed', err?.message || 'Could not delete credential.');
     }
@@ -305,16 +311,18 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
     }
 
     try {
-      if (editingChap) {
-        await updateHeritageChapter(editingChap.id, chapForm);
-        showSuccess('Chapter Updated', `Chapter "${chapForm.tab_label}" saved.`);
-      } else {
-        await createHeritageChapter(chapForm);
-        showSuccess('Chapter Created', `Chapter "${chapForm.tab_label}" created.`);
-      }
-      setIsChapModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingChap) {
+          await updateHeritageChapter(editingChap.id, chapForm);
+          showSuccess('Chapter Updated', `Chapter "${chapForm.tab_label}" saved.`);
+        } else {
+          await createHeritageChapter(chapForm);
+          showSuccess('Chapter Created', `Chapter "${chapForm.tab_label}" created.`);
+        }
+        setIsChapModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving archival chapter to database...');
     } catch (err: any) {
       showError('Save Failed', err?.message || 'Could not save chapter.');
     }
@@ -323,11 +331,13 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
   const handleDeleteChap = async () => {
     if (!deleteChapId) return;
     try {
-      await deleteHeritageChapter(deleteChapId);
-      showSuccess('Chapter Removed', 'Archival chapter deleted.');
-      setDeleteChapId(null);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        await deleteHeritageChapter(deleteChapId);
+        showSuccess('Chapter Removed', 'Archival chapter deleted.');
+        setDeleteChapId(null);
+        await loadData();
+        onRefresh();
+      }, 'Deleting archival chapter from database...');
     } catch (err: any) {
       showError('Delete Failed', err?.message || 'Could not delete chapter.');
     }
@@ -368,16 +378,18 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
     }
 
     try {
-      if (editingMile) {
-        await updateHeritageMilestone(editingMile.id, mileForm);
-        showSuccess('Milestone Updated', `Milestone "${mileForm.year_badge}" updated.`);
-      } else {
-        await createHeritageMilestone(mileForm);
-        showSuccess('Milestone Created', `Milestone "${mileForm.year_badge}" created.`);
-      }
-      setIsMileModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingMile) {
+          await updateHeritageMilestone(editingMile.id, mileForm);
+          showSuccess('Milestone Updated', `Milestone "${mileForm.year_badge}" updated.`);
+        } else {
+          await createHeritageMilestone(mileForm);
+          showSuccess('Milestone Created', `Milestone "${mileForm.year_badge}" created.`);
+        }
+        setIsMileModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving milestone to database...');
     } catch (err: any) {
       showError('Save Failed', err?.message || 'Could not save milestone.');
     }
@@ -386,11 +398,13 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
   const handleDeleteMile = async () => {
     if (!deleteMileId) return;
     try {
-      await deleteHeritageMilestone(deleteMileId);
-      showSuccess('Milestone Removed', 'Timeline milestone deleted.');
-      setDeleteMileId(null);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        await deleteHeritageMilestone(deleteMileId);
+        showSuccess('Milestone Removed', 'Timeline milestone deleted.');
+        setDeleteMileId(null);
+        await loadData();
+        onRefresh();
+      }, 'Deleting milestone from database...');
     } catch (err: any) {
       showError('Delete Failed', err?.message || 'Could not delete milestone.');
     }
@@ -429,7 +443,11 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={savingActive}
+        message={savingMessage || 'Saving Heritage & V&A changes to database...'}
+      />
       {/* Top Header Card */}
       <div className="p-5 sm:p-6 rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -1142,7 +1160,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* ============================================================= */}
       {isCredModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+            <ComponentLoadingOverlay isSaving={savingActive} message="Saving archival credential to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">
                 {editingCred ? 'Edit Archival Credential' : 'Add Archival Credential'}
@@ -1258,7 +1277,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* ============================================================= */}
       {isChapModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+            <ComponentLoadingOverlay isSaving={savingActive} message="Saving archival chapter to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">
                 {editingChap ? 'Edit Archival Chapter' : 'Add Archival Chapter'}
@@ -1367,7 +1387,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* ============================================================= */}
       {isMileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+            <ComponentLoadingOverlay isSaving={savingActive} message="Saving timeline milestone to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">
                 {editingMile ? 'Edit Milestone' : 'Add Historical Milestone'}

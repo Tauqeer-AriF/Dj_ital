@@ -36,7 +36,7 @@ interface GalleryManagerProps {
 
 export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefresh }) => {
   const { showSuccess, showError } = useToast();
-  const { withSaving } = useSaving();
+  const { isSaving: isGlobalSaving, savingMessage, withSaving } = useSaving();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -183,7 +183,11 @@ export const GalleryManager: React.FC<GalleryManagerProps> = ({ gallery, onRefre
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isDeleting || isUploadingMedia || isGlobalSaving}
+        message={savingMessage || 'Saving gallery archive to database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

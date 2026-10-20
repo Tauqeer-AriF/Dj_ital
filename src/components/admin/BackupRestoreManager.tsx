@@ -18,6 +18,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import {
   restorePreviousCustomData,
   uint8ArrayToBase64,
@@ -60,6 +62,7 @@ interface BackupRestoreManagerProps {
 
 export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [summary, setSummary] = useState<BackupSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -148,57 +151,59 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
     setRestoreFeedback(null);
 
     try {
-      let bundleBase64 = '';
-      if (selectedFile.name.endsWith('.b64') || selectedFile.name.endsWith('.txt')) {
-        const text = await selectedFile.text();
-        bundleBase64 = text.trim();
-      } else {
-        const buffer = await selectedFile.arrayBuffer();
-        bundleBase64 = uint8ArrayToBase64(new Uint8Array(buffer));
-      }
-
-      const res = await fetch('/api/restore/bundle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bundleBase64,
-          filename: selectedFile.name,
-        }),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: `Server HTTP ${res.status}` }));
-        throw new Error(errJson.error || 'Server rejected backup bundle.');
-      }
-
-      const json = await res.json();
-
-      // Synchronize in-memory database with the restored snapshot
-      if (json.databaseBase64) {
-        try {
-          const u8 = base64ToUint8Array(json.databaseBase64);
-          const initSqlJs = (await import('sql.js')).default;
-          const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-          const newDb = new SQL.Database(u8);
-          ensureSchemaMigrations(newDb);
-        } catch (e) {
-          console.warn('In-memory DB reload note:', e);
+      await withSaving(async () => {
+        let bundleBase64 = '';
+        if (selectedFile.name.endsWith('.b64') || selectedFile.name.endsWith('.txt')) {
+          const text = await selectedFile.text();
+          bundleBase64 = text.trim();
+        } else {
+          const buffer = await selectedFile.arrayBuffer();
+          bundleBase64 = uint8ArrayToBase64(new Uint8Array(buffer));
         }
-      }
 
-      showSuccess('Website Restored Successfully', json.message || 'All website data, tables, and media restored.');
-      setRestoreFeedback(json.message);
-      setIsConfirmModalOpen(false);
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+        const res = await fetch('/api/restore/bundle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bundleBase64,
+            filename: selectedFile.name,
+          }),
+        });
 
-      await fetchSummary();
-      onRefresh();
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({ error: `Server HTTP ${res.status}` }));
+          throw new Error(errJson.error || 'Server rejected backup bundle.');
+        }
 
-      // Soft reload to re-instantiate fresh application state across all views
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+        const json = await res.json();
+
+        // Synchronize in-memory database with the restored snapshot
+        if (json.databaseBase64) {
+          try {
+            const u8 = base64ToUint8Array(json.databaseBase64);
+            const initSqlJs = (await import('sql.js')).default;
+            const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+            const newDb = new SQL.Database(u8);
+            ensureSchemaMigrations(newDb);
+          } catch (e) {
+            console.warn('In-memory DB reload note:', e);
+          }
+        }
+
+        showSuccess('Website Restored Successfully', json.message || 'All website data, tables, and media restored.');
+        setRestoreFeedback(json.message);
+        setIsConfirmModalOpen(false);
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        await fetchSummary();
+        onRefresh();
+
+        // Soft reload to re-instantiate fresh application state across all views
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }, 'Restoring database bundle and media assets...');
     } catch (err: any) {
       console.error('Restore error:', err);
       showError('Restore Failed', err.message || 'Failed to restore backup.');
@@ -211,19 +216,21 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
   const executeQuickPreviousRestore = async () => {
     setIsRestoring(true);
     try {
-      const res = await restorePreviousCustomData();
-      if (res.success) {
-        showSuccess('Master Data Restored', res.message);
-        setRestoreFeedback(res.message);
-        setIsQuickRestoreOpen(false);
-        await fetchSummary();
-        onRefresh();
-        setTimeout(() => {
-          window.location.reload();
-        }, 1200);
-      } else {
-        showError('Restore Failed', res.message);
-      }
+      await withSaving(async () => {
+        const res = await restorePreviousCustomData();
+        if (res.success) {
+          showSuccess('Master Data Restored', res.message);
+          setRestoreFeedback(res.message);
+          setIsQuickRestoreOpen(false);
+          await fetchSummary();
+          onRefresh();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1200);
+        } else {
+          showError('Restore Failed', res.message);
+        }
+      }, 'Restoring previous database checkpoint...');
     } catch (err: any) {
       showError('Restore Error', err.message);
     } finally {
@@ -247,7 +254,11 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
   const mediaSizeMB = summary?.totalMediaBytes ? (summary.totalMediaBytes / (1024 * 1024)).toFixed(1) : '5.8';
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isRestoring || isExporting}
+        message={savingMessage || 'Processing backup & restore in database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

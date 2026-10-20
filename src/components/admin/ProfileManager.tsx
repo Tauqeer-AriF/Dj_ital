@@ -46,6 +46,8 @@ import { AppLoader } from '../AppLoader';
 import { sanitizeSlideshowImages, ARCHIVAL_SLIDESHOW_PRESETS } from '../DynamicBackground';
 import { getPlayableStreamUrl, getProxyStreamUrl, isEmbedStream } from '../../utils/streamAudio';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface ProfileManagerProps {
   profile: ProfileData | null;
@@ -60,6 +62,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showLoaderPreview, setShowLoaderPreview] = useState(false);
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [logoMode, setLogoMode] = useState<'upload' | 'library' | 'url' | 'presets'>('upload');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isLogoPickerOpen, setIsLogoPickerOpen] = useState(false);
@@ -302,13 +305,15 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
       if (payload.brand_slogan !== undefined) {
         payload.brand_slogan = String(payload.brand_slogan).trim() || 'DjItal 164bpm';
       }
-      await updateProfile(payload);
-      const activeHex = resolveColorHex(payload.color_scheme, payload.custom_accent_color);
-      applyThemeToDOM(activeHex, payload.font_family_preset || 'syne', payload.body_font_preset || 'jakarta', payload.color_scheme);
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3500);
-      showSuccess('Profile & Theme Saved Successfully', 'All profile branding, colors, stream URLs, and contacts updated.');
-      onRefresh();
+      await withSaving(async () => {
+        await updateProfile(payload);
+        const activeHex = resolveColorHex(payload.color_scheme, payload.custom_accent_color);
+        applyThemeToDOM(activeHex, payload.font_family_preset || 'syne', payload.body_font_preset || 'jakarta', payload.color_scheme);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3500);
+        showSuccess('Profile & Theme Saved Successfully', 'All profile branding, colors, stream URLs, and contacts updated.');
+        onRefresh();
+      }, 'Saving profile and branding to database...');
     } catch (err: any) {
       console.error('Failed to update profile:', err);
       const errMsg = err?.message || 'Failed to save changes to database';
@@ -492,7 +497,11 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   const currentCustomColor = formData.custom_accent_color || '#f59e0b';
 
   return (
-    <div className="space-y-8 max-w-5xl pb-12">
+    <div className="space-y-8 max-w-5xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isSubmitting || isUploadingLogo}
+        message={savingMessage || 'Saving profile changes to database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>

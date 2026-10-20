@@ -13,7 +13,7 @@ interface ReleasesManagerProps {
 
 export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRefresh }) => {
   const { showSuccess, showError } = useToast();
-  const { withSaving } = useSaving();
+  const { isSaving: isGlobalSaving, savingMessage, withSaving } = useSaving();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -115,7 +115,11 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isDeleting || isGlobalSaving}
+        message={savingMessage || 'Saving releases in database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

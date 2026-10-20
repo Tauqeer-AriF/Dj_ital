@@ -7,6 +7,8 @@ import {
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface NewsletterManagerProps {
   onRefresh: () => void;
@@ -14,6 +16,7 @@ interface NewsletterManagerProps {
 
 export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [subscribers, setSubscribers] = useState<NewsletterSubscriberData[]>([]);
   const [copiedAll, setCopiedAll] = useState(false);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
@@ -56,11 +59,13 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
   const confirmDelete = async () => {
     if (deleteCandidateId !== null) {
       try {
-        await deleteNewsletterSubscriber(deleteCandidateId);
-        showSuccess('Subscriber Deleted', 'Subscriber removed from SQLite.');
-        setDeleteCandidateId(null);
-        await loadData();
-        onRefresh();
+        await withSaving(async () => {
+          await deleteNewsletterSubscriber(deleteCandidateId);
+          showSuccess('Subscriber Deleted', 'Subscriber removed from SQLite.');
+          setDeleteCandidateId(null);
+          await loadData();
+          onRefresh();
+        }, 'Deleting subscriber from database...');
       } catch (err: any) {
         console.error('Failed to delete subscriber:', err);
         showError('Delete Failed', err?.message || 'A database error occurred.');
@@ -69,7 +74,11 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
   };
 
   return (
-    <div className="space-y-6 max-w-5xl pb-12">
+    <div className="space-y-6 max-w-5xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving}
+        message={savingMessage || 'Updating subscriber list in database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div className="space-y-1">

@@ -14,9 +14,12 @@ import {
 } from 'lucide-react';
 import { getAdminAuthInfo, changeAdminPassword, AdminAuthInfo } from '../../db/sqlite';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 export const SecurityManager: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [authInfo, setAuthInfo] = useState<AdminAuthInfo | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -90,20 +93,22 @@ export const SecurityManager: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await changeAdminPassword(currentPassword, newPassword);
-      if (res.success) {
-        const msg = res.message || 'Dashboard password successfully changed!';
-        setSuccessMsg(msg);
-        showSuccess('Password Updated', msg);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        await loadAuthInfo();
-      } else {
-        const err = res.error || 'Failed to update password.';
-        setErrorMsg(err);
-        showError('Security Error', err);
-      }
+      await withSaving(async () => {
+        const res = await changeAdminPassword(currentPassword, newPassword);
+        if (res.success) {
+          const msg = res.message || 'Dashboard password successfully changed!';
+          setSuccessMsg(msg);
+          showSuccess('Password Updated', msg);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+          await loadAuthInfo();
+        } else {
+          const err = res.error || 'Failed to update password.';
+          setErrorMsg(err);
+          showError('Security Error', err);
+        }
+      }, 'Encrypting and saving security credentials to database...');
     } catch (err: any) {
       const msg = err?.message || 'Unexpected error updating password.';
       setErrorMsg(msg);
@@ -114,7 +119,11 @@ export const SecurityManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isLoading}
+        message={savingMessage || 'Updating security settings in database...'}
+      />
       {/* Header Banner */}
       <div className="p-6 sm:p-8 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

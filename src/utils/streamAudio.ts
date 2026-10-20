@@ -1,89 +1,116 @@
-// Utility functions for audio streaming and radio cast handling
-
-/**
- * Checks if a stream URL is an embeddable platform (SoundCloud, Mixcloud, YouTube)
- */
-export function isEmbedStream(url?: string | null): boolean {
-  if (!url) return false;
-  const lower = url.toLowerCase().trim();
-  return (
-    lower.includes('soundcloud.com') ||
-    lower.includes('mixcloud.com') ||
-    lower.includes('youtube.com') ||
-    lower.includes('youtu.be')
-  );
+export interface RadioStreamMetadata {
+  station: string;
+  bitrate: string;
+  status: 'playing' | 'paused' | 'loading' | 'error';
+  currentTrack?: string;
 }
 
-/**
- * Checks if a stream URL is a radio cast stream (Shoutcast, Icecast, radioca.st, etc.)
- */
-export function isRadioCastStream(url?: string | null): boolean {
-  if (!url) return false;
-  const lower = url.toLowerCase().trim();
-  return (
-    lower.includes('radioca.st') ||
-    lower.includes('shoutcast') ||
-    lower.includes('icecast') ||
-    lower.includes('radiojar') ||
-    lower.includes('radionomy') ||
-    lower.includes('zeno.fm') ||
-    lower.includes('caster.fm') ||
-    lower.includes('radio.co') ||
-    lower.includes('cast.') ||
-    lower.includes('stream.') ||
-    lower.includes(':8000') ||
-    lower.includes(':8080') ||
-    lower.includes(':8443') ||
-    lower.includes('/;') ||
-    lower.endsWith(';') ||
-    lower.endsWith('.pls') ||
-    lower.endsWith('.m3u') ||
-    lower.includes('.pls?') ||
-    lower.includes('.m3u?')
-  );
+type StreamListener = (state: { isPlaying: boolean; status: string; url: string; error?: string }) => void;
+
+class StreamAudioService {
+  private audio: HTMLAudioElement | null = null;
+  private listeners: Set<StreamListener> = new Set();
+  private currentUrl = '';
+  private isStreamPlaying = false;
+  private currentStatus: 'playing' | 'paused' | 'loading' | 'error' = 'paused';
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.audio = new Audio();
+      this.audio.preload = 'none';
+
+      this.audio.addEventListener('playing', () => {
+        this.isStreamPlaying = true;
+        this.currentStatus = 'playing';
+        this.notify();
+      });
+
+      this.audio.addEventListener('pause', () => {
+        this.isStreamPlaying = false;
+        this.currentStatus = 'paused';
+        this.notify();
+      });
+
+      this.audio.addEventListener('waiting', () => {
+        this.currentStatus = 'loading';
+        this.notify();
+      });
+
+      this.audio.addEventListener('error', (e) => {
+        this.isStreamPlaying = false;
+        this.currentStatus = 'error';
+        this.notify('Stream connection error');
+      });
+    }
+  }
+
+  public subscribe(listener: StreamListener): () => void {
+    this.listeners.add(listener);
+    listener({
+      isPlaying: this.isStreamPlaying,
+      status: this.currentStatus,
+      url: this.currentUrl,
+    });
+    return () => this.listeners.delete(listener);
+  }
+
+  private notify(error?: string) {
+    this.listeners.forEach((listener) => {
+      try {
+        listener({
+          isPlaying: this.isStreamPlaying,
+          status: this.currentStatus,
+          url: this.currentUrl,
+          error,
+        });
+      } catch (e) {
+        console.error('Error in stream listener:', e);
+      }
+    });
+  }
+
+  public async play(url: string): Promise<void> {
+    if (!this.audio) return;
+    try {
+      if (this.currentUrl !== url) {
+        this.currentUrl = url;
+        this.audio.src = url;
+      }
+      this.currentStatus = 'loading';
+      this.notify();
+      await this.audio.play();
+    } catch (err: any) {
+      console.warn('Direct stream play failed, trying audio-proxy:', err);
+      // Fallback via proxy
+      if (!url.startsWith('/api/audio-proxy')) {
+        const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+        this.audio.src = proxyUrl;
+        await this.audio.play();
+      } else {
+        this.currentStatus = 'error';
+        this.notify(err.message || 'Stream play failed');
+        throw err;
+      }
+    }
+  }
+
+  public stop() {
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.src = '';
+      this.isStreamPlaying = false;
+      this.currentStatus = 'paused';
+      this.notify();
+    }
+  }
+
+  public get isPlaying(): boolean {
+    return this.isStreamPlaying;
+  }
+
+  public get status(): 'playing' | 'paused' | 'loading' | 'error' {
+    return this.currentStatus;
+  }
 }
 
-/**
- * Normalizes and resolves a radio cast / audio stream URL into a browser-playable URL.
- * Automatically mitigates HTTPS mixed content blocks, Shoutcast/Icecast quirks,
- * CORS restrictions, and playlist formats (.pls / .m3u).
- */
-export function getPlayableStreamUrl(rawUrl?: string | null, forceProxy = false): string | null {
-  if (!rawUrl) return null;
-  let url = rawUrl.trim();
-  if (!url) return null;
-
-  // Already routed through proxy
-  if (url.startsWith('/api/audio-proxy')) {
-    return url;
-  }
-
-  // If it's an embed platform, return original URL (handled via modal iframe)
-  if (isEmbedStream(url)) {
-    return url;
-  }
-
-  // If user pasted URL without protocol, default to https:// (or http:// if ip/port)
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = url.includes(':') && !url.includes('://') ? `http://${url}` : `https://${url}`;
-  }
-
-  // For live radio cast streams, playlists, http streams, or when forceProxy is requested:
-  // Route through the backend audio proxy for guaranteed playback without CORS or mixed content blocks.
-  return `/api/audio-proxy?url=${encodeURIComponent(url)}`;
-}
-
-/**
- * Returns a guaranteed proxy URL for any stream to bypass CORS, mixed content, or server blocks.
- */
-export function getProxyStreamUrl(rawUrl?: string | null): string | null {
-  if (!rawUrl) return null;
-  let url = rawUrl.trim();
-  if (!url) return null;
-  if (url.startsWith('/api/audio-proxy')) return url;
-  if (isEmbedStream(url)) return url;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = url.includes(':') && !url.includes('://') ? `http://${url}` : `https://${url}`;
-  }
-  return `/api/audio-proxy?url=${encodeURIComponent(url)}`;
-}
+export const streamPlayer = new StreamAudioService();

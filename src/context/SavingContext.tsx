@@ -1,108 +1,57 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { subscribeSaving, isSavingDatabase, notifySavingState } from '../db/sqlite';
 
 interface SavingContextType {
   isSaving: boolean;
-  savingMessage: string;
-  recentlySaved: boolean;
-  startSaving: (message?: string) => () => void;
+  savingMessage?: string;
   withSaving: <T>(action: () => Promise<T>, message?: string) => Promise<T>;
-  setSaving: (saving: boolean, message?: string) => void;
+  startSaving: (message?: string) => void;
+  stopSaving: () => void;
 }
 
-const SavingContext = createContext<SavingContextType | null>(null);
+const SavingContext = createContext<SavingContextType | undefined>(undefined);
 
 export const SavingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isSaving, setIsSaving] = useState<boolean>(() => isSavingDatabase());
-  const [savingMessage, setSavingMessage] = useState<string>('Saving changes to database...');
-  const [recentlySaved, setRecentlySaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savingMessage, setSavingMessage] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-
-    const handleSavingUpdate = (saving: boolean, msg?: string) => {
-      if (timer) clearTimeout(timer);
-      setIsSaving(saving);
-      if (saving) {
-        setSavingMessage(msg || 'Saving changes to database...');
-        setRecentlySaved(false);
-      } else {
-        setRecentlySaved(true);
-        timer = setTimeout(() => {
-          setRecentlySaved(false);
-        }, 2500);
-      }
-    };
-
-    const unsubscribe = subscribeSaving((saving, msg) => {
-      handleSavingUpdate(saving, msg);
-    });
-
-    const onCustomEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ isSaving: boolean; message?: string }>;
-      const { isSaving: saving, message } = customEvent.detail || {};
-      handleSavingUpdate(Boolean(saving), message);
-    };
-
-    window.addEventListener('djital:saving-state', onCustomEvent);
-    return () => {
-      if (timer) clearTimeout(timer);
-      unsubscribe();
-      window.removeEventListener('djital:saving-state', onCustomEvent);
-    };
+  const startSaving = useCallback((message = 'Saving changes to database...') => {
+    setIsSaving(true);
+    setSavingMessage(message);
   }, []);
 
-  const setSaving = useCallback((saving: boolean, message?: string) => {
-    notifySavingState(saving, message);
+  const stopSaving = useCallback(() => {
+    setIsSaving(false);
+    setSavingMessage(undefined);
   }, []);
 
-  const startSaving = useCallback((message?: string) => {
-    notifySavingState(true, message || 'Saving changes to database...');
-    let finished = false;
-    return () => {
-      if (!finished) {
-        finished = true;
-        notifySavingState(false);
-      }
-    };
-  }, []);
-
-  const withSaving = useCallback(async <T,>(action: () => Promise<T>, message?: string): Promise<T> => {
-    notifySavingState(true, message || 'Saving changes to database...');
+  const withSaving = useCallback(async <T,>(action: () => Promise<T>, message = 'Saving changes to database...'): Promise<T> => {
+    startSaving(message);
     try {
-      return await action();
+      const result = await action();
+      return result;
     } finally {
-      notifySavingState(false);
+      stopSaving();
     }
-  }, []);
+  }, [startSaving, stopSaving]);
 
   return (
-    <SavingContext.Provider
-      value={{
-        isSaving,
-        savingMessage,
-        recentlySaved,
-        startSaving,
-        withSaving,
-        setSaving,
-      }}
-    >
+    <SavingContext.Provider value={{ isSaving, savingMessage, withSaving, startSaving, stopSaving }}>
       {children}
     </SavingContext.Provider>
   );
 };
 
-export const useSaving = () => {
-  const ctx = useContext(SavingContext);
-  if (!ctx) {
+export const useSaving = (): SavingContextType => {
+  const context = useContext(SavingContext);
+  if (!context) {
+    // Graceful fallback if invoked outside provider
     return {
       isSaving: false,
-      savingMessage: 'Saving...',
-      recentlySaved: false,
-      startSaving: () => () => {},
-      withSaving: async <T,>(action: () => Promise<T>) => action(),
-      setSaving: () => {},
+      savingMessage: undefined,
+      withSaving: async (action) => action(),
+      startSaving: () => {},
+      stopSaving: () => {},
     };
   }
-  return ctx;
+  return context;
 };

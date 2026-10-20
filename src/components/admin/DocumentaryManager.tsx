@@ -44,6 +44,8 @@ import { ImageInput } from './ImageInput';
 import { ConfirmModal } from './ConfirmModal';
 import { MediaPickerModal } from './MediaPickerModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import { DocumentarySection, extractYouTubeEmbedUrl, isVideoFile } from '../DocumentarySection';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../../utils/imageOptimization';
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
@@ -56,9 +58,12 @@ type SubTab = 'episodes' | 'settings' | 'preview';
 
 export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving: isGlobalSaving, savingMessage, withSaving } = useSaving();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('episodes');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const savingActive = isSaving || isGlobalSaving;
 
   // Data states
   const [episodes, setEpisodes] = useState<DocumentaryData[]>([]);
@@ -171,10 +176,12 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
     if (e) e.preventDefault();
     try {
       setIsSaving(true);
-      await updateDocumentarySettings(settingsForm);
-      setSettings(settingsForm);
-      showSuccess('Documentary Settings Saved', 'Header copy, YouTube external links, and visibility updated.');
-      onRefresh();
+      await withSaving(async () => {
+        await updateDocumentarySettings(settingsForm);
+        setSettings(settingsForm);
+        showSuccess('Documentary Settings Saved', 'Header copy, YouTube external links, and visibility updated.');
+        onRefresh();
+      }, 'Saving documentary settings to database...');
     } catch (err: any) {
       console.error('Failed to update documentary settings:', err);
       showError('Save Error', err?.message || 'Could not save settings.');
@@ -187,13 +194,15 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   const handleResetSettings = async () => {
     try {
       setIsSaving(true);
-      await resetDocumentarySettings();
-      const fresh = await getDocumentarySettings();
-      setSettings(fresh);
-      setSettingsForm(fresh);
-      setShowResetSettingsModal(false);
-      showSuccess('Settings Reverted', 'Documentary section header has been restored to default.');
-      onRefresh();
+      await withSaving(async () => {
+        await resetDocumentarySettings();
+        const fresh = await getDocumentarySettings();
+        setSettings(fresh);
+        setSettingsForm(fresh);
+        setShowResetSettingsModal(false);
+        showSuccess('Settings Reverted', 'Documentary section header has been restored to default.');
+        onRefresh();
+      }, 'Resetting documentary settings to defaults...');
     } catch (err: any) {
       showError('Reset Error', err?.message || 'Could not reset settings.');
     } finally {
@@ -249,39 +258,41 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
 
     try {
       setIsSaving(true);
-      if (editingEpisode) {
-        await updateDocumentary(editingEpisode.id, {
-          episode_number: Number(episodeForm.episode_number) || 1,
-          badge_label: episodeForm.badge_label.trim(),
-          title: episodeForm.title.trim(),
-          duration: episodeForm.duration.trim(),
-          description: episodeForm.description.trim(),
-          youtube_url: episodeForm.youtube_url.trim(),
-          topics: episodeForm.topics.trim(),
-          thumbnail_url: episodeForm.thumbnail_url.trim(),
-          action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
-          order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
-        });
-        showSuccess('Episode Updated', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" saved.`);
-      } else {
-        await createDocumentary({
-          episode_number: Number(episodeForm.episode_number) || 1,
-          badge_label: episodeForm.badge_label.trim() || `EPISODE ${episodeForm.episode_number < 10 ? `0${episodeForm.episode_number}` : episodeForm.episode_number}`,
-          title: episodeForm.title.trim(),
-          duration: episodeForm.duration.trim(),
-          description: episodeForm.description.trim(),
-          youtube_url: episodeForm.youtube_url.trim(),
-          topics: episodeForm.topics.trim(),
-          thumbnail_url: episodeForm.thumbnail_url.trim(),
-          action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
-          order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
-        });
-        showSuccess('Episode Added', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" created.`);
-      }
+      await withSaving(async () => {
+        if (editingEpisode) {
+          await updateDocumentary(editingEpisode.id, {
+            episode_number: Number(episodeForm.episode_number) || 1,
+            badge_label: episodeForm.badge_label.trim(),
+            title: episodeForm.title.trim(),
+            duration: episodeForm.duration.trim(),
+            description: episodeForm.description.trim(),
+            youtube_url: episodeForm.youtube_url.trim(),
+            topics: episodeForm.topics.trim(),
+            thumbnail_url: episodeForm.thumbnail_url.trim(),
+            action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
+            order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
+          });
+          showSuccess('Episode Updated', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" saved.`);
+        } else {
+          await createDocumentary({
+            episode_number: Number(episodeForm.episode_number) || 1,
+            badge_label: episodeForm.badge_label.trim() || `EPISODE ${episodeForm.episode_number < 10 ? `0${episodeForm.episode_number}` : episodeForm.episode_number}`,
+            title: episodeForm.title.trim(),
+            duration: episodeForm.duration.trim(),
+            description: episodeForm.description.trim(),
+            youtube_url: episodeForm.youtube_url.trim(),
+            topics: episodeForm.topics.trim(),
+            thumbnail_url: episodeForm.thumbnail_url.trim(),
+            action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
+            order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
+          });
+          showSuccess('Episode Added', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" created.`);
+        }
 
-      setIsModalOpen(false);
-      await loadData();
-      onRefresh();
+        setIsModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving documentary episode to database...');
     } catch (err: any) {
       console.error('Failed to save documentary episode:', err);
       showError('Save Error', err?.message || 'Could not save episode.');
@@ -294,25 +305,27 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   const handleDuplicateEpisode = async (ep: DocumentaryData) => {
     try {
       setIsSaving(true);
-      const nextEpNum = Math.max(...episodes.map((e) => e.episode_number), 0) + 1;
-      const formattedNum = nextEpNum < 10 ? `0${nextEpNum}` : `${nextEpNum}`;
+      await withSaving(async () => {
+        const nextEpNum = Math.max(...episodes.map((e) => e.episode_number), 0) + 1;
+        const formattedNum = nextEpNum < 10 ? `0${nextEpNum}` : `${nextEpNum}`;
 
-      await createDocumentary({
-        episode_number: nextEpNum,
-        badge_label: `EPISODE ${formattedNum}`,
-        title: `${ep.title} (Copy)`,
-        duration: ep.duration,
-        description: ep.description,
-        youtube_url: ep.youtube_url,
-        topics: ep.topics,
-        thumbnail_url: ep.thumbnail_url || '/images/dj_ital_hero_1790112374509.jpg',
-        action_button_text: ep.action_button_text || 'WATCH ARCHIVAL TAPE',
-        order_index: episodes.length + 1,
-      });
+        await createDocumentary({
+          episode_number: nextEpNum,
+          badge_label: `EPISODE ${formattedNum}`,
+          title: `${ep.title} (Copy)`,
+          duration: ep.duration,
+          description: ep.description,
+          youtube_url: ep.youtube_url,
+          topics: ep.topics,
+          thumbnail_url: ep.thumbnail_url || '/images/dj_ital_hero_1790112374509.jpg',
+          action_button_text: ep.action_button_text || 'WATCH ARCHIVAL TAPE',
+          order_index: episodes.length + 1,
+        });
 
-      showSuccess('Episode Cloned', `Created duplicate as Episode ${nextEpNum}.`);
-      await loadData();
-      onRefresh();
+        showSuccess('Episode Cloned', `Created duplicate as Episode ${nextEpNum}.`);
+        await loadData();
+        onRefresh();
+      }, 'Cloning documentary episode in database...');
     } catch (err: any) {
       showError('Clone Error', err?.message || 'Could not duplicate episode.');
     } finally {
@@ -325,11 +338,13 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
     if (!deleteEpId) return;
     try {
       setIsSaving(true);
-      await deleteDocumentary(deleteEpId);
-      setDeleteEpId(null);
-      showSuccess('Episode Deleted', 'Documentary episode removed from database.');
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        await deleteDocumentary(deleteEpId);
+        setDeleteEpId(null);
+        showSuccess('Episode Deleted', 'Documentary episode removed from database.');
+        await loadData();
+        onRefresh();
+      }, 'Deleting documentary episode from database...');
     } catch (err: any) {
       showError('Delete Error', err?.message || 'Could not delete episode.');
     } finally {
@@ -341,11 +356,13 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   const handleResetAllEpisodes = async () => {
     try {
       setIsSaving(true);
-      await resetDocumentaries();
-      setShowResetModal(false);
-      showSuccess('Archive Restored', 'The canonical 4-part documentary series has been re-seeded.');
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        await resetDocumentaries();
+        setShowResetModal(false);
+        showSuccess('Archive Restored', 'The canonical 4-part documentary series has been re-seeded.');
+        await loadData();
+        onRefresh();
+      }, 'Restoring canonical documentary series in database...');
     } catch (err: any) {
       showError('Reset Error', err?.message || 'Could not restore original episodes.');
     } finally {
@@ -363,15 +380,17 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
 
     try {
       setIsSaving(true);
-      const currentOrder = current.order_index ?? current.episode_number;
-      const targetOrder = target.order_index ?? target.episode_number;
+      await withSaving(async () => {
+        const currentOrder = current.order_index ?? current.episode_number;
+        const targetOrder = target.order_index ?? target.episode_number;
 
-      // Swap orders
-      await updateDocumentary(current.id, { order_index: targetOrder });
-      await updateDocumentary(target.id, { order_index: currentOrder });
+        // Swap orders
+        await updateDocumentary(current.id, { order_index: targetOrder });
+        await updateDocumentary(target.id, { order_index: currentOrder });
 
-      await loadData();
-      onRefresh();
+        await loadData();
+        onRefresh();
+      }, 'Updating episode ordering in database...');
     } catch (err: any) {
       showError('Reorder Error', err?.message || 'Could not reorder episode.');
     } finally {
@@ -392,7 +411,11 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={savingActive}
+        message={savingMessage || 'Saving documentary changes to database...'}
+      />
       {/* Header Banner */}
       <div className="p-6 rounded sound-cabinet border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -915,6 +938,10 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
           <div className="relative w-full max-w-2xl sound-cabinet bg-white dark:bg-neutral-950 rounded border border-neutral-200 dark:border-white/20 shadow-2xl my-8 overflow-hidden">
+            <ComponentLoadingOverlay
+              isSaving={savingActive}
+              message={editingEpisode ? 'Updating documentary episode...' : 'Creating documentary episode...'}
+            />
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.02]">
               <div className="flex items-center gap-2">

@@ -46,6 +46,8 @@ import {
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import { ImageInput } from './ImageInput';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
@@ -57,6 +59,7 @@ interface MediaLibraryManagerProps {
 
 export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   // Main view mode: 'library' or 'sections'
   const [activeView, setActiveView] = useState<'library' | 'sections'>('library');
 
@@ -245,16 +248,18 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     if (!editingItem) return;
 
     try {
-      await updateMediaLibraryItem(editingItem.id, {
-        title: editingItem.title,
-        category: editingItem.category,
-        description: editingItem.description,
-      });
+      await withSaving(async () => {
+        await updateMediaLibraryItem(editingItem.id, {
+          title: editingItem.title,
+          category: editingItem.category,
+          description: editingItem.description,
+        });
 
-      showSuccess('Media Item Updated', `"${editingItem.title}" saved.`);
-      setEditingItem(null);
-      await loadLibrary();
-      onRefresh();
+        showSuccess('Media Item Updated', `"${editingItem.title}" saved.`);
+        setEditingItem(null);
+        await loadLibrary();
+        onRefresh();
+      }, 'Saving media metadata to database...');
     } catch (err: any) {
       console.error('Failed to update media item:', err);
       showError('Failed to Save Media Item', err?.message || 'A database error occurred.');
@@ -267,12 +272,14 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
     const targetId = deleteCandidateId;
     try {
       setDeleteCandidateId(null);
-      // Optimistically remove from state for immediate UI feedback
-      setItems((prev) => prev.filter((i) => i.id !== targetId));
-      await deleteMediaLibraryItem(targetId);
-      showSuccess('Media Item Deleted', 'Asset removed from library.');
-      await loadLibrary();
-      onRefresh();
+      await withSaving(async () => {
+        // Optimistically remove from state for immediate UI feedback
+        setItems((prev) => prev.filter((i) => i.id !== targetId));
+        await deleteMediaLibraryItem(targetId);
+        showSuccess('Media Item Deleted', 'Asset removed from library.');
+        await loadLibrary();
+        onRefresh();
+      }, 'Deleting media asset from database...');
     } catch (err: any) {
       console.error('Failed to delete media item:', err);
       showError('Failed to Delete Media', err?.message || 'A database error occurred.');
@@ -283,13 +290,15 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   // Site Media Slots handlers
   const handleSlotChange = async (key: string, newUrl: string) => {
     try {
-      await updateSiteMedia(key, newUrl);
-      setSavedSlotKey(key);
-      setTimeout(() => setSavedSlotKey(null), 2500);
-      showSuccess('Site Media Slot Updated', `Saved new media for "${key}".`);
-      await loadSiteMedia();
-      await loadLibrary();
-      onRefresh();
+      await withSaving(async () => {
+        await updateSiteMedia(key, newUrl);
+        setSavedSlotKey(key);
+        setTimeout(() => setSavedSlotKey(null), 2500);
+        showSuccess('Site Media Slot Updated', `Saved new media for "${key}".`);
+        await loadSiteMedia();
+        await loadLibrary();
+        onRefresh();
+      }, 'Saving site media slot to database...');
     } catch (err: any) {
       console.error('Failed to update slot:', err);
       showError('Failed to Update Slot', err?.message || 'A database error occurred.');
@@ -298,13 +307,15 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
 
   const handleResetSlot = async (key: string) => {
     try {
-      await resetSiteMedia(key);
-      setSavedSlotKey(key);
-      setTimeout(() => setSavedSlotKey(null), 2500);
-      showSuccess('Site Media Slot Reset', `Slot "${key}" was reset to default.`);
-      await loadSiteMedia();
-      await loadLibrary();
-      onRefresh();
+      await withSaving(async () => {
+        await resetSiteMedia(key);
+        setSavedSlotKey(key);
+        setTimeout(() => setSavedSlotKey(null), 2500);
+        showSuccess('Site Media Slot Reset', `Slot "${key}" was reset to default.`);
+        await loadSiteMedia();
+        await loadLibrary();
+        onRefresh();
+      }, 'Resetting media slot in database...');
     } catch (err: any) {
       console.error('Failed to reset slot:', err);
       showError('Failed to Reset Slot', err?.message || 'A database error occurred.');
@@ -313,12 +324,14 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
 
   const handleResetAllSlots = async () => {
     try {
-      await resetAllSiteMedia();
-      setShowResetAllModal(false);
-      showSuccess('All Media Slots Reset', 'All website slots restored to defaults.');
-      await loadSiteMedia();
-      await loadLibrary();
-      onRefresh();
+      await withSaving(async () => {
+        await resetAllSiteMedia();
+        setShowResetAllModal(false);
+        showSuccess('All Media Slots Reset', 'All website slots restored to defaults.');
+        await loadSiteMedia();
+        await loadLibrary();
+        onRefresh();
+      }, 'Resetting all media slots in database...');
     } catch (err: any) {
       console.error('Failed to reset all slots:', err);
       showError('Failed to Reset Slots', err?.message || 'A database error occurred.');
@@ -402,7 +415,11 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   };
 
   return (
-    <div className="space-y-8 max-w-7xl pb-12">
+    <div className="space-y-8 max-w-7xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isUploading}
+        message={savingMessage || 'Saving media changes to database...'}
+      />
       {/* Top Header Card */}
       <div className="p-6 sm:p-8 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1277,6 +1294,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
             onSubmit={handleSaveEdit}
             className="relative max-w-lg w-full bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-white/15 p-6 space-y-5 shadow-2xl"
           >
+            <ComponentLoadingOverlay isSaving={isSaving} message="Updating media metadata..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-500" />

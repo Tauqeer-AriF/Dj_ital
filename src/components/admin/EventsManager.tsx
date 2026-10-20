@@ -14,7 +14,7 @@ interface EventsManagerProps {
 
 export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh }) => {
   const { showSuccess, showError } = useToast();
-  const { withSaving } = useSaving();
+  const { isSaving: isGlobalSaving, savingMessage, withSaving } = useSaving();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -119,7 +119,11 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isDeleting || isGlobalSaving}
+        message={savingMessage || 'Saving events in database...'}
+      />
       {/* Header with Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

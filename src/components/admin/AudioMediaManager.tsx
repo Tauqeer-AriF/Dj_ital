@@ -34,6 +34,8 @@ import { ImageInput } from './ImageInput';
 import { MediaPickerModal } from './MediaPickerModal';
 import { isVideoFile } from '../DocumentarySection';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 
 export const isAudioFile = (url?: string) => {
@@ -56,6 +58,7 @@ interface AudioMediaManagerProps {
 
 export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [activeSubTab, setActiveSubTab] = useState<'mixes' | 'videos'>('mixes');
   const [mixes, setMixes] = useState<AudioMixData[]>([]);
   const [videos, setVideos] = useState<VideoData[]>([]);
@@ -225,16 +228,18 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
   const handleMixSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingMix) {
-        await updateAudioMix(editingMix.id, mixFormData);
-        showSuccess('Audio Mix Updated', `"${mixFormData.title}" saved successfully.`);
-      } else {
-        await createAudioMix(mixFormData);
-        showSuccess('Audio Mix Added', `"${mixFormData.title}" catalogued successfully.`);
-      }
-      setIsMixModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingMix) {
+          await updateAudioMix(editingMix.id, mixFormData);
+          showSuccess('Audio Mix Updated', `"${mixFormData.title}" saved successfully.`);
+        } else {
+          await createAudioMix(mixFormData);
+          showSuccess('Audio Mix Added', `"${mixFormData.title}" catalogued successfully.`);
+        }
+        setIsMixModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving audio set to database...');
     } catch (err: any) {
       console.error('Failed to save mix:', err);
       showError('Failed to Save Mix', err?.message || 'A database error occurred.');
@@ -244,11 +249,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
   const confirmDeleteMix = async () => {
     if (deleteCandidateMixId !== null) {
       try {
-        await deleteAudioMix(deleteCandidateMixId);
-        showSuccess('Mix Removed', 'Audio mix deleted from SQLite.');
-        setDeleteCandidateMixId(null);
-        await loadData();
-        onRefresh();
+        await withSaving(async () => {
+          await deleteAudioMix(deleteCandidateMixId);
+          showSuccess('Mix Removed', 'Audio mix deleted from SQLite.');
+          setDeleteCandidateMixId(null);
+          await loadData();
+          onRefresh();
+        }, 'Deleting audio mix from database...');
       } catch (err: any) {
         console.error('Failed to delete mix:', err);
         showError('Failed to Delete Mix', err?.message || 'A database error occurred.');
@@ -286,16 +293,18 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
   const handleVideoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingVideo) {
-        await updateVideo(editingVideo.id, videoFormData);
-        showSuccess('Video Updated', `"${videoFormData.title}" saved successfully.`);
-      } else {
-        await createVideo(videoFormData);
-        showSuccess('Video Added', `"${videoFormData.title}" catalogued successfully.`);
-      }
-      setIsVideoModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingVideo) {
+          await updateVideo(editingVideo.id, videoFormData);
+          showSuccess('Video Updated', `"${videoFormData.title}" saved successfully.`);
+        } else {
+          await createVideo(videoFormData);
+          showSuccess('Video Added', `"${videoFormData.title}" catalogued successfully.`);
+        }
+        setIsVideoModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving video clip to database...');
     } catch (err: any) {
       console.error('Failed to save video:', err);
       showError('Failed to Save Video', err?.message || 'A database error occurred.');
@@ -305,11 +314,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
   const confirmDeleteVideo = async () => {
     if (deleteCandidateVideoId !== null) {
       try {
-        await deleteVideo(deleteCandidateVideoId);
-        showSuccess('Video Removed', 'Video record deleted from SQLite.');
-        setDeleteCandidateVideoId(null);
-        await loadData();
-        onRefresh();
+        await withSaving(async () => {
+          await deleteVideo(deleteCandidateVideoId);
+          showSuccess('Video Removed', 'Video record deleted from SQLite.');
+          setDeleteCandidateVideoId(null);
+          await loadData();
+          onRefresh();
+        }, 'Deleting video clip from database...');
       } catch (err: any) {
         console.error('Failed to delete video:', err);
         showError('Failed to Delete Video', err?.message || 'A database error occurred.');
@@ -318,7 +329,11 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
   };
 
   return (
-    <div className="space-y-6 max-w-5xl pb-12">
+    <div className="space-y-6 max-w-5xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isUploadingAudio || isUploadingVideo}
+        message={savingMessage || 'Saving audio & video media to database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
@@ -478,7 +493,8 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       {/* Edit/Create Mix Modal */}
       {isMixModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="relative w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+            <ComponentLoadingOverlay isSaving={isSaving} message="Saving audio set to database..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingMix ? 'Edit Audio Set' : 'Add New Audio Set'}
@@ -675,7 +691,8 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       {/* Edit/Create Video Modal */}
       {isVideoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="relative w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+            <ComponentLoadingOverlay isSaving={isSaving} message="Saving video clip to database..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingVideo ? 'Edit Video Clip' : 'Add New Video Clip'}

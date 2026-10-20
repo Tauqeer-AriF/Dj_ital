@@ -1,7 +1,7 @@
 import React from 'react';
-import { Loader2, Database } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-interface ComponentLoadingOverlayProps {
+export interface ComponentLoadingOverlayProps {
   isSaving: boolean;
   message?: string;
   variant?: 'overlay' | 'inline' | 'bar';
@@ -19,16 +19,10 @@ export const ComponentLoadingOverlay: React.FC<ComponentLoadingOverlayProps> = (
       <div
         role="status"
         aria-live="polite"
-        className="w-full mb-4 px-3.5 py-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 flex items-center justify-between text-xs font-mono animate-in fade-in slide-in-from-top-1 duration-150"
+        className="w-full bg-amber-400 text-neutral-950 px-4 py-2 flex items-center justify-center gap-2 text-xs font-mono font-bold tracking-wide shadow-md animate-in slide-in-from-top duration-200"
       >
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500 shrink-0" />
-          <span className="font-semibold">{message}</span>
-        </div>
-        <span className="text-[10px] opacity-75 hidden sm:inline flex items-center gap-1">
-          <Database className="w-3 h-3 text-amber-500" />
-          <span>SQLite Volume</span>
-        </span>
+        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-neutral-950" />
+        <span>{message}</span>
       </div>
     );
   }
@@ -38,14 +32,15 @@ export const ComponentLoadingOverlay: React.FC<ComponentLoadingOverlayProps> = (
       <div
         role="status"
         aria-live="polite"
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-mono font-medium animate-pulse"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-500 text-xs font-mono font-bold animate-pulse"
       >
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500 shrink-0" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-amber-400" />
         <span>{message}</span>
       </div>
     );
   }
 
+  // Default: 'overlay'
   return (
     <div
       role="status"

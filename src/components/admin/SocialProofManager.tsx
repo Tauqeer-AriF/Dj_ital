@@ -25,6 +25,8 @@ import {
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface SocialProofManagerProps {
   onRefresh: () => void;
@@ -32,6 +34,7 @@ interface SocialProofManagerProps {
 
 export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [activeTab, setActiveTab] = useState<'testimonials' | 'venues'>('testimonials');
   const [testimonials, setTestimonials] = useState<TestimonialData[]>([]);
   const [venues, setVenues] = useState<VenueLogoData[]>([]);
@@ -104,16 +107,18 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
   const handleTestimonialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingTestimonial) {
-        await updateTestimonial(editingTestimonial.id, testimonialFormData);
-        showSuccess('Testimonial Updated', `Quote by "${testimonialFormData.author_name}" saved.`);
-      } else {
-        await createTestimonial(testimonialFormData);
-        showSuccess('Testimonial Added', `Quote by "${testimonialFormData.author_name}" added.`);
-      }
-      setIsTestimonialModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingTestimonial) {
+          await updateTestimonial(editingTestimonial.id, testimonialFormData);
+          showSuccess('Testimonial Updated', `Quote by "${testimonialFormData.author_name}" saved.`);
+        } else {
+          await createTestimonial(testimonialFormData);
+          showSuccess('Testimonial Added', `Quote by "${testimonialFormData.author_name}" added.`);
+        }
+        setIsTestimonialModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving testimonial to database...');
     } catch (err: any) {
       console.error('Failed to save testimonial:', err);
       showError('Failed to Save Testimonial', err?.message || 'A database error occurred.');
@@ -123,11 +128,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
   const confirmDeleteTestimonial = async () => {
     if (deleteCandidateTestimonialId !== null) {
       try {
-        await deleteTestimonial(deleteCandidateTestimonialId);
-        showSuccess('Testimonial Deleted', 'Quote removed from database.');
-        setDeleteCandidateTestimonialId(null);
-        await loadData();
-        onRefresh();
+        await withSaving(async () => {
+          await deleteTestimonial(deleteCandidateTestimonialId);
+          showSuccess('Testimonial Deleted', 'Quote removed from database.');
+          setDeleteCandidateTestimonialId(null);
+          await loadData();
+          onRefresh();
+        }, 'Deleting testimonial from database...');
       } catch (err: any) {
         console.error('Failed to delete testimonial:', err);
         showError('Failed to Delete Testimonial', err?.message || 'A database error occurred.');
@@ -161,16 +168,18 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
   const handleVenueSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingVenue) {
-        await updateVenueLogo(editingVenue.id, venueFormData);
-        showSuccess('Venue Badge Updated', `"${venueFormData.name}" saved.`);
-      } else {
-        await createVenueLogo(venueFormData);
-        showSuccess('Venue Badge Added', `"${venueFormData.name}" added.`);
-      }
-      setIsVenueModalOpen(false);
-      await loadData();
-      onRefresh();
+      await withSaving(async () => {
+        if (editingVenue) {
+          await updateVenueLogo(editingVenue.id, venueFormData);
+          showSuccess('Venue Badge Updated', `"${venueFormData.name}" saved.`);
+        } else {
+          await createVenueLogo(venueFormData);
+          showSuccess('Venue Badge Added', `"${venueFormData.name}" added.`);
+        }
+        setIsVenueModalOpen(false);
+        await loadData();
+        onRefresh();
+      }, 'Saving venue badge to database...');
     } catch (err: any) {
       console.error('Failed to save venue logo:', err);
       showError('Failed to Save Venue', err?.message || 'A database error occurred.');
@@ -180,11 +189,13 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
   const confirmDeleteVenue = async () => {
     if (deleteCandidateVenueId !== null) {
       try {
-        await deleteVenueLogo(deleteCandidateVenueId);
-        showSuccess('Venue Badge Deleted', 'Venue removed from database.');
-        setDeleteCandidateVenueId(null);
-        await loadData();
-        onRefresh();
+        await withSaving(async () => {
+          await deleteVenueLogo(deleteCandidateVenueId);
+          showSuccess('Venue Badge Deleted', 'Venue removed from database.');
+          setDeleteCandidateVenueId(null);
+          await loadData();
+          onRefresh();
+        }, 'Deleting venue badge from database...');
       } catch (err: any) {
         console.error('Failed to delete venue logo:', err);
         showError('Failed to Delete Venue', err?.message || 'A database error occurred.');
@@ -193,7 +204,11 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
   };
 
   return (
-    <div className="space-y-6 max-w-5xl pb-12">
+    <div className="space-y-6 max-w-5xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving}
+        message={savingMessage || 'Saving testimonials & venues...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div>
@@ -332,7 +347,8 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
       {/* Testimonial Edit/Create Modal */}
       {isTestimonialModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+            <ComponentLoadingOverlay isSaving={isSaving} message="Saving testimonial to database..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingTestimonial ? 'Edit Testimonial' : 'Add New Testimonial'}
@@ -429,7 +445,8 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
       {/* Venue Edit/Create Modal */}
       {isVenueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+            <ComponentLoadingOverlay isSaving={isSaving} message="Saving venue badge to database..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
                 {editingVenue ? 'Edit Venue Badge' : 'Add New Venue Badge'}

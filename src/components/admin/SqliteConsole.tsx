@@ -3,6 +3,8 @@ import { Play, RotateCcw, AlertCircle, History, Database } from 'lucide-react';
 import { executeQuery, resetDatabaseToSeed, restorePreviousCustomData } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface SqliteConsoleProps {
   onRefresh: () => void;
@@ -10,6 +12,7 @@ interface SqliteConsoleProps {
 
 export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [query, setQuery] = useState('SELECT id, title, venue, event_date, status FROM events LIMIT 10;');
   const [results, setResults] = useState<any[] | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
@@ -59,15 +62,17 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   const confirmRestorePrevious = async () => {
     setIsRestoringPrevious(true);
     try {
-      const res = await restorePreviousCustomData();
-      if (res.success) {
-        showSuccess('Previous Data Restored', 'Successfully restored all previous custom events, 4 documentary episodes, 11 media library assets, and profile edits.');
-        setIsRestoreConfirmOpen(false);
-        onRefresh();
-        handleRunQuery();
-      } else {
-        showError('Restore Error', res.message);
-      }
+      await withSaving(async () => {
+        const res = await restorePreviousCustomData();
+        if (res.success) {
+          showSuccess('Previous Data Restored', 'Successfully restored all previous custom events, 4 documentary episodes, 11 media library assets, and profile edits.');
+          setIsRestoreConfirmOpen(false);
+          onRefresh();
+          handleRunQuery();
+        } else {
+          showError('Restore Error', res.message);
+        }
+      }, 'Restoring previous database checkpoint...');
     } catch (err: any) {
       showError('Restore Failed', err?.message || 'Failed to restore previous user data.');
     } finally {
@@ -78,11 +83,13 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   const confirmReset = async () => {
     setIsResetting(true);
     try {
-      await resetDatabaseToSeed();
-      showSuccess('Database Reset', 'SQLite database restored to initial factory seed with media library, heritage, audio & testimonials.');
-      setIsResetConfirmOpen(false);
-      onRefresh();
-      handleRunQuery();
+      await withSaving(async () => {
+        await resetDatabaseToSeed();
+        showSuccess('Database Reset', 'SQLite database restored to initial factory seed with media library, heritage, audio & testimonials.');
+        setIsResetConfirmOpen(false);
+        onRefresh();
+        handleRunQuery();
+      }, 'Resetting database to initial baseline...');
     } catch (err: any) {
       showError('Reset Failed', err?.message || 'Database reset failed.');
     } finally {
@@ -99,7 +106,11 @@ export const SqliteConsole: React.FC<SqliteConsoleProps> = ({ onRefresh }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isResetting || isRestoringPrevious}
+        message={savingMessage || 'Executing query and updating database...'}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-display font-bold text-neutral-950 dark:text-white">Direct SQLite SQL Console</h3>

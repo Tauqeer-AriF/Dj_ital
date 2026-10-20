@@ -13,8 +13,9 @@ import {
 } from 'lucide-react';
 import { ProfileData, updateProfile } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
-import { MediaPickerModal } from './MediaPickerModal';
 import { useToast } from '../../context/ToastContext';
+import { useSaving } from '../../context/SavingContext';
+import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 
 interface EPKManagerProps {
   profile: ProfileData | null;
@@ -23,6 +24,7 @@ interface EPKManagerProps {
 
 export const EPKManager: React.FC<EPKManagerProps> = ({ profile, onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { isSaving, savingMessage, withSaving } = useSaving();
   const [formData, setFormData] = useState<Partial<ProfileData>>({});
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,11 +43,13 @@ export const EPKManager: React.FC<EPKManagerProps> = ({ profile, onRefresh }) =>
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await updateProfile(formData);
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3500);
-      showSuccess('EPK Specifications Saved!', 'Press photos, rider equipment specs, and assets updated.');
-      onRefresh();
+      await withSaving(async () => {
+        await updateProfile(formData);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3500);
+        showSuccess('EPK Specifications Saved!', 'Press photos, rider equipment specs, and assets updated.');
+        onRefresh();
+      }, 'Saving EPK specifications to database...');
     } catch (err: any) {
       console.error('Failed to update EPK:', err);
       const errMsg = err?.message || 'Failed to save EPK data';
@@ -59,7 +63,11 @@ export const EPKManager: React.FC<EPKManagerProps> = ({ profile, onRefresh }) =>
   if (!profile) return null;
 
   return (
-    <div className="space-y-8 max-w-5xl pb-12">
+    <div className="space-y-8 max-w-5xl pb-12 relative">
+      <ComponentLoadingOverlay
+        isSaving={isSaving || isSubmitting}
+        message={savingMessage || 'Saving EPK specifications to database...'}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/70 backdrop-blur-xl">
         <div className="space-y-1">
