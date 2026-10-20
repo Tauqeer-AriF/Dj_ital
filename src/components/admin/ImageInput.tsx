@@ -3,6 +3,7 @@ import { Image as ImageIcon, Upload, Folder, X, ExternalLink, Loader2 } from 'lu
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { normalizeImageUrl } from '../../utils/imageOptimization';
 import { useToast } from '../../context/ToastContext';
+import { MediaPickerModal } from './MediaPickerModal';
 
 export interface ImageInputProps {
   label?: string;
@@ -32,6 +33,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
   const resolvedHelpText = helperText || helpText;
   const { showSuccess, showError } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,23 +78,22 @@ export const ImageInput: React.FC<ImageInputProps> = ({
         </div>
 
         {/* Media Picker Button */}
-        {onOpenMediaPicker && (
-          <button
-            type="button"
-            onClick={onOpenMediaPicker}
-            className="px-2.5 py-2 rounded border border-neutral-300 dark:border-white/10 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0"
-            title="Browse Media Library"
-          >
-            <Folder className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">Library</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onOpenMediaPicker || (() => setIsMediaPickerOpen(true))}
+          className="px-2.5 py-2 rounded border border-neutral-300 dark:border-white/10 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0"
+          title="Select from Media Library"
+        >
+          <Folder className="w-3.5 h-3.5 text-amber-500" />
+          <span className="sm:hidden">Media</span>
+          <span className="hidden sm:inline">Select from Media</span>
+        </button>
 
         {/* Upload Button */}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*,audio/*"
+          accept="image/*"
           className="hidden"
           onChange={handleFileUpload}
         />
@@ -142,6 +143,18 @@ export const ImageInput: React.FC<ImageInputProps> = ({
             <div className="text-xs truncate font-mono text-neutral-800 dark:text-neutral-200">{value || defaultUrl}</div>
           </div>
         </div>
+      )}
+
+      {!onOpenMediaPicker && (
+        <MediaPickerModal
+          isOpen={isMediaPickerOpen}
+          onClose={() => setIsMediaPickerOpen(false)}
+          onSelect={onChange}
+          filterType="image"
+          allowedType="image"
+          title="Select Image from Media Library"
+          selectedUrl={value}
+        />
       )}
     </div>
   );

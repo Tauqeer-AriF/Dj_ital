@@ -40,19 +40,15 @@ export const ComponentLoadingOverlay: React.FC<ComponentLoadingOverlayProps> = (
     );
   }
 
-  // Default: 'overlay'
+  // Default: non-blocking save status; the dashboard also shows a global status indicator.
   return (
     <div
       role="status"
       aria-live="polite"
-      className="absolute inset-0 z-30 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-[2px] rounded flex flex-col items-center justify-center p-4 transition-all duration-200 animate-in fade-in"
+      className="pointer-events-none absolute right-3 top-3 z-30 flex max-w-[90vw] items-center gap-2 rounded border border-amber-500/30 bg-neutral-950/95 px-3 py-2 text-white shadow-lg animate-in fade-in"
     >
-      <div className="flex items-center gap-3 px-5 py-3 rounded border border-amber-500/30 bg-neutral-950 text-white shadow-2xl">
-        <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
-        <span className="text-xs font-mono font-semibold tracking-wide text-neutral-100">
-          {message}
-        </span>
-      </div>
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-400" />
+      <span className="truncate text-xs font-mono font-semibold tracking-wide text-neutral-100">{message}</span>
     </div>
   );
 };

@@ -98,7 +98,6 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
 
   // Load items
   const loadLibrary = async () => {
-    setIsLoading(true);
     try {
       const media = await getMediaLibraryItems();
       setItems(media);

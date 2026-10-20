@@ -1,9 +1,11 @@
 import express, { type Request, type Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'url';
 import AdmZip from 'adm-zip';
 import dotenv from 'dotenv';
+import initSqlJs from 'sql.js';
 import { createServer as createViteServer } from 'vite';
 
 dotenv.config();
@@ -28,6 +30,67 @@ const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+
+async function applyInitialAdminPasswordReset(): Promise<void> {
+  const initialPassword = process.env.ADMIN_PASSWORD_RESET_ONCE;
+  if (!initialPassword) return;
+  if (initialPassword.length < 6) {
+    throw new Error('ADMIN_PASSWORD_RESET_ONCE must be at least 6 characters long.');
+  }
+
+  const markerPath = path.resolve(DATA_DIR, 'admin_password_reset_once.json');
+  const databasePath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
+  if (fs.existsSync(markerPath) || !fs.existsSync(databasePath)) return;
+
+  const encodedDatabase = fs.readFileSync(databasePath, 'utf8').trim();
+  if (!encodedDatabase) throw new Error('Cannot reset the admin password: database snapshot is empty.');
+
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.resolve(__dirname, 'node_modules', 'sql.js', 'dist', file),
+  });
+  const database = new SQL.Database(Buffer.from(encodedDatabase, 'base64'));
+
+  try {
+    const authTable = database.exec(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'admin_auth'"
+    );
+    if (authTable.length === 0 || authTable[0].values.length === 0) {
+      throw new Error('Cannot reset the admin password: admin_auth table is missing.');
+    }
+
+    const salt = randomBytes(16).toString('hex');
+    const hash = createHash('sha256').update(initialPassword + salt, 'utf8').digest('hex');
+    const now = new Date().toISOString();
+    database.run(
+      `INSERT INTO admin_auth (id, password_hash, password_salt, updated_at, last_login_at)
+       VALUES (1, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         password_hash = excluded.password_hash,
+         password_salt = excluded.password_salt,
+         updated_at = excluded.updated_at`,
+      [hash, salt, now, now]
+    );
+
+    const backupPath = path.resolve(
+      BACKUPS_DIR,
+      `djital_db.pre-admin-password-reset-${Date.now()}.b64`
+    );
+    fs.copyFileSync(databasePath, backupPath);
+
+    const updatedSnapshot = Buffer.from(database.export()).toString('base64');
+    const temporaryPath = `${databasePath}.tmp`;
+    fs.writeFileSync(temporaryPath, updatedSnapshot, 'utf8');
+    fs.renameSync(temporaryPath, databasePath);
+    fs.writeFileSync(
+      markerPath,
+      JSON.stringify({ completedAt: now }, null, 2),
+      'utf8'
+    );
+    console.info('[Server] Applied the one-time initial admin password reset.');
+  } finally {
+    database.close();
+  }
+}
 
 // Middleware for parsing JSON with higher limit for SQLite base64 dumps
 app.use(express.json({ limit: '100mb' }));
@@ -245,8 +308,9 @@ app.post('/api/restore/bundle', (req: Request, res: Response) => {
 });
 
 // 5. Load SQLite database
-app.get('/api/db/load', (_req: Request, res: Response) => {
+app.get('/api/db/load', async (_req: Request, res: Response) => {
   try {
+    await applyInitialAdminPasswordReset();
     const dbPath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, 'utf8').trim();
@@ -278,7 +342,7 @@ app.get('/api/db/previous', (_req: Request, res: Response) => {
 });
 
 // 6. Save SQLite database
-app.post('/api/db/save', (req: Request, res: Response) => {
+app.post('/api/db/save', async (req: Request, res: Response) => {
   try {
     const { data, timestamp } = req.body;
     if (!data) {
@@ -295,6 +359,7 @@ app.post('/api/db/save', (req: Request, res: Response) => {
       isSeed: false,
     };
     fs.writeFileSync(path.resolve(DATA_DIR, 'db_meta.json'), JSON.stringify(meta, null, 2), 'utf8');
+    await applyInitialAdminPasswordReset();
 
     res.json({ success: true, timestamp: meta.updatedAt });
   } catch (err: any) {

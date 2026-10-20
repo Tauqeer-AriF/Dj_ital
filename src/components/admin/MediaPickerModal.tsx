@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, Check, Folder, Image as ImageIcon, Film, Radio, FileText } from 'lucide-react';
 import { getMediaLibrary, MediaLibraryItem } from '../../db/sqlite';
 import { normalizeImageUrl } from '../../utils/imageOptimization';
@@ -69,7 +70,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     );
   });
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -85,7 +86,9 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close media picker"
             className="p-1 rounded text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -193,6 +196,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

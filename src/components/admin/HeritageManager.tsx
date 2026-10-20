@@ -146,7 +146,6 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
 
   const loadData = async () => {
     try {
-      setIsLoading(true);
       const data = await getHeritageFullData();
       setSettings(data.settings);
       setCredentials(data.credentials);

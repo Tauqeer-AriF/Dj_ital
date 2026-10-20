@@ -151,7 +151,6 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
   // Load all documentary data from SQLite
   const loadData = async () => {
     try {
-      setIsLoading(true);
       const [docs, sett] = await Promise.all([
         getDocumentaries(),
         getDocumentarySettings(),

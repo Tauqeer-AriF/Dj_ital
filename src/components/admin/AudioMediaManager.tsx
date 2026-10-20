@@ -875,7 +875,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       <MediaPickerModal
         isOpen={isAudioPickerOpen}
         onClose={() => setIsAudioPickerOpen(false)}
-        allowedType="all"
+        allowedType="audio"
         title="Select Audio from Media Library"
         onSelect={(selectedUrl) => {
           setMixFormData((prev) => ({

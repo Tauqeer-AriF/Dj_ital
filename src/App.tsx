@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getAudioMixes,
   getBookings,
@@ -82,6 +82,7 @@ function AppContent() {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const hasLoadedData = useRef(false);
   const [activeTrack, setActiveTrack] = useState<ActiveTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isEpkOpen, setIsEpkOpen] = useState(false);
@@ -96,8 +97,10 @@ function AppContent() {
   );
 
   const refreshData = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+    if (!hasLoadedData.current) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       await initDatabase();
       const [
@@ -148,9 +151,12 @@ function AppContent() {
         bookings,
         heritage,
       });
+      hasLoadedData.current = true;
     } catch (error) {
       console.error('Failed to load DJ Ital site data:', error);
-      setLoadError(error instanceof Error ? error.message : 'An unexpected error occurred.');
+      if (!hasLoadedData.current) {
+        setLoadError(error instanceof Error ? error.message : 'An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -254,7 +260,7 @@ function AppContent() {
           gallery={data.gallery}
           bookings={data.bookings}
           documentaries={data.documentaries}
-          onRefreshData={() => void refreshData()}
+          onRefreshData={refreshData}
         />
       );
     }
@@ -330,7 +336,7 @@ function AppContent() {
           <VitalFestMerchNewsletter profile={data.profile} />
           <BookingFormSection
             profile={data.profile}
-            onBookingSubmitted={() => void refreshData()}
+            onBookingSubmitted={refreshData}
             onOpenEpk={() => setIsEpkOpen(true)}
           />
         </main>
