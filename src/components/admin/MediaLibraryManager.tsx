@@ -52,6 +52,7 @@ import { ImageInput } from './ImageInput';
 import { normalizeImageUrl, optimizeImageFile } from '../../utils/imageOptimization';
 import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { extractYouTubeEmbedUrl } from '../DocumentarySection';
+import { copyTextToClipboard } from '../../utils/clipboard';
 
 interface MediaLibraryManagerProps {
   onRefresh: () => void;
@@ -130,13 +131,12 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
   // Copy URL to clipboard
   const handleCopyUrl = async (item: MediaLibraryItem) => {
     try {
-      await navigator.clipboard.writeText(item.url);
+      await copyTextToClipboard(item.url);
       setCopiedId(item.id);
       setTimeout(() => setCopiedId((prev) => (prev === item.id ? null : prev)), 2000);
-    } catch {
-      // Fallback
-      setCopiedId(item.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      showSuccess('URL Copied', 'Media URL copied to the clipboard.');
+    } catch (err: any) {
+      showError('Copy Failed', err?.message || 'Could not copy the media URL.');
     }
   };
 
@@ -1179,7 +1179,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                 <div className="w-full max-w-3xl aspect-video rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl relative">
                   {(previewItem.url.includes('youtube.com') || previewItem.url.includes('youtu.be') || previewItem.url.includes('vimeo.com')) ? (
                     <iframe
-                      src={extractYouTubeEmbedUrl(previewItem.url)}
+                      src={extractYouTubeEmbedUrl(previewItem.url) || undefined}
                       title={previewItem.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

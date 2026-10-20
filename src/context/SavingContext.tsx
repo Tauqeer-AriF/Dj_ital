@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 
 interface SavingContextType {
   isSaving: boolean;
+  recentlySaved: boolean;
   savingMessage?: string;
   withSaving: <T>(action: () => Promise<T>, message?: string) => Promise<T>;
   startSaving: (message?: string) => void;
@@ -12,9 +13,11 @@ const SavingContext = createContext<SavingContextType | undefined>(undefined);
 
 export const SavingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [recentlySaved, setRecentlySaved] = useState(false);
   const [savingMessage, setSavingMessage] = useState<string | undefined>(undefined);
 
   const startSaving = useCallback((message = 'Saving changes to database...') => {
+    setRecentlySaved(false);
     setIsSaving(true);
     setSavingMessage(message);
   }, []);
@@ -24,18 +27,27 @@ export const SavingProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setSavingMessage(undefined);
   }, []);
 
+  useEffect(() => {
+    if (!recentlySaved) return;
+    const timeout = window.setTimeout(() => setRecentlySaved(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [recentlySaved]);
+
   const withSaving = useCallback(async <T,>(action: () => Promise<T>, message = 'Saving changes to database...'): Promise<T> => {
     startSaving(message);
+    let succeeded = false;
     try {
       const result = await action();
+      succeeded = true;
       return result;
     } finally {
       stopSaving();
+      if (succeeded) setRecentlySaved(true);
     }
   }, [startSaving, stopSaving]);
 
   return (
-    <SavingContext.Provider value={{ isSaving, savingMessage, withSaving, startSaving, stopSaving }}>
+    <SavingContext.Provider value={{ isSaving, recentlySaved, savingMessage, withSaving, startSaving, stopSaving }}>
       {children}
     </SavingContext.Provider>
   );
@@ -47,6 +59,7 @@ export const useSaving = (): SavingContextType => {
     // Graceful fallback if invoked outside provider
     return {
       isSaving: false,
+      recentlySaved: false,
       savingMessage: undefined,
       withSaving: async (action) => action(),
       startSaving: () => {},

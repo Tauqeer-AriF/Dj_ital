@@ -8,6 +8,7 @@ export interface ImageInputProps {
   label?: string;
   value: string;
   onChange: (url: string) => void;
+  defaultUrl?: string;
   placeholder?: string;
   helpText?: string;
   helperText?: string;
@@ -20,6 +21,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
   label,
   value,
   onChange,
+  defaultUrl,
   placeholder = 'https://... or /images/...',
   helpText,
   helperText,
@@ -109,14 +111,24 @@ export const ImageInput: React.FC<ImageInputProps> = ({
       {resolvedHelpText && <p className="text-[11px] text-neutral-500 leading-tight">{resolvedHelpText}</p>}
 
       {/* Thumbnail Preview */}
-      {showPreview && value && (
+      {defaultUrl && value !== defaultUrl && (
+        <button
+          type="button"
+          onClick={() => onChange(defaultUrl)}
+          className="text-[11px] font-mono text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+        >
+          Restore default image
+        </button>
+      )}
+
+      {showPreview && (value || defaultUrl) && (
         <div className="flex items-center gap-3 p-2 rounded bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-white/5 mt-1.5">
           <div className="w-12 h-12 rounded overflow-hidden bg-neutral-900 border border-neutral-300 dark:border-white/10 shrink-0 flex items-center justify-center">
-            {value.match(/\.(mp4|webm|mov)$/i) ? (
+            {(value || defaultUrl || '').match(/\.(mp4|webm|mov)$/i) ? (
               <span className="text-[9px] font-mono font-bold text-amber-400">VIDEO</span>
             ) : (
               <img
-                src={normalizeImageUrl(value)}
+                src={normalizeImageUrl(value || defaultUrl || '')}
                 alt="Preview"
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -127,7 +139,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Preview Active</div>
-            <div className="text-xs truncate font-mono text-neutral-800 dark:text-neutral-200">{value}</div>
+            <div className="text-xs truncate font-mono text-neutral-800 dark:text-neutral-200">{value || defaultUrl}</div>
           </div>
         </div>
       )}

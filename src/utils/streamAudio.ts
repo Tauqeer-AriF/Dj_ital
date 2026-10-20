@@ -5,6 +5,38 @@ export interface RadioStreamMetadata {
   currentTrack?: string;
 }
 
+export function isEmbedStream(url: string): boolean {
+  return /(?:soundcloud\.com|mixcloud\.com)/i.test(url);
+}
+
+export function getProxyStreamUrl(url: string): string | null {
+  try {
+    const parsedUrl = new URL(url, window.location.href);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return null;
+    return `/api/audio-proxy?url=${encodeURIComponent(parsedUrl.href)}`;
+  } catch {
+    return null;
+  }
+}
+
+export function getPlayableStreamUrl(url: string, useProxy = false): string | null {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return null;
+
+  const proxyUrl = getProxyStreamUrl(trimmedUrl);
+  if (useProxy) return proxyUrl || trimmedUrl;
+
+  try {
+    const parsedUrl = new URL(trimmedUrl, window.location.href);
+    if (window.location.protocol === 'https:' && parsedUrl.protocol === 'http:') {
+      return proxyUrl || parsedUrl.href;
+    }
+    return parsedUrl.href;
+  } catch {
+    return trimmedUrl;
+  }
+}
+
 type StreamListener = (state: { isPlaying: boolean; status: string; url: string; error?: string }) => void;
 
 class StreamAudioService {

@@ -64,6 +64,12 @@ export interface ProfileData {
   shopify_merch_url?: string;
   merch_badge_text?: string;
   dejavu_stream_url?: string;
+  real_name?: string;
+  active_since?: string;
+  va_recognition_year?: string;
+  kool_fm_role?: string;
+  is_live_on_air?: number;
+  live_show_title?: string;
 }
 
 export type SiteMediaData = SiteMediaSlot;
@@ -187,6 +193,9 @@ export interface AudioMixData {
   description: string;
   is_featured: number;
   order_index: number;
+  mediafire_url?: string;
+  rinse_fm_url?: string;
+  dejavu_fm_url?: string;
 }
 
 export interface VideoData {
@@ -341,6 +350,7 @@ let dbInstance: Database | null = null;
 let initPromise: Promise<Database> | null = null;
 const dbListeners = new Set<() => void>();
 const savingListeners = new Set<(isSaving: boolean, message?: string) => void>();
+let serverSaveRejection: string | null = null;
 
 export function subscribeDb(listener: () => void): () => void {
   dbListeners.add(listener);
@@ -394,6 +404,53 @@ export function base64ToUint8Array(b64: string): Uint8Array {
   return bytes;
 }
 
+function setServerSaveRejection(message: string | null): void {
+  serverSaveRejection = message;
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(message ? 'djital:save-rejected' : 'djital:save-accepted'));
+}
+
+export function getServerSaveRejection(): string | null {
+  return serverSaveRejection;
+}
+
+async function pushDatabaseSnapshot(customTimestamp?: string): Promise<{ success: boolean; message: string }> {
+  if (!dbInstance) return { success: false, message: 'Database is not initialized.' };
+  try {
+    const data = uint8ArrayToBase64(dbInstance.export());
+    const response = await fetch('/api/db/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, timestamp: customTimestamp || new Date().toISOString() }),
+    });
+    if (!response.ok) {
+      return { success: false, message: `Server rejected database save (HTTP ${response.status}).` };
+    }
+    const result: unknown = await response.json();
+    if (
+      typeof result !== 'object' ||
+      result === null ||
+      !('success' in result) ||
+      result.success !== true
+    ) {
+      const message =
+        typeof result === 'object' &&
+        result !== null &&
+        'error' in result &&
+        typeof result.error === 'string'
+          ? result.error
+          : 'Server rejected database save.';
+      return { success: false, message };
+    }
+    return { success: true, message: 'Database saved to server.' };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Could not connect to the database server.',
+    };
+  }
+}
+
 export function ensureSchemaMigrations(db: Database) {
   // Ensure table extensions and missing columns exist
   try {
@@ -410,21 +467,98 @@ export async function saveDatabaseToServer(customTimestamp?: string): Promise<vo
   if (!dbInstance) return;
   notifySavingState(true, 'Saving changes to database...');
   try {
-    const data = dbInstance.export();
-    const b64 = uint8ArrayToBase64(data);
-    const timestamp = customTimestamp || new Date().toISOString();
-
-    await fetch('/api/db/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: b64, timestamp }),
-    });
-  } catch (err) {
-    console.warn('Could not sync DB to server (running local in-memory fallback):', err);
+    const result = await pushDatabaseSnapshot(customTimestamp);
+    if (result.success) {
+      setServerSaveRejection(null);
+    } else {
+      setServerSaveRejection(result.message);
+      console.warn('Could not sync DB to server (running local in-memory fallback):', result.message);
+      throw new Error(result.message);
+    }
   } finally {
     notifySavingState(false);
     notifyDbChanged();
   }
+}
+
+export async function forceSaveToServer(): Promise<{ ok: boolean; message?: string }> {
+  notifySavingState(true, 'Saving changes to database...');
+  try {
+    if (!dbInstance) await initDatabase();
+    const result = await pushDatabaseSnapshot();
+    setServerSaveRejection(result.success ? null : result.message);
+    return result.success ? { ok: true } : { ok: false, message: result.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not initialize the local database.';
+    setServerSaveRejection(message);
+    return { ok: false, message };
+  } finally {
+    notifySavingState(false);
+    notifyDbChanged();
+  }
+}
+
+export async function forcePushToServer(): Promise<{ success: boolean; message: string }> {
+  const result = await forceSaveToServer();
+  return {
+    success: result.ok,
+    message: result.message || 'Database synchronized with the server.',
+  };
+}
+
+export async function forcePullFromServer(): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch('/api/db/load', { cache: 'no-store' });
+    if (!response.ok) {
+      return { success: false, message: `Could not load server database (HTTP ${response.status}).` };
+    }
+    const result: unknown = await response.json();
+    if (
+      typeof result !== 'object' ||
+      result === null ||
+      !('data' in result) ||
+      typeof result.data !== 'string'
+    ) {
+      return { success: false, message: 'The server did not return a database snapshot.' };
+    }
+    const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+    const db = new SQL.Database(base64ToUint8Array(result.data));
+    ensureSchemaMigrations(db);
+    dbInstance = db;
+    initPromise = Promise.resolve(db);
+    setServerSaveRejection(null);
+    notifyDbChanged();
+    return { success: true, message: 'Pulled latest database from server.' };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Could not restore the server database.',
+    };
+  }
+}
+
+export async function downloadDatabaseFile(): Promise<void> {
+  const response = await fetch('/api/db/export', { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Database export failed (HTTP ${response.status}).`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `djital_database_${new Date().toISOString().replace(/[:.]/g, '-')}.sqlite`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function importDatabaseBinary(data: Uint8Array): Promise<void> {
+  const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+  const restoredDb = new SQL.Database(data);
+  ensureSchemaMigrations(restoredDb);
+  dbInstance = restoredDb;
+  initPromise = Promise.resolve(restoredDb);
+  const result = await forceSaveToServer();
+  if (!result.ok) throw new Error(result.message || 'Could not synchronize restored database.');
 }
 
 export async function initDatabase(): Promise<Database> {
@@ -504,32 +638,79 @@ export async function executeQuery(sql: string): Promise<any[]> {
 
 export async function restorePreviousCustomData(): Promise<{ success: boolean; message: string }> {
   try {
-    const res = await fetch('/api/db/load');
+    const res = await fetch('/api/db/previous', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch snapshot');
     const json = await res.json();
-    if (!json.data) throw new Error('No data found');
+    if (typeof json.data !== 'string' || !json.data) throw new Error('No previous database snapshot found');
     const u8 = base64ToUint8Array(json.data);
     const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-    dbInstance = new SQL.Database(u8);
-    ensureSchemaMigrations(dbInstance);
+    const restoredDb = new SQL.Database(u8);
+    ensureSchemaMigrations(restoredDb);
+    dbInstance = restoredDb;
+    initPromise = Promise.resolve(restoredDb);
+    const saveResult = await forceSaveToServer();
+    if (!saveResult.ok) throw new Error(saveResult.message || 'Could not save restored database.');
     notifyDbChanged();
-    return { success: true, message: 'Restored previous database state.' };
+    return { success: true, message: 'Restored and synchronized the previous custom database snapshot.' };
   } catch (e: any) {
     return { success: false, message: e.message || 'Restore error' };
   }
 }
 
-export async function resetDatabaseToSeed(): Promise<void> {
-  const res = await fetch('/djital_db.sqlite.b64');
-  if (res.ok) {
-    const text = await res.text();
-    const u8 = base64ToUint8Array(text);
-    const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-    dbInstance = new SQL.Database(u8);
-    ensureSchemaMigrations(dbInstance);
-    await saveDatabaseToServer();
-    notifyDbChanged();
+async function openSeedDatabase(): Promise<Database> {
+  const response = await fetch('/djital_db.sqlite.b64', { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Could not load factory seed database (HTTP ${response.status}).`);
+  const text = await response.text();
+  if (!text.trim()) throw new Error('Factory seed database is empty.');
+  const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
+  return new SQL.Database(base64ToUint8Array(text));
+}
+
+async function restoreTablesFromSeed(tableNames: string[]): Promise<void> {
+  const db = await initDatabase();
+  const seedDb = await openSeedDatabase();
+  try {
+    db.run('BEGIN TRANSACTION');
+    for (const tableName of tableNames) {
+      const seedResult = seedDb.exec(`SELECT * FROM ${tableName}`);
+      const targetInfo = db.exec(`PRAGMA table_info(${tableName})`);
+      if (seedResult.length === 0 || targetInfo.length === 0) {
+        throw new Error(`Could not find the ${tableName} table in the seed or current database.`);
+      }
+
+      const seedColumns = seedResult[0].columns;
+      const targetColumns = new Set(targetInfo[0].values.map((column) => String(column[1])));
+      const columns = seedColumns.filter((column) => targetColumns.has(column));
+      if (!columns.length) throw new Error(`No compatible columns found for ${tableName}.`);
+
+      const insertSql = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
+      db.run(`DELETE FROM ${tableName}`);
+      for (const row of seedResult[0].values) {
+        const values = columns.map((column) => row[seedColumns.indexOf(column)]);
+        db.run(insertSql, values);
+      }
+    }
+    db.run('COMMIT');
+  } catch (error) {
+    try {
+      db.run('ROLLBACK');
+    } catch {
+      // Preserve the original error if the transaction has already closed.
+    }
+    throw error;
+  } finally {
+    seedDb.close();
   }
+  await saveDatabaseToServer();
+}
+
+export async function resetDatabaseToSeed(): Promise<void> {
+  const seedDb = await openSeedDatabase();
+  dbInstance = seedDb;
+  initPromise = Promise.resolve(seedDb);
+  ensureSchemaMigrations(seedDb);
+  await saveDatabaseToServer();
+  notifyDbChanged();
 }
 
 // ---------------------------------------------------------------------------
@@ -565,8 +746,7 @@ export async function updateProfile(data: Partial<ProfileData>): Promise<void> {
 }
 
 export async function resetProfile(): Promise<void> {
-  // Re-fetch default from seed if available
-  await saveDatabaseToServer();
+  await restoreTablesFromSeed(['profile']);
 }
 
 // EVENTS
@@ -780,7 +960,7 @@ export async function deleteDocumentary(id: number): Promise<void> {
 }
 
 export async function resetDocumentaries(): Promise<void> {
-  await resetDatabaseToSeed();
+  await restoreTablesFromSeed(['documentary']);
 }
 
 export async function getDocumentarySettings(): Promise<DocumentarySettingsData> {
@@ -1131,6 +1311,8 @@ export async function createNewsletterSubscriber(email: string, source = 'Websit
   return id;
 }
 
+export const addNewsletterSubscriber = createNewsletterSubscriber;
+
 export async function deleteNewsletterSubscriber(id: number): Promise<void> {
   const db = await initDatabase();
   db.run('DELETE FROM newsletter_subscribers WHERE id = ?', [id]);
@@ -1197,6 +1379,8 @@ export async function deleteMediaLibraryItem(id: number): Promise<void> {
 }
 
 // SECURITY & AUTH
+export const DEFAULT_ADMIN_PASSWORD = 'ital1991';
+
 async function sha256(str: string): Promise<string> {
   const enc = new TextEncoder();
   const buf = await crypto.subtle.digest('SHA-256', enc.encode(str));
@@ -1225,7 +1409,12 @@ export async function getAdminAuthInfo(): Promise<AdminAuthInfo> {
 
 export async function changeAdminPassword(oldPass: string, newPass: string): Promise<{ success: boolean; message?: string; error?: string }> {
   const db = await initDatabase();
-  const salt = Math.random().toString(36).substring(2, 12);
+  if (!(await verifyAdminPassword(oldPass))) {
+    return { success: false, error: 'Current password is incorrect.' };
+  }
+  const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
   const hash = await sha256(newPass + salt);
   const now = new Date().toISOString();
 
@@ -1240,7 +1429,6 @@ export async function changeAdminPassword(oldPass: string, newPass: string): Pro
 }
 
 export async function verifyAdminPassword(password: string): Promise<boolean> {
-  if (password === 'ital164' || password === 'admin') return true;
   const db = await initDatabase();
   const res = db.exec('SELECT password_hash, password_salt FROM admin_auth WHERE id = 1');
   if (res.length > 0 && res[0].values.length > 0) {
@@ -1248,7 +1436,7 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
     const computed = await sha256(password + salt);
     return computed === storedHash;
   }
-  return false;
+  return password === DEFAULT_ADMIN_PASSWORD;
 }
 
 // HERITAGE
@@ -1409,7 +1597,12 @@ export async function deleteHeritageMilestone(id: number): Promise<void> {
 }
 
 export async function resetHeritageAll(): Promise<void> {
-  await resetDatabaseToSeed();
+  await restoreTablesFromSeed([
+    'heritage_settings',
+    'heritage_credentials',
+    'heritage_chapters',
+    'heritage_milestones',
+  ]);
 }
 
 export async function getHeritageFullData(): Promise<HeritageFullData> {
@@ -1427,4 +1620,3 @@ export const getMediaLibraryItems = getMediaLibrary;
 export async function trackMediaUpload(item: Partial<MediaLibraryItem>): Promise<number> {
   return await createMediaLibraryItem(item);
 }
-

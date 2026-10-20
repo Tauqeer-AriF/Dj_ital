@@ -9,6 +9,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 import { useSaving } from '../../context/SavingContext';
 import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
+import { copyTextToClipboard } from '../../utils/clipboard';
 
 interface NewsletterManagerProps {
   onRefresh: () => void;
@@ -30,26 +31,33 @@ export const NewsletterManager: React.FC<NewsletterManagerProps> = ({ onRefresh 
     loadData();
   }, []);
 
-  const handleCopyAll = () => {
+  const handleCopyAll = async () => {
     const emails = subscribers.map((s) => s.email).join(', ');
-    navigator.clipboard.writeText(emails);
-    setCopiedAll(true);
-    showSuccess('Copied to Clipboard', `Copied ${subscribers.length} subscriber email addresses.`);
-    setTimeout(() => setCopiedAll(false), 2000);
+    try {
+      await copyTextToClipboard(emails);
+      setCopiedAll(true);
+      showSuccess('Copied to Clipboard', `Copied ${subscribers.length} subscriber email addresses.`);
+      setTimeout(() => setCopiedAll(false), 2000);
+    } catch (err: any) {
+      showError('Copy Failed', err?.message || 'Could not copy subscriber email addresses.');
+    }
   };
 
   const handleExportCsv = () => {
     try {
+      const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
       const csvContent =
         'ID,Email,Created At,Source\n' +
-        subscribers.map((s) => `${s.id},"${s.email}","${s.created_at}","${s.source}"`).join('\n');
+        subscribers.map((s) => [s.id, s.email, s.created_at, s.source].map(csvCell).join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `djital_newsletter_subscribers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       showSuccess('CSV Exported', 'Subscribers list downloaded.');
     } catch (err: any) {
       showError('Export Failed', err?.message || 'Failed to export CSV');

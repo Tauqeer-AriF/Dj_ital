@@ -17,6 +17,7 @@ export function extractYouTubeEmbedUrl(url: string | null | undefined): string |
 export interface DocumentarySectionProps {
   settings: DocumentarySettingsData;
   episodes: DocumentaryData[];
+  isLivePreview?: boolean;
 }
 
 export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings, episodes }) => {

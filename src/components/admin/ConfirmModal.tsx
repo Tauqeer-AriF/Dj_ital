@@ -2,9 +2,10 @@ import React from 'react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 export interface ConfirmModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
   title: string;
-  message: string;
+  message?: string;
+  description?: string;
   confirmText?: string;
   confirmLabel?: string;
   cancelText?: string;
@@ -19,9 +20,10 @@ export interface ConfirmModalProps {
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
-  isOpen,
+  isOpen = true,
   title,
   message,
+  description,
   confirmText,
   confirmLabel,
   cancelText,
@@ -71,7 +73,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
           <div className="space-y-1">
             <h3 className="font-display font-bold text-base text-neutral-950 dark:text-white">{title}</h3>
-            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{message}</p>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{description || message}</p>
           </div>
         </div>
 

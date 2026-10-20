@@ -1,15 +1,14 @@
 import React from 'react';
-import { ArrowUp, Award, ExternalLink, Radio, ShoppingBag, FileText, Lock, Globe } from 'lucide-react';
+import { ArrowUp, Award, ExternalLink, Radio, ShoppingBag, FileText, Globe } from 'lucide-react';
 import { ProfileData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 
 interface FooterProps {
   profile: ProfileData | null;
-  onOpenDashboard?: () => void;
   onOpenEpk?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpenEpk }) => {
+export const Footer: React.FC<FooterProps> = ({ profile, onOpenEpk }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -203,6 +202,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenDashboard, onOpen
           
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={scrollToTop}
               className="hardware-btn px-2.5 py-1 rounded flex items-center gap-1.5 text-neutral-900 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer font-black uppercase tracking-wider"
             >

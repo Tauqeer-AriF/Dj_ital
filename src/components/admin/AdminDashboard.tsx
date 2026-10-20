@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Calendar,
@@ -7,33 +7,21 @@ import {
   User,
   Inbox,
   Database,
-  ArrowLeft,
   Sun,
   Moon,
   CheckCircle,
-  Radio,
-  Download,
-  Upload,
   RotateCcw,
   Lock,
   Layers,
-  Cloud,
-  RefreshCw,
-  Smartphone,
-  Monitor,
   Music,
   FileText,
   Quote,
   Mail,
   FolderArchive,
   KeyRound,
-  ShieldCheck,
-  Server,
   Landmark,
   Video,
-  HardDrive,
   HelpCircle,
-  Radio as RadioIcon,
   Loader2,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -46,10 +34,6 @@ import {
   GalleryData,
   BookingData,
   DocumentaryData,
-  downloadDatabaseFile,
-  forcePushToServer,
-  forcePullFromServer,
-  importDatabaseBinary,
   updateProfile,
 } from '../../db/sqlite';
 import { EventsManager } from './EventsManager';
@@ -68,6 +52,7 @@ import { HeritageManager } from './HeritageManager';
 import { DocumentaryManager } from './DocumentaryManager';
 import { BackupRestoreManager } from './BackupRestoreManager';
 import { AdminHelp } from './AdminHelp';
+import { REMEMBERED_AUTH_KEY } from './AdminEntryConfirmModal';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -113,106 +98,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isTogglingLive, setIsTogglingLive] = useState(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
-  const [storageStatus, setStorageStatus] = useState<{ isPersistent: boolean; resolvedDataDir: string; isWritable: boolean } | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { showSuccess, showError } = useToast();
   const { isSaving, savingMessage, recentlySaved, withSaving } = useSaving();
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    fetch('/api/system/storage-status', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => setStorageStatus(data))
-      .catch(() => {});
-  }, []);
-
-  const handleDownloadDb = async () => {
-    try {
-      await downloadDatabaseFile();
-      showSuccess('SQLite Database Exported', 'Downloaded .sqlite backup file to your device.');
-    } catch (err: any) {
-      console.error('Failed to export SQLite database:', err);
-      showError('Export Failed', err?.message || 'Could not export database.');
-    }
-  };
-
-  const handleRestoreClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleUploadBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsSyncing(true);
-    setSyncFeedback(null);
-    try {
-      const buffer = await file.arrayBuffer();
-      await importDatabaseBinary(new Uint8Array(buffer));
-      const msg = 'Database restored successfully from backup and synchronized across all devices!';
-      setSyncFeedback('✅ ' + msg);
-      showSuccess('Database Restored', msg);
-      onRefreshData();
-    } catch (err: any) {
-      console.error('Failed to import database:', err);
-      const errMsg = err?.message || 'Invalid SQLite file';
-      setSyncFeedback('⚠️ Failed to restore backup: ' + errMsg);
-      showError('Restore Failed', errMsg);
-    } finally {
-      setIsSyncing(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handlePushToCloud = async () => {
-    setIsSyncing(true);
-    setSyncFeedback(null);
-    try {
-      const res = await forcePushToServer();
-      if (res.success) {
-        const msg = 'Synchronised! All devices will now display your updated images & data.';
-        setSyncFeedback('✅ ' + msg);
-        showSuccess('Sync Successful', msg);
-        onRefreshData();
-      } else {
-        setSyncFeedback('⚠️ ' + res.message);
-        showError('Sync Warning', res.message);
-      }
-    } catch (err: any) {
-      const errMsg = err?.message || 'Server error';
-      setSyncFeedback('⚠️ Error during sync: ' + errMsg);
-      showError('Sync Error', errMsg);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handlePullFromCloud = async () => {
-    setIsSyncing(true);
-    setSyncFeedback(null);
-    try {
-      const res = await forcePullFromServer();
-      if (res.success) {
-        setSyncFeedback('✅ Pulled latest database from server.');
-        showSuccess('Database Updated', 'Successfully pulled latest changes from server.');
-        onRefreshData();
-      } else {
-        setSyncFeedback('⚠️ ' + res.message);
-        showError('Pull Failed', res.message);
-      }
-    } catch (err: any) {
-      const errMsg = err?.message || 'Server error';
-      setSyncFeedback('⚠️ Error pulling: ' + errMsg);
-      showError('Pull Error', errMsg);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const handleToggleLive = async () => {
     if (isTogglingLive) return;
@@ -233,6 +124,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } finally {
       setIsTogglingLive(false);
     }
+  };
+
+  const handleLockDashboard = () => {
+    try {
+      localStorage.removeItem(REMEMBERED_AUTH_KEY);
+    } catch {
+      // Locking still clears the active session through the parent callback.
+    }
+    onLock?.();
   };
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -355,7 +255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {onLock && (
             <button
-              onClick={onLock}
+              onClick={handleLockDashboard}
               className="p-2 rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-red-500 dark:border-white/10 dark:text-neutral-300 dark:hover:text-red-400 dark:hover:bg-white/5 transition-colors cursor-pointer"
               title="Lock Admin Dashboard"
               aria-label="Lock dashboard"

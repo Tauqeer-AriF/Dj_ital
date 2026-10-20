@@ -25,17 +25,41 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [items, setItems] = useState<MediaLibraryItem[]>([]);
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>(allowedType || filterType);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      getMediaLibrary().then((data) => setItems(data || []));
-    }
-  }, [isOpen]);
+    setSelectedType(allowedType || filterType);
+    if (!isOpen) return;
+
+    let isCurrent = true;
+    setIsLoading(true);
+    setLoadError(null);
+    getMediaLibrary()
+      .then((data) => {
+        if (isCurrent) setItems(data || []);
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) setLoadError(error instanceof Error ? error.message : 'Could not load media library.');
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, allowedType, filterType]);
 
   if (!isOpen) return null;
+  const isTypeLocked = Boolean(allowedType && allowedType !== 'all');
+  const visibleTypes = isTypeLocked
+    ? [allowedType as string]
+    : ['all', 'image', 'video', 'audio', 'document'];
+  const activeType = isTypeLocked ? allowedType : selectedType;
 
   const filtered = items.filter((item) => {
-    if (selectedType !== 'all' && item.file_type !== selectedType) return false;
+    if (activeType !== 'all' && item.file_type !== activeType) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -82,15 +106,15 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
-            {(['all', 'image', 'video', 'audio'] as const).map((t) => (
+            {visibleTypes.map((t) => (
               <button
                 key={t}
-                onClick={() => setSelectedType(t)}
+                onClick={() => !isTypeLocked && setSelectedType(t)}
                 className={`px-3 py-1.5 rounded text-xs font-mono uppercase font-bold cursor-pointer transition-colors ${
-                  selectedType === t
+                  activeType === t
                     ? 'bg-amber-400 text-neutral-950'
                     : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'
-                }`}
+                } ${isTypeLocked ? 'cursor-default' : ''}`}
               >
                 {t}
               </button>
@@ -100,19 +124,34 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
         {/* Assets Grid */}
         <div className="p-6 overflow-y-auto flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="col-span-full py-12 text-center text-neutral-500 text-xs font-mono">
+              Loading media library…
+            </div>
+          ) : loadError ? (
+            <div role="alert" className="col-span-full py-12 text-center text-rose-500 text-xs font-mono">
+              {loadError}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="col-span-full py-12 text-center text-neutral-500 text-xs font-mono">
               No matching assets found in Media Library.
             </div>
           ) : (
             filtered.map((item) => (
-              <div
+              <button
+                type="button"
                 key={item.id}
                 onClick={() => {
                   onSelect(item.url, item);
                   onClose();
                 }}
-                className="group relative rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-800 p-2 hover:border-amber-500 cursor-pointer transition-all flex flex-col justify-between"
+                className={`group relative rounded border bg-white dark:bg-neutral-800 p-2 hover:border-amber-500 cursor-pointer transition-all flex flex-col justify-between text-left ${
+                  selectedUrl === item.url
+                    ? 'border-amber-500 ring-1 ring-amber-500/50'
+                    : 'border-neutral-200 dark:border-white/10'
+                }`}
+                aria-label={`Select ${item.title}`}
+                aria-pressed={selectedUrl === item.url}
               >
                 <div className="aspect-square rounded bg-neutral-950 overflow-hidden flex items-center justify-center relative mb-2">
                   {item.file_type === 'image' ? (
@@ -134,6 +173,11 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-black/70 text-white">
                     {item.file_type}
                   </span>
+                  {selectedUrl === item.url && (
+                    <span className="absolute bottom-1.5 right-1.5 rounded-full bg-amber-400 p-1 text-neutral-950">
+                      <Check className="w-3 h-3" />
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-0.5">
@@ -144,7 +188,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                     {item.category || 'General'}
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>

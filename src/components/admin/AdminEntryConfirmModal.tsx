@@ -15,7 +15,14 @@ import {
   Sparkles,
   Info,
 } from 'lucide-react';
-import { verifyAdminPassword, getAdminAuthInfo, AdminAuthInfo } from '../../db/sqlite';
+import {
+  DEFAULT_ADMIN_PASSWORD,
+  verifyAdminPassword,
+  getAdminAuthInfo,
+  type AdminAuthInfo,
+} from '../../db/sqlite';
+
+export const REMEMBERED_AUTH_KEY = 'dj_ital_admin_remembered_auth_until';
 
 interface AdminEntryConfirmModalProps {
   isOpen: boolean;
@@ -47,12 +54,28 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
   // Load auth status
   useEffect(() => {
     if (isOpen) {
+      setPassword('');
+      setErrorMessage(null);
+      setFailedAttempts(0);
+
+      try {
+        const rememberedUntil = Number(localStorage.getItem(REMEMBERED_AUTH_KEY));
+        if (rememberedUntil > Date.now()) {
+          sessionStorage.setItem('dj_ital_admin_authenticated', 'true');
+          sessionStorage.setItem('dj_ital_admin_confirmed', 'true');
+          onConfirm();
+          return;
+        }
+        localStorage.removeItem(REMEMBERED_AUTH_KEY);
+      } catch {
+        // Continue with password authentication when browser storage is unavailable.
+      }
+
       getAdminAuthInfo()
         .then((info) => setAuthInfo(info))
         .catch(() => {});
-      setPassword('');
-      setErrorMessage(null);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const focusTimeout = window.setTimeout(() => inputRef.current?.focus(), 100);
+      return () => window.clearTimeout(focusTimeout);
     }
   }, [isOpen]);
 
@@ -99,11 +122,20 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const res = await verifyAdminPassword(password);
-      if (res.success) {
+      const isValidPassword = await verifyAdminPassword(password);
+      if (isValidPassword) {
         // Store session authentication state
         sessionStorage.setItem('dj_ital_admin_authenticated', 'true');
         sessionStorage.setItem('dj_ital_admin_confirmed', 'true');
+        try {
+          if (rememberMe) {
+            localStorage.setItem(REMEMBERED_AUTH_KEY, String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+          } else {
+            localStorage.removeItem(REMEMBERED_AUTH_KEY);
+          }
+        } catch {
+          // Session authentication still works when persistent browser storage is unavailable.
+        }
         setFailedAttempts(0);
         onConfirm();
       } else {
@@ -115,7 +147,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
           setErrorMessage('Too many failed attempts. Security cooldown active for 30 seconds.');
         } else {
           setErrorMessage(
-            res.error || `Incorrect password. ${5 - nextAttempts} attempt${5 - nextAttempts === 1 ? '' : 's'} remaining.`
+            `Incorrect password. ${5 - nextAttempts} attempt${5 - nextAttempts === 1 ? '' : 's'} remaining.`
           );
         }
         setPassword('');
@@ -215,7 +247,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
 
                 {!authInfo?.hasCustomPassword ? (
                   <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400">
-                    Default: <code className="font-bold">ital1991</code>
+                    Default: <code className="font-bold">{DEFAULT_ADMIN_PASSWORD}</code>
                   </span>
                 ) : (
                   <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
@@ -270,7 +302,7 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setPassword('ital1991');
+                      setPassword(DEFAULT_ADMIN_PASSWORD);
                       if (errorMessage) setErrorMessage(null);
                     }}
                     className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"

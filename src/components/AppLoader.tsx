@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Disc, Radio } from 'lucide-react';
 
 export interface AppLoaderProps {
@@ -20,17 +20,33 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
   brandSlogan = 'DjItal 164bpm',
   statusText,
 }) => {
+  const [logoFailed, setLogoFailed] = useState(false);
   const displayText = statusText || message || 'INITIALIZING DJ ITAL SOUND SYSTEM...';
 
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logoUrl]);
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-950 text-white p-4">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      data-accent-theme={colorScheme}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-50 text-neutral-950 dark:bg-neutral-950 dark:text-white p-4"
+    >
       <div className="relative flex items-center justify-center mb-6">
         <div
           className="w-20 h-20 rounded-full border-2 border-t-transparent animate-spin"
           style={{ borderColor: `${accentColor}33`, borderTopColor: accentColor }}
         />
-        {logoUrl ? (
-          <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain absolute" />
+        {logoUrl && !logoFailed ? (
+          <img
+            src={logoUrl}
+            alt="DJ Ital"
+            onError={() => setLogoFailed(true)}
+            className="w-10 h-10 object-contain absolute"
+          />
         ) : (
           <Disc className="w-10 h-10 absolute" style={{ color: accentColor }} />
         )}
@@ -42,11 +58,11 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
           style={{ color: accentColor }}
         >
           <Radio className="w-4 h-4" />
-          <span>KOOL FM 94.5 DUBPLATE LINK • {signatureBpm} BPM</span>
+          <span>KOOL FM 94.5 DUBPLATE LINK · {signatureBpm} BPM</span>
         </div>
-        <p className="text-xs font-mono text-neutral-400 tracking-wider uppercase">{displayText}</p>
+        <p className="text-xs font-mono text-neutral-600 dark:text-neutral-400 tracking-wider uppercase">{displayText}</p>
         {brandSlogan && (
-          <p className="text-[10px] font-mono text-neutral-600 uppercase tracking-widest">{brandSlogan}</p>
+          <p className="text-[10px] font-mono text-neutral-500 dark:text-neutral-600 uppercase tracking-widest">{brandSlogan}</p>
         )}
       </div>
     </div>

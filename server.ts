@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -15,9 +15,14 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
-// Ensure data and uploads directories exist
-const DATA_DIR = path.resolve(__dirname, 'data');
-const UPLOADS_DIR = path.resolve(__dirname, 'public', 'uploads');
+// Use Railway's mounted volume when DATA_DIR is configured, while preserving
+// the existing project-local paths for development.
+const configuredDataDir = process.env.DATA_DIR;
+const DATA_DIR = path.resolve(configuredDataDir || path.resolve(__dirname, 'data'));
+const UPLOADS_DIR = path.resolve(
+  process.env.UPLOADS_DIR ||
+    (configuredDataDir ? path.resolve(DATA_DIR, 'uploads') : path.resolve(__dirname, 'public', 'uploads'))
+);
 const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -251,6 +256,24 @@ app.get('/api/db/load', (_req: Request, res: Response) => {
     }
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Load the separately stored custom snapshot used by the admin recovery actions.
+app.get('/api/db/previous', (_req: Request, res: Response) => {
+  try {
+    const backupPath = path.resolve(BACKUPS_DIR, 'djital_db_previous_custom_data.b64');
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ success: false, error: 'Previous custom database snapshot not found' });
+    }
+
+    const data = fs.readFileSync(backupPath, 'utf8').trim();
+    if (!data) {
+      return res.status(404).json({ success: false, error: 'Previous custom database snapshot is empty' });
+    }
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to read previous database snapshot' });
   }
 });
 

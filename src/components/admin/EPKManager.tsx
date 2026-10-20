@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ProfileData, updateProfile } from '../../db/sqlite';
 import { ImageInput } from './ImageInput';
+import { MediaPickerModal } from './MediaPickerModal';
 import { useToast } from '../../context/ToastContext';
 import { useSaving } from '../../context/SavingContext';
 import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
@@ -268,7 +269,7 @@ export const EPKManager: React.FC<EPKManagerProps> = ({ profile, onRefresh }) =>
           setFormData((prev) => ({ ...prev, epk_pdf_url: selectedUrl }));
         }}
         title="Select EPK PDF Document from Media Library"
-        allowedType="all"
+        allowedType="document"
         selectedUrl={formData.epk_pdf_url}
       />
 

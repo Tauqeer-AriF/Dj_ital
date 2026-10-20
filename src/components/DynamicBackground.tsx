@@ -1,5 +1,27 @@
 import React, { useEffect, useRef } from 'react';
 
+export const ARCHIVAL_SLIDESHOW_PRESETS = [
+  '/images/dj_ital_hero_1790112374509.jpg',
+  '/images/hackney_pirate_radio_1790113898507.jpg',
+  '/images/kool_fm_vintage_1790112400005.jpg',
+  '/images/va_museum_exhibition_1790112416279.jpg',
+  '/images/vinyl_dubplate_acetate_1790113879360.jpg',
+  '/images/vital_fest_crowd_1790112387611.jpg',
+];
+
+export function sanitizeSlideshowImages(value: string | null | undefined): string[] {
+  if (!value?.trim()) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((image): image is string => typeof image === 'string' && image.trim().length > 0);
+    }
+  } catch {
+    // Treat a single legacy URL as a one-image slideshow.
+  }
+  return [value.trim()];
+}
+
 export interface DynamicBackgroundProps {
   style?: string;
   speed?: string;
@@ -92,7 +114,7 @@ export const DynamicBackground: React.FC<DynamicBackgroundProps> = ({
   const speedVal = speed === 'slow' ? 0.5 : speed === 'fast' ? 1.8 : 1;
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-neutral-950">
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-neutral-50 dark:bg-neutral-950">
       {/* Subtle ambient lighting gradients */}
       <div
         className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full blur-[150px] opacity-20 pointer-events-none"

@@ -29,7 +29,6 @@ import {
   DocumentaryData,
   DocumentarySettingsData,
   DEFAULT_DOCUMENTARY_SETTINGS,
-  DEFAULT_DOCUMENTARY_EPISODES,
   getDocumentaries,
   getDocumentarySettings,
   updateDocumentarySettings,
@@ -1265,7 +1264,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
                 />
               ) : (
                 <iframe
-                  src={extractYouTubeEmbedUrl(testVideoUrl.url)}
+                  src={extractYouTubeEmbedUrl(testVideoUrl.url) || undefined}
                   title={testVideoUrl.title}
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

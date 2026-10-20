@@ -1150,7 +1150,12 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
           </div>
 
           <div className="rounded border border-neutral-300 dark:border-white/15 overflow-hidden shadow-2xl bg-neutral-950">
-            <HeritageVaSection profile={null} vaImage={settings.va_image} />
+            <HeritageVaSection
+              settings={settings || DEFAULT_HERITAGE_SETTINGS}
+              credentials={credentials}
+              chapters={chapters}
+              milestones={milestones}
+            />
           </div>
         </div>
       )}
