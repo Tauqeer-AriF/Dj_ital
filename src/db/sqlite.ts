@@ -539,8 +539,12 @@ export async function forcePullFromServer(): Promise<{ success: boolean; message
 
 export async function downloadDatabaseFile(): Promise<void> {
   const response = await fetch('/api/db/export', { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Database export failed (HTTP ${response.status}).`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || `Database export failed (HTTP ${response.status}).`);
+  }
   const blob = await response.blob();
+  if (!blob.size) throw new Error('The server returned an empty SQLite database file.');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -548,7 +552,7 @@ export async function downloadDatabaseFile(): Promise<void> {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function importDatabaseBinary(data: Uint8Array): Promise<void> {

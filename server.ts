@@ -30,10 +30,13 @@ const UPLOADS_DIR = path.resolve(
     (configuredDataDir ? path.resolve(DATA_DIR, 'uploads') : path.resolve(__dirname, 'public', 'uploads'))
 );
 const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
+const SITE_IMAGES_DIR = path.resolve(DATA_DIR, 'site-images');
+const PUBLIC_IMAGES_DIR = path.resolve(__dirname, 'public', 'images');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+if (!fs.existsSync(SITE_IMAGES_DIR)) fs.mkdirSync(SITE_IMAGES_DIR, { recursive: true });
 
 async function applyInitialAdminPasswordReset(): Promise<void> {
   const initialPassword = process.env.ADMIN_PASSWORD_RESET_ONCE;
@@ -102,6 +105,9 @@ app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // Static file serving for uploads
 app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(path.resolve(__dirname, 'public', 'uploads')));
+app.use('/images', express.static(SITE_IMAGES_DIR));
+app.use('/images', express.static(PUBLIC_IMAGES_DIR));
 app.use('/public', express.static(path.resolve(__dirname, 'public')));
 
 // ---------------------------------------------------------------------------
@@ -117,8 +123,155 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
+function collectFiles(directory: string, relativeTo = directory): Array<{ path: string; fullPath: string; size: number }> {
+  if (!fs.existsSync(directory)) return [];
+  const files: Array<{ path: string; fullPath: string; size: number }> = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isDirectory()) {
+      files.push(...collectFiles(fullPath, relativeTo));
+    } else if (entry.isFile()) {
+      files.push({
+        path: path.relative(relativeTo, fullPath).split(path.sep).join('/'),
+        fullPath,
+        size: fs.statSync(fullPath).size,
+      });
+    }
+  }
+  return files;
+}
+
+function collectSiteImages(): Array<{ path: string; fullPath: string; size: number }> {
+  const images = new Map<string, { path: string; fullPath: string; size: number }>();
+  for (const file of collectFiles(PUBLIC_IMAGES_DIR)) images.set(file.path, file);
+  for (const file of collectFiles(SITE_IMAGES_DIR)) images.set(file.path, file);
+  return Array.from(images.values());
+}
+
+function collectUploadedFiles(): Array<{ path: string; fullPath: string; size: number }> {
+  const uploads = new Map<string, { path: string; fullPath: string; size: number }>();
+  const publicUploads = path.resolve(__dirname, 'public', 'uploads');
+  for (const file of collectFiles(publicUploads)) uploads.set(file.path, file);
+  for (const file of collectFiles(UPLOADS_DIR)) uploads.set(file.path, file);
+  return Array.from(uploads.values());
+}
+
+function createBackupBundle(): Buffer {
+  const zip = new AdmZip();
+  const dbPath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
+  const metaPath = path.resolve(DATA_DIR, 'db_meta.json');
+  if (!fs.existsSync(dbPath)) throw new Error('Database snapshot not found on disk.');
+
+  const databaseContent = fs.readFileSync(dbPath);
+  zip.addFile('data/djital_db.sqlite.b64', databaseContent);
+  const files = [{
+    path: 'data/djital_db.sqlite.b64',
+    size: databaseContent.length,
+    sha256: createHash('sha256').update(databaseContent).digest('hex'),
+  }];
+
+  if (fs.existsSync(metaPath)) {
+    const metaContent = fs.readFileSync(metaPath);
+    zip.addFile('data/db_meta.json', metaContent);
+    files.push({
+      path: 'data/db_meta.json',
+      size: metaContent.length,
+      sha256: createHash('sha256').update(metaContent).digest('hex'),
+    });
+  }
+
+  for (const file of collectUploadedFiles()) {
+    const archivePath = `uploads/${file.path}`;
+    const content = fs.readFileSync(file.fullPath);
+    zip.addFile(archivePath, content);
+    files.push({
+      path: archivePath,
+      size: content.length,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    });
+  }
+  for (const file of collectSiteImages()) {
+    const archivePath = `site-images/${file.path}`;
+    const content = fs.readFileSync(file.fullPath);
+    zip.addFile(archivePath, content);
+    files.push({
+      path: archivePath,
+      size: content.length,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    });
+  }
+
+  zip.addFile('manifest.json', Buffer.from(JSON.stringify({
+    bundleVersion: '3.0.0',
+    createdAt: new Date().toISOString(),
+    appName: 'DJ Ital Official Archive & Booking Portal',
+    files,
+  }, null, 2), 'utf8'));
+  return zip.toBuffer();
+}
+
+function resolveBundlePath(root: string, relativePath: string): string {
+  const normalized = relativePath.replace(/\\/g, '/');
+  const parts = normalized.split('/');
+  if (!normalized || normalized.startsWith('/') || parts.some((part) =>
+    !part || part === '.' || part === '..' || /[<>:"|?*\u0000]/.test(part)
+  )) {
+    throw new Error(`Invalid path in backup bundle: ${relativePath}`);
+  }
+  const resolvedRoot = path.resolve(root);
+  const target = path.resolve(resolvedRoot, ...parts);
+  const rootPrefix = `${resolvedRoot}${path.sep}`;
+  if (!target.startsWith(rootPrefix)) throw new Error(`Invalid path in backup bundle: ${relativePath}`);
+  let currentPath = resolvedRoot;
+  for (const part of parts) {
+    currentPath = path.join(currentPath, part);
+    if (fs.existsSync(currentPath) && fs.lstatSync(currentPath).isSymbolicLink()) {
+      throw new Error(`Backup path resolves through a symbolic link: ${relativePath}`);
+    }
+  }
+  return target;
+}
+
+async function validateDatabaseSnapshot(encodedSnapshot: string): Promise<string> {
+  if (!encodedSnapshot.trim()) throw new Error('Backup does not contain a database snapshot.');
+  const databaseBytes = Buffer.from(encodedSnapshot.trim(), 'base64');
+  if (databaseBytes.length < 16 || databaseBytes.subarray(0, 16).toString('utf8') !== 'SQLite format 3\u0000') {
+    throw new Error('The selected backup does not contain a valid SQLite database.');
+  }
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.resolve(__dirname, 'node_modules', 'sql.js', 'dist', file),
+  });
+  const database = new SQL.Database(databaseBytes);
+  try {
+    const tableResult = database.exec(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'profile'"
+    );
+    if (!tableResult.length || !tableResult[0].values.length) {
+      throw new Error('The SQLite file is valid but is not a DJ Ital website database.');
+    }
+  } finally {
+    database.close();
+  }
+  return databaseBytes.toString('base64');
+}
+
+function writeFileAtomically(targetPath: string, contents: Buffer | string): void {
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  const temporaryPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(temporaryPath, contents);
+  fs.renameSync(temporaryPath, targetPath);
+}
+
+function saveSafetyBundle(): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const safetyPath = path.resolve(BACKUPS_DIR, `djital_pre-restore_${timestamp}.djbundle`);
+  fs.writeFileSync(safetyPath, createBackupBundle());
+  return safetyPath;
+}
+
 // 1. Get database backup summary
-app.get('/api/backup/summary', (_req: Request, res: Response) => {
+app.get('/api/backup/summary', async (_req: Request, res: Response) => {
   try {
     const dbPath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
     const metaPath = path.resolve(DATA_DIR, 'db_meta.json');
@@ -144,52 +297,50 @@ app.get('/api/backup/summary', (_req: Request, res: Response) => {
       }
     }
 
-    // Scan uploaded files
-    let uploadedFilesCount = 0;
-    let uploadedFilesTotalBytes = 0;
-    if (fs.existsSync(UPLOADS_DIR)) {
-      const files = fs.readdirSync(UPLOADS_DIR);
-      uploadedFilesCount = files.length;
-      files.forEach((file) => {
-        try {
-          const s = fs.statSync(path.resolve(UPLOADS_DIR, file));
-          uploadedFilesTotalBytes += s.size;
-        } catch {
-          // ignore stat errors
-        }
+    const uploads = collectUploadedFiles();
+    const siteImages = collectSiteImages();
+    const uploadedFilesTotalBytes = uploads.reduce((total, file) => total + file.size, 0);
+    const siteImagesTotalBytes = siteImages.reduce((total, file) => total + file.size, 0);
+    const recordCounts: Record<string, number> = {};
+    if (dbExists) {
+      const SQL = await initSqlJs({
+        locateFile: (file) => path.resolve(__dirname, 'node_modules', 'sql.js', 'dist', file),
       });
+      const database = new SQL.Database(Buffer.from(fs.readFileSync(dbPath, 'utf8').trim(), 'base64'));
+      try {
+        const tables = database.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
+        for (const [tableName] of tables[0]?.values || []) {
+          const name = String(tableName);
+          const escapedName = name.replace(/"/g, '""');
+          const count = database.exec(`SELECT COUNT(*) FROM "${escapedName}"`);
+          recordCounts[name] = Number(count[0]?.values[0]?.[0] || 0);
+        }
+      } finally {
+        database.close();
+      }
     }
 
     const hasPreviousCustomData = fs.existsSync(customBackupPath);
+    if (!updatedAt && dbExists) updatedAt = fs.statSync(dbPath).mtime.toISOString();
 
     res.json({
       dbExists,
       dbSizeBytes,
       updatedAt,
       isSeed,
-      uploadedFilesCount,
+      uploadedFilesCount: uploads.length,
       uploadedFilesTotalBytes,
-      siteImagesCount: 8,
-      siteImagesTotalBytes: 5242880,
-      totalMediaCount: uploadedFilesCount + 8,
-      totalMediaBytes: uploadedFilesTotalBytes + 5242880,
-      recordCounts: {
-        events: 8,
-        releases: 12,
-        gallery: 14,
-        documentary: 4,
-        media_library: 11,
-        bookings: 6,
-        audio_mixes: 6,
-        videos: 4,
-        testimonials: 6,
-      },
+      siteImagesCount: siteImages.length,
+      siteImagesTotalBytes,
+      totalMediaCount: uploads.length + siteImages.length,
+      totalMediaBytes: uploadedFilesTotalBytes + siteImagesTotalBytes,
+      recordCounts,
       hasPreviousCustomData,
       isPersistent: true,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error generating backup summary:', err);
-    res.status(500).json({ error: err.message || 'Failed to read backup summary' });
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to read backup summary' });
   }
 });
 
@@ -217,99 +368,109 @@ app.get('/api/db/export', (_req: Request, res: Response) => {
 // 3. Export backup bundle (.djbundle zip file)
 app.get('/api/backup/bundle', (_req: Request, res: Response) => {
   try {
-    const zip = new AdmZip();
-    const dbPath = path.resolve(DATA_DIR, 'djital_db.sqlite.b64');
-    const metaPath = path.resolve(DATA_DIR, 'db_meta.json');
-
-    if (fs.existsSync(dbPath)) {
-      zip.addLocalFile(dbPath, 'data');
-    }
-    if (fs.existsSync(metaPath)) {
-      zip.addLocalFile(metaPath, 'data');
-    }
-
-    if (fs.existsSync(UPLOADS_DIR)) {
-      const files = fs.readdirSync(UPLOADS_DIR);
-      files.forEach((file) => {
-        zip.addLocalFile(path.resolve(UPLOADS_DIR, file), 'uploads');
-      });
-    }
-
-    const manifest = {
-      bundleVersion: '2.0.0',
-      createdAt: new Date().toISOString(),
-      appName: 'DJ Ital Official Archive & Booking Portal',
-    };
-    zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
-
-    const zipBuffer = zip.toBuffer();
+    const zipBuffer = createBackupBundle();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="djital_backup_${timestamp}.djbundle"`);
     res.send(zipBuffer);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Bundle error:', err);
-    res.status(500).json({ error: err.message || 'Failed to generate backup bundle' });
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to generate backup bundle' });
   }
 });
 
 // 4. Restore backup bundle
-app.post('/api/restore/bundle', (req: Request, res: Response) => {
-  try {
-    const { bundleBase64, filename } = req.body;
-    if (!bundleBase64) {
-      return res.status(400).json({ error: 'Missing bundleBase64 in payload' });
-    }
-
-    const zipBuffer = Buffer.from(bundleBase64, 'base64');
-    const zip = new AdmZip(zipBuffer);
-    const zipEntries = zip.getEntries();
-
-    let foundDb = false;
-    let databaseBase64 = '';
-
-    zipEntries.forEach((entry) => {
-      if (entry.entryName.includes('djital_db.sqlite.b64')) {
-        const content = entry.getData().toString('utf8').trim();
-        databaseBase64 = content;
-        fs.writeFileSync(path.resolve(DATA_DIR, 'djital_db.sqlite.b64'), content, 'utf8');
-        foundDb = true;
-      } else if (entry.entryName.startsWith('uploads/') && !entry.isDirectory) {
-        const uploadFile = path.resolve(UPLOADS_DIR, path.basename(entry.entryName));
-        fs.writeFileSync(uploadFile, entry.getData());
+app.post(
+  '/api/restore/bundle',
+  express.raw({ type: 'application/octet-stream', limit: '1gb' }),
+  async (req: Request, res: Response) => {
+    try {
+      const filename = String(req.query.filename || req.body?.filename || 'backup.djbundle');
+      let archiveBuffer: Buffer;
+      if (Buffer.isBuffer(req.body)) {
+        archiveBuffer = req.body;
+      } else if (typeof req.body?.bundleBase64 === 'string') {
+        archiveBuffer = Buffer.from(req.body.bundleBase64, 'base64');
+      } else {
+        return res.status(400).json({ error: 'No backup file was provided.' });
       }
-    });
 
-    if (!foundDb) {
-      // Check if the uploaded file is a raw base64 or SQLite file
-      if (filename?.endsWith('.b64') || filename?.endsWith('.sqlite')) {
-        databaseBase64 = bundleBase64;
-        fs.writeFileSync(path.resolve(DATA_DIR, 'djital_db.sqlite.b64'), bundleBase64, 'utf8');
-        foundDb = true;
+      let databaseBase64: string;
+      let restoreEntries: Array<{ targetPath: string; content: Buffer }> = [];
+      if (/\.(djbundle|zip)$/i.test(filename)) {
+        const zip = new AdmZip(archiveBuffer);
+        const zipEntries = zip.getEntries();
+        const filesByPath = new Map(zipEntries.filter((entry) => !entry.isDirectory).map((entry) => [entry.entryName, entry]));
+        const manifestEntry = filesByPath.get('manifest.json');
+        if (manifestEntry) {
+          let manifest: { files?: Array<{ path?: string; sha256?: string }> };
+          try {
+            manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
+          } catch {
+            return res.status(400).json({ error: 'Backup manifest is invalid JSON.' });
+          }
+          for (const file of manifest.files || []) {
+            if (!file.path || !file.sha256) continue;
+            const entry = filesByPath.get(file.path);
+            if (!entry) return res.status(400).json({ error: `Backup is missing ${file.path}.` });
+            const actualHash = createHash('sha256').update(entry.getData()).digest('hex');
+            if (actualHash !== file.sha256) return res.status(400).json({ error: `Backup integrity check failed for ${file.path}.` });
+          }
+        }
+
+        const databaseEntry = filesByPath.get('data/djital_db.sqlite.b64') ||
+          zipEntries.find((entry) => !entry.isDirectory && /(?:^|\/)djital_db\.sqlite\.b64$/i.test(entry.entryName)) ||
+          zipEntries.find((entry) => !entry.isDirectory && /\.(sqlite|db)$/i.test(entry.entryName));
+        if (!databaseEntry) return res.status(400).json({ error: 'Backup archive does not contain the website database.' });
+        const databaseData = databaseEntry.getData();
+        const encodedDatabase = /\.(sqlite|db)$/i.test(databaseEntry.entryName)
+          ? databaseData.toString('base64')
+          : databaseData.toString('utf8');
+        databaseBase64 = await validateDatabaseSnapshot(encodedDatabase);
+        for (const entry of zipEntries) {
+          if (entry.isDirectory) continue;
+          const uploadPrefix = 'uploads/';
+          const imagePrefix = 'site-images/';
+          if (entry.entryName.startsWith(uploadPrefix)) {
+            const relativePath = entry.entryName.slice(uploadPrefix.length);
+            restoreEntries.push({ targetPath: resolveBundlePath(UPLOADS_DIR, relativePath), content: entry.getData() });
+          } else if (entry.entryName.startsWith(imagePrefix)) {
+            const relativePath = entry.entryName.slice(imagePrefix.length);
+            restoreEntries.push({ targetPath: resolveBundlePath(SITE_IMAGES_DIR, relativePath), content: entry.getData() });
+          }
+        }
+      } else if (/\.(sqlite|db)$/i.test(filename)) {
+        databaseBase64 = await validateDatabaseSnapshot(archiveBuffer.toString('base64'));
+      } else if (/\.b64$/i.test(filename) || /\.txt$/i.test(filename)) {
+        databaseBase64 = await validateDatabaseSnapshot(archiveBuffer.toString('utf8'));
+      } else {
+        return res.status(400).json({ error: 'Unsupported backup type. Choose a .djbundle, .zip, .sqlite, or .b64 file.' });
       }
+
+      const safetyPath = saveSafetyBundle();
+      for (const file of restoreEntries) writeFileAtomically(file.targetPath, file.content);
+      writeFileAtomically(path.resolve(DATA_DIR, 'djital_db.sqlite.b64'), databaseBase64);
+      const meta = {
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin-bundle-restore',
+        sizeBytes: Buffer.byteLength(databaseBase64, 'utf8'),
+        isSeed: false,
+        restoredFrom: path.basename(filename),
+      };
+      writeFileAtomically(path.resolve(DATA_DIR, 'db_meta.json'), JSON.stringify(meta, null, 2));
+
+      res.json({
+        success: true,
+        message: `Website database and ${restoreEntries.length} media/image files restored. A safety backup was saved before restore.`,
+        safetyBackup: path.basename(safetyPath),
+      });
+    } catch (err: unknown) {
+      console.error('Restore bundle error:', err);
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to restore backup bundle.' });
     }
-
-    // Update metadata
-    const meta = {
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'admin-bundle-restore',
-      sizeBytes: databaseBase64.length,
-      isSeed: false,
-      restoredFrom: filename || 'custom-bundle',
-    };
-    fs.writeFileSync(path.resolve(DATA_DIR, 'db_meta.json'), JSON.stringify(meta, null, 2), 'utf8');
-
-    res.json({
-      success: true,
-      message: 'Website data bundle and media files restored successfully.',
-      databaseBase64,
-    });
-  } catch (err: any) {
-    console.error('Restore bundle error:', err);
-    res.status(500).json({ error: err.message || 'Failed to restore bundle' });
   }
-});
+);
 
 // 5. Load SQLite database
 app.get('/api/db/load', async (_req: Request, res: Response) => {

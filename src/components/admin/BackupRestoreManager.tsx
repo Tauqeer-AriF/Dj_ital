@@ -14,18 +14,13 @@ import {
   FileCheck,
   HardDrive,
   X,
-  FileCode,
-  Sparkles,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useSaving } from '../../context/SavingContext';
 import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
 import {
   restorePreviousCustomData,
-  uint8ArrayToBase64,
-  base64ToUint8Array,
-  getDatabase,
-  ensureSchemaMigrations,
+  downloadDatabaseFile,
 } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -66,6 +61,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
   const [summary, setSummary] = useState<BackupSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreFeedback, setRestoreFeedback] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -80,12 +76,13 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
     try {
       setIsLoading(true);
       const res = await fetch('/api/backup/summary', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-      }
-    } catch (err: any) {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server HTTP ${res.status}`);
+      setSummary(data);
+      setSummaryError(null);
+    } catch (err: unknown) {
       console.error('Error fetching backup summary:', err);
+      setSummaryError(err instanceof Error ? err.message : 'Could not load backup information.');
     } finally {
       setIsLoading(false);
     }
@@ -96,28 +93,64 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
   }, []);
 
   const handleDownloadBundle = async () => {
+    if (isSaving || isRestoring || isExporting) return;
     try {
       setIsExporting(true);
-      window.location.href = '/api/backup/bundle';
+      const response = await fetch('/api/backup/bundle', { cache: 'no-store' });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Backup export failed (HTTP ${response.status}).`);
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error('The server returned an empty backup bundle.');
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition?.match(/filename="?([^";]+)"?/i)?.[1] || 'djital_backup.djbundle';
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
       showSuccess(
-        'Generating Whole Website Bundle',
-        'Your comprehensive backup package (.djbundle) is preparing and downloading.'
+        'Website Backup Downloaded',
+        'The database, uploaded files, site images, and integrity manifest are included.'
       );
-    } catch (err: any) {
-      showError('Export Failed', err.message || 'Could not download backup bundle.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not download backup bundle.';
+      showError('Export Failed', message);
     } finally {
-      setTimeout(() => setIsExporting(false), 2500);
+      setIsExporting(false);
     }
   };
 
-  const handleDownloadSqlite = () => {
-    window.location.href = '/api/db/export';
-    showSuccess('Exporting Database', 'Downloading SQLite relational database (.sqlite).');
+  const handleDownloadSqlite = async () => {
+    if (isSaving || isRestoring || isExporting) return;
+    try {
+      setIsExporting(true);
+      await downloadDatabaseFile();
+      showSuccess('Database Downloaded', 'The SQLite database file was downloaded.');
+    } catch (err: unknown) {
+      showError('Export Failed', err instanceof Error ? err.message : 'Could not download database.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 1024 * 1024 * 1024) {
+      showError('Backup File Too Large', 'Backup files must be 1 GB or smaller.');
+      e.target.value = '';
+      return;
+    }
+    if (!/\.(djbundle|zip|sqlite|b64|db|txt)$/i.test(file.name)) {
+      showError('Unsupported Backup File', 'Choose a .djbundle, .zip, .sqlite, or .b64 backup.');
+      e.target.value = '';
+      return;
+    }
     setSelectedFile(file);
     setRestoreFeedback(null);
   };
@@ -139,56 +172,42 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
     e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setRestoreFeedback(null);
+    if (!file) return;
+    if (file.size > 1024 * 1024 * 1024) {
+      showError('Backup File Too Large', 'Backup files must be 1 GB or smaller.');
+      return;
     }
+    if (!/\.(djbundle|zip|sqlite|b64|db|txt)$/i.test(file.name)) {
+      showError('Unsupported Backup File', 'Choose a .djbundle, .zip, .sqlite, or .b64 backup.');
+      return;
+    }
+    setSelectedFile(file);
+    setRestoreFeedback(null);
   };
 
   const executeRestore = async () => {
     if (!selectedFile) return;
+    if (isSaving || isExporting) {
+      showError('Please Wait', 'Wait for current database activity to finish before restoring.');
+      return;
+    }
     setIsRestoring(true);
     setRestoreFeedback(null);
 
     try {
       await withSaving(async () => {
-        let bundleBase64 = '';
-        if (selectedFile.name.endsWith('.b64') || selectedFile.name.endsWith('.txt')) {
-          const text = await selectedFile.text();
-          bundleBase64 = text.trim();
-        } else {
-          const buffer = await selectedFile.arrayBuffer();
-          bundleBase64 = uint8ArrayToBase64(new Uint8Array(buffer));
-        }
-
-        const res = await fetch('/api/restore/bundle', {
+        const res = await fetch(`/api/restore/bundle?filename=${encodeURIComponent(selectedFile.name)}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bundleBase64,
-            filename: selectedFile.name,
-          }),
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: selectedFile,
         });
 
         if (!res.ok) {
-          const errJson = await res.json().catch(() => ({ error: `Server HTTP ${res.status}` }));
-          throw new Error(errJson.error || 'Server rejected backup bundle.');
+          const errBody = await res.json().catch(() => null);
+          throw new Error(errBody?.error || `Server rejected backup file (HTTP ${res.status}).`);
         }
 
         const json = await res.json();
-
-        // Synchronize in-memory database with the restored snapshot
-        if (json.databaseBase64) {
-          try {
-            const u8 = base64ToUint8Array(json.databaseBase64);
-            const initSqlJs = (await import('sql.js')).default;
-            const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-            const newDb = new SQL.Database(u8);
-            ensureSchemaMigrations(newDb);
-          } catch (e) {
-            console.warn('In-memory DB reload note:', e);
-          }
-        }
 
         showSuccess('Website Restored Successfully', json.message || 'All website data, tables, and media restored.');
         setRestoreFeedback(json.message);
@@ -197,23 +216,25 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         await fetchSummary();
-        onRefresh();
-
-        // Soft reload to re-instantiate fresh application state across all views
         setTimeout(() => {
           window.location.reload();
-        }, 1500);
+        }, 1000);
       }, 'Restoring database bundle and media assets...');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Restore error:', err);
-      showError('Restore Failed', err.message || 'Failed to restore backup.');
-      setRestoreFeedback('Restore Error: ' + err.message);
+      const message = err instanceof Error ? err.message : 'Failed to restore backup.';
+      showError('Restore Failed', message);
+      setRestoreFeedback('Restore Error: ' + message);
     } finally {
       setIsRestoring(false);
     }
   };
 
   const executeQuickPreviousRestore = async () => {
+    if (isSaving || isExporting) {
+      showError('Please Wait', 'Wait for current database activity to finish before restoring.');
+      return;
+    }
     setIsRestoring(true);
     try {
       await withSaving(async () => {
@@ -231,8 +252,8 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
           showError('Restore Failed', res.message);
         }
       }, 'Restoring previous database checkpoint...');
-    } catch (err: any) {
-      showError('Restore Error', err.message);
+    } catch (err: unknown) {
+      showError('Restore Error', err instanceof Error ? err.message : 'Could not restore the previous snapshot.');
     } finally {
       setIsRestoring(false);
     }
@@ -246,12 +267,12 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
         hour: '2-digit',
         minute: '2-digit',
       })
-    : 'Active Session';
+    : '--';
 
-  const dbSizeMB = summary?.dbSizeBytes ? (summary.dbSizeBytes / (1024 * 1024)).toFixed(2) : '2.45';
-  const totalRecords = Object.values(summary?.recordCounts || {}).reduce<number>((acc: number, curr) => acc + (curr || 0), 0) || 54;
-  const mediaCount = (summary?.totalMediaCount ?? ((summary?.uploadedFilesCount || 0) + (summary?.siteImagesCount || 8)));
-  const mediaSizeMB = summary?.totalMediaBytes ? (summary.totalMediaBytes / (1024 * 1024)).toFixed(1) : '5.8';
+  const dbSizeMB = summary?.dbSizeBytes ? (summary.dbSizeBytes / (1024 * 1024)).toFixed(2) : '--';
+  const totalRecords = Object.values(summary?.recordCounts || {}).reduce<number>((acc, curr) => acc + (curr || 0), 0);
+  const mediaCount = summary?.totalMediaCount ?? 0;
+  const mediaSizeMB = summary?.totalMediaBytes ? (summary.totalMediaBytes / (1024 * 1024)).toFixed(1) : '0';
 
   return (
     <div className="space-y-6 max-w-5xl relative">
@@ -334,6 +355,12 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
             Ready for instant export
           </div>
         </div>
+        {summaryError && (
+          <div role="alert" className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Could not load current backup details: {summaryError}</span>
+          </div>
+        )}
       </div>
 
       {/* Main Dual Cards: Backup Bundle & Restore */}
@@ -382,7 +409,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
           <div className="space-y-2.5 pt-2">
             <button
               onClick={handleDownloadBundle}
-              disabled={isExporting}
+              disabled={isExporting || isSaving || isRestoring}
               className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
             >
               {isExporting ? (
@@ -400,6 +427,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
 
             <button
               onClick={handleDownloadSqlite}
+              disabled={isExporting || isSaving || isRestoring}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-neutral-300 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Database className="w-3.5 h-3.5 text-amber-500" />
@@ -433,7 +461,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
             <input
               ref={fileInputRef}
               type="file"
-              accept=".djbundle,.zip,.sqlite,.b64,.db"
+              accept=".djbundle,.zip,.sqlite,.b64,.db,.txt"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -502,7 +530,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
                   fileInputRef.current?.click();
                 }
               }}
-              disabled={isRestoring}
+              disabled={isRestoring || isSaving || isExporting}
               className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-neutral-950 font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer disabled:opacity-50"
             >
               {isRestoring ? (
@@ -524,7 +552,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
             </button>
 
             <p className="text-[11px] text-center text-neutral-500 dark:text-neutral-400">
-              A safety snapshot of your current database is automatically created prior to restoring.
+              A restorable safety bundle of the current database and media is created before any restore is applied.
             </p>
           </div>
         </div>
@@ -547,7 +575,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
 
           <button
             onClick={() => setIsQuickRestoreOpen(true)}
-            disabled={isRestoring}
+            disabled={isRestoring || isSaving || isExporting}
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -571,8 +599,8 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
         message={`Are you sure you want to restore "${selectedFile?.name}" (${selectedFile ? (selectedFile.size / 1024).toFixed(0) : 0} KB)? Your website database, tour dates, and media assets will be updated to match the backup bundle contents.`}
         confirmLabel="Yes, Restore Website"
         cancelLabel="Cancel"
-        isDestructive={false}
-        isLoading={isRestoring}
+        isDestructive={true}
+        isLoading={isRestoring || isSaving || isExporting}
         loadingLabel="Restoring Website Data & Media..."
         onConfirm={executeRestore}
         onCancel={() => !isRestoring && setIsConfirmModalOpen(false)}
@@ -586,7 +614,7 @@ export const BackupRestoreManager: React.FC<BackupRestoreManagerProps> = ({ onRe
         confirmLabel="Restore Master Data"
         cancelLabel="Cancel"
         isDestructive={false}
-        isLoading={isRestoring}
+        isLoading={isRestoring || isSaving || isExporting}
         loadingLabel="Restoring Master Database..."
         onConfirm={executeQuickPreviousRestore}
         onCancel={() => !isRestoring && setIsQuickRestoreOpen(false)}
