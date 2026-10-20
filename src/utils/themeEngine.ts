@@ -86,6 +86,32 @@ export function resolveColorHex(colorScheme: string | null | undefined, customHe
   return colorSchemeHex[colorScheme || 'amber'] || customHex || themeColors.amber.hex;
 }
 
+function applyAccentToDOM(root: HTMLElement, accentHex: string): void {
+  const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.test(accentHex) ? accentHex : themeColors.amber.hex;
+  const normalizedHex = hex.length === 4
+    ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+    : hex;
+  const channels = normalizedHex.slice(1).match(/.{2}/g)?.map((channel) => parseInt(channel, 16)) || [245, 158, 11];
+  const [red, green, blue] = channels;
+  const hover = channels.map((channel) => Math.round(channel + (255 - channel) * 0.18));
+  const hoverHex = `#${hover.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  const luminance = channels
+    .map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    })
+    .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+
+  root.style.setProperty('--accent-color', normalizedHex);
+  root.style.setProperty('--accent-primary', normalizedHex);
+  root.style.setProperty('--accent-hover', hoverHex);
+  root.style.setProperty('--accent-focus', `rgba(${red}, ${green}, ${blue}, 0.55)`);
+  root.style.setProperty('--accent-glow', `rgba(${red}, ${green}, ${blue}, 0.38)`);
+  root.style.setProperty('--accent-subtle', `rgba(${red}, ${green}, ${blue}, 0.16)`);
+  root.style.setProperty('--accent-text-color', luminance > 0.45 ? '#09090b' : '#ffffff');
+  root.style.setProperty('--accent-rgb', `${red}, ${green}, ${blue}`);
+}
+
 export function applyThemeToDOM(
   accentHex: string,
   displayFont = 'syne',
@@ -110,11 +136,12 @@ export function applyThemeToDOM(
     mono: "'JetBrains Mono', monospace",
     system: 'system-ui, -apple-system, sans-serif',
   };
-  root.style.setProperty('--accent-color', accentHex);
-  root.style.setProperty('--accent-glow', `${accentHex}33`);
+  applyAccentToDOM(root, accentHex);
   root.style.setProperty('--font-display', displayFonts[displayFont] || displayFonts.syne);
   root.style.setProperty('--font-sans', bodyFonts[bodyFont] || bodyFonts.jakarta);
   root.setAttribute('data-accent-theme', colorScheme);
+  root.setAttribute('data-font-preset', displayFont in displayFonts ? displayFont : 'syne');
+  root.setAttribute('data-body-font-preset', bodyFont in bodyFonts ? bodyFont : 'jakarta');
 }
 
 export function applyThemeColor(colorKey: AccentColorKey | string, customHex?: string) {
@@ -125,7 +152,6 @@ export function applyThemeColor(colorKey: AccentColorKey | string, customHex?: s
   const def = themeColors[resolvedKey];
   const targetHex = customHex || def.hex;
 
-  root.style.setProperty('--accent-color', targetHex);
-  root.style.setProperty('--accent-glow', `${targetHex}33`);
+  applyAccentToDOM(root, targetHex);
   root.setAttribute('data-accent-theme', resolvedKey);
 }

@@ -496,6 +496,26 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
   const selectedBodyFontPreset = formData.body_font_preset || 'jakarta';
   const currentCustomColor = formData.custom_accent_color || '#f59e0b';
 
+  useEffect(() => {
+    if (!formData.color_scheme && !formData.font_family_preset && !formData.body_font_preset) return;
+    applyThemeToDOM(
+      resolveColorHex(formData.color_scheme, formData.custom_accent_color),
+      formData.font_family_preset || 'syne',
+      formData.body_font_preset || 'jakarta',
+      formData.color_scheme || 'amber'
+    );
+  }, [formData.color_scheme, formData.custom_accent_color, formData.font_family_preset, formData.body_font_preset]);
+
+  useEffect(() => () => {
+    if (!profile) return;
+    applyThemeToDOM(
+      resolveColorHex(profile.color_scheme, profile.custom_accent_color),
+      profile.font_family_preset || 'syne',
+      profile.body_font_preset || 'jakarta',
+      profile.color_scheme || 'amber'
+    );
+  }, [profile]);
+
   return (
     <div className="space-y-8 max-w-5xl pb-12 relative">
       <ComponentLoadingOverlay

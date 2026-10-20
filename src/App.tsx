@@ -54,6 +54,7 @@ import { SavingProvider } from './context/SavingContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { SaveStatusBanner } from './components/SaveStatusBanner';
+import { applyThemeToDOM, resolveColorHex } from './utils/themeEngine';
 
 interface AppData {
   profile: ProfileData;
@@ -166,6 +167,17 @@ function AppContent() {
   useEffect(() => {
     void refreshData();
   }, [refreshData]);
+
+  useEffect(() => {
+    if (!data) return;
+    const { profile } = data;
+    applyThemeToDOM(
+      resolveColorHex(profile.color_scheme, profile.custom_accent_color),
+      profile.font_family_preset || 'syne',
+      profile.body_font_preset || 'jakarta',
+      profile.color_scheme || 'amber'
+    );
+  }, [data?.profile.color_scheme, data?.profile.custom_accent_color, data?.profile.font_family_preset, data?.profile.body_font_preset]);
 
   useEffect(() => {
     const syncAdminRoute = () => {
@@ -293,7 +305,10 @@ function AppContent() {
       <DynamicBackground
         style={data.profile.bg_style}
         speed={data.profile.bg_speed}
-        accentColor={data.profile.custom_accent_color || '#f59e0b'}
+        accentColor={resolveColorHex(data.profile.color_scheme, data.profile.custom_accent_color)}
+        slideshowEnabled={Number(data.profile.slideshow_enabled) === 1}
+        slideshowInterval={data.profile.slideshow_interval}
+        slideshowImages={data.profile.slideshow_images}
       />
       <div className="relative z-10">
         <Navbar profile={data.profile} onOpenEpk={() => setIsEpkOpen(true)} />
