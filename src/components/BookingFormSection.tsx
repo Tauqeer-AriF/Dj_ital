@@ -36,10 +36,9 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
     client_name: '',
     client_email: '',
     client_phone: '',
-    event_type: 'Festival Headline',
+    event_type: 'Festival booking',
     target_date: '',
     venue_city: '',
-    estimated_budget: '',
     set_length: '90 min',
     message: '',
   });
@@ -47,21 +46,17 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
-  const presets = [
-    { label: 'Festival Headline', budget: '£2,500 - £4,000', length: '90 min', note: 'Prime headline slot (75-90 mins) on main sound system.' },
-    { label: 'Dubplate Vinyl Set', budget: '£1,800 - £2,500', length: '90 min', note: 'All-vinyl 1993-1996 jungle dubplate set on Technics 1210s.' },
-    { label: 'Vital Fest Takeover', budget: '£3,500 - £6,000', length: '3+ hours', note: 'Full Vital Fest brand takeover with host MC and support selectors.' },
-    { label: 'Club Sound Clash', budget: '£1,500 - £2,200', length: '2 hours', note: 'High-energy underground sound clash set.' },
-    { label: 'V&A / Cultural Panel', budget: '£800 - £1,500', length: '60 min', note: 'Sound system heritage Q&A, documentary screening and archive discussion.' },
+  const bookingTypes = [
+    'Dj booking',
+    'Festival booking',
+    'Vital fest booking',
+    'Panalist booking',
   ];
 
-  const handleSelectPreset = (p: typeof presets[0]) => {
+  const handleSelectBookingType = (eventType: string) => {
     setFormData((prev) => ({
       ...prev,
-      event_type: p.label,
-      estimated_budget: p.budget,
-      set_length: p.length,
-      message: prev.message ? prev.message : p.note,
+      event_type: eventType,
     }));
   };
 
@@ -78,10 +73,9 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
         client_name: '',
         client_email: '',
         client_phone: '',
-        event_type: 'Festival Headline',
+        event_type: 'Festival booking',
         target_date: '',
         venue_city: '',
-        estimated_budget: '',
         set_length: '90 min',
         message: '',
       });
@@ -229,26 +223,20 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                       <span>Curated Package / Set Format:</span>
                     </label>
                     <span className="text-[11px] font-mono text-neutral-500 dark:text-white/60 hidden sm:inline">
-                      Auto-configures set specs & budget
+                      Select a booking type
                     </span>
                   </div>
                   <div className="relative">
                     <select
                       value={formData.event_type}
                       onChange={(e) => {
-                        const matched = presets.find((p) => p.label === e.target.value);
-                        if (matched) {
-                          handleSelectPreset(matched);
-                        } else {
-                          setFormData((prev) => ({ ...prev, event_type: e.target.value }));
-                        }
+                        handleSelectBookingType(e.target.value);
                       }}
                       className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer shadow-sm"
                     >
-                      <option value="">-- Select a Performance Package / Format --</option>
-                      {presets.map((p) => (
-                        <option key={p.label} value={p.label}>
-                          {p.label} ({p.length} • {p.budget})
+                      {bookingTypes.map((bookingType) => (
+                        <option key={bookingType} value={bookingType}>
+                          {bookingType}
                         </option>
                       ))}
                     </select>
@@ -307,92 +295,8 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                       </div>
                     </div>
 
-                    {/* Row 2: Event Type, Estimated Budget (Dropdown), Set Length */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
-                          Event Type
-                        </label>
-                        <select
-                          value={formData.event_type}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const matched = presets.find((p) => p.label === val);
-                            if (matched) {
-                              handleSelectPreset(matched);
-                            } else {
-                              setFormData({ ...formData, event_type: val });
-                            }
-                          }}
-                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer"
-                        >
-                          <option value="Festival Headline">Festival Headline</option>
-                          <option value="Dubplate Vinyl Set">Dubplate Vinyl Set</option>
-                          <option value="Vital Fest Takeover">Vital Fest Takeover</option>
-                          <option value="Club Sound Clash">Club Sound Clash</option>
-                          <option value="V&A / Cultural Panel">V&A / Cultural Panel</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
-                          <span>Estimated Budget</span>
-                        </label>
-                        <select
-                          value={
-                            [
-                              'Under £1,500',
-                              '£1,500 - £2,200',
-                              '£1,800 - £2,500',
-                              '£2,500 - £4,000',
-                              '£3,500 - £6,000',
-                              '£6,000+',
-                              'Flexible / To Discuss',
-                            ].includes(formData.estimated_budget)
-                              ? formData.estimated_budget
-                              : formData.estimated_budget
-                              ? 'custom'
-                              : '£2,500 - £4,000'
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === 'custom') {
-                              setFormData({ ...formData, estimated_budget: '£2,500' });
-                            } else {
-                              setFormData({ ...formData, estimated_budget: val });
-                            }
-                          }}
-                          className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-industrial font-bold cursor-pointer"
-                        >
-                          <option value="Under £1,500">Under £1,500 (Club / Archive Panel)</option>
-                          <option value="£1,500 - £2,200">£1,500 - £2,200 (Sound Clash / Underground)</option>
-                          <option value="£1,800 - £2,500">£1,800 - £2,500 (Dubplate Vinyl Set)</option>
-                          <option value="£2,500 - £4,000">£2,500 - £4,000 (Festival Headline Stage)</option>
-                          <option value="£3,500 - £6,000">£3,500 - £6,000 (Vital Fest Takeover)</option>
-                          <option value="£6,000+">£6,000+ (International / Tour Headline)</option>
-                          <option value="Flexible / To Discuss">Flexible / To Discuss</option>
-                          <option value="custom">Custom / Specific Figure...</option>
-                        </select>
-                        {![
-                          'Under £1,500',
-                          '£1,500 - £2,200',
-                          '£1,800 - £2,500',
-                          '£2,500 - £4,000',
-                          '£3,500 - £6,000',
-                          '£6,000+',
-                          'Flexible / To Discuss',
-                        ].includes(formData.estimated_budget) && (
-                          <input
-                            type="text"
-                            placeholder="Enter specific amount (e.g. £2,750)"
-                            value={formData.estimated_budget}
-                            onChange={(e) => setFormData({ ...formData, estimated_budget: e.target.value })}
-                            className="w-full mt-1.5 px-3 py-2 rounded border border-amber-500/50 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/50 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all font-mono"
-                          />
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5">
+                    {/* Set length */}
+                    <div className="space-y-1.5 max-w-sm">
                         <label className="text-xs font-industrial font-bold text-neutral-900 dark:text-white uppercase tracking-wider flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                           <span>Set Length</span>
@@ -407,7 +311,6 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                           <option value="2 hours">2 hours</option>
                           <option value="3+ hours">3+ hours (All-Nighter / Takeover)</option>
                         </select>
-                      </div>
                     </div>
 
                     {/* Row 3: Contact Details (Name, Email, Phone/WhatsApp) */}

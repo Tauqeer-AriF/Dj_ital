@@ -1017,7 +1017,7 @@ export async function createBooking(data: Partial<BookingData>): Promise<number>
       data.venue_city || 'London',
       data.venue_location || '',
       data.set_length || '90 min',
-      data.estimated_budget || '£1,000+',
+      data.estimated_budget || '',
       data.message || '',
       data.status || 'Pending',
       data.created_at || new Date().toISOString(),
