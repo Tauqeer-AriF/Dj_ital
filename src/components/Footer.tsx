@@ -179,8 +179,6 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenEpk }) => {
                   <span className="text-neutral-600 dark:text-white/70">Shopify Store: </span>
                   <a
                     href={shopifyUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className="text-amber-600 dark:text-amber-400 hover:underline font-bold inline-flex items-center gap-1"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />

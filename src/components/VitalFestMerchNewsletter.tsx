@@ -83,8 +83,6 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
                 <div className="pt-8 relative z-10">
                   <a
                     href={shopifyUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className="hardware-btn inline-flex items-center gap-2.5 px-6 py-3.5 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 font-industrial font-black text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-amber-400/20 active:scale-98 cursor-pointer group/link hover:scale-102"
                   >
                     <span>Visit Shopify Merch Store</span>

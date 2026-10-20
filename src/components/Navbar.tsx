@@ -137,8 +137,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
           </a>
           <a
             href={shopifyUrl}
-            target="_blank"
-            rel="noreferrer"
             className="group relative py-1 text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 transition-colors whitespace-nowrap flex items-center gap-1 font-bold"
           >
             <span>Merch</span>
@@ -285,8 +283,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEpk, profile }) => {
                   variants={itemVariants}
                   whileTap={{ scale: 0.97 }}
                   href={shopifyUrl}
-                  target="_blank"
-                  rel="noreferrer"
                   onClick={() => setMobileMenuOpen(false)}
                   className="group p-3 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-400 hover:text-neutral-950 transition-all duration-200 font-bold flex flex-col justify-between gap-1 shadow-sm active:scale-95"
                 >
