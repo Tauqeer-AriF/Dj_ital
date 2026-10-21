@@ -365,7 +365,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Detail the sound system, event line-up context, turntable preferences (Technics 1210s / CDJs), and set expectations..."
+                        placeholder="Share any additional event or technical details..."
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="w-full px-4 py-3 rounded border border-neutral-300 dark:border-white/20 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all resize-none"

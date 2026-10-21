@@ -108,7 +108,7 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
                   </h3>
 
                   <p className="text-sm text-neutral-700 dark:text-white/95 leading-relaxed max-w-md font-normal">
-                    Sign up with your email to be notified of event dates, unreleased 90s pirate radio tape archives, Vital Fest early-bird presales, and secret line-up announcements.
+                    Sign up with your email to be notified of event dates, Vital Fest early-bird presales, and secret line-up announcements.
                   </p>
                 </div>
 
