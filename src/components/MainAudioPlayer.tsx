@@ -40,8 +40,8 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
   const [streamError, setStreamError] = useState<string | null>(null);
   const [retryWithProxy, setRetryWithProxy] = useState(false);
   const [isMinimized, setIsMinimized] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('dj_ital_player_minimized') === 'true';
+    if (typeof window === 'undefined') return true;
+    return sessionStorage.getItem('dj_ital_player_minimized') !== 'false';
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
