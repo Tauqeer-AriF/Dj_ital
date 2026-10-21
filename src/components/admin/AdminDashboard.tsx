@@ -137,9 +137,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4 text-amber-500" /> },
+    { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
-    { id: 'backup_restore', label: 'Backup & Restore', icon: <RotateCcw className="w-4 h-4 text-emerald-500" /> },
+    { id: 'backup_restore', label: 'Backup & Restore', icon: <RotateCcw className="w-4 h-4" /> },
     { id: 'heritage', label: 'Heritage & V&A Archive', icon: <Landmark className="w-4 h-4" /> },
     {
       id: 'documentary',
