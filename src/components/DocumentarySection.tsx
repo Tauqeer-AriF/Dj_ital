@@ -65,21 +65,21 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
   if (!settings.is_section_visible) return null;
 
   return (
-    <section id="documentary" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-neutral-950 text-white">
+    <section id="documentary" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-neutral-50 text-neutral-900 transition-colors dark:bg-neutral-950 dark:text-white">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/5 blur-[140px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto relative z-10 space-y-16">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
             <Film className="w-3.5 h-3.5" />
             <span>{settings.badge_text || 'ARCHIVAL DOCUMENTARY'}</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-display font-black tracking-tight text-white uppercase">
+          <h2 className="text-3xl sm:text-5xl font-display font-black tracking-tight text-neutral-900 dark:text-white uppercase">
             {settings.heading}
           </h2>
-          <p className="text-neutral-400 text-sm sm:text-base leading-relaxed">
+          <p className="text-neutral-600 dark:text-neutral-400 text-sm sm:text-base leading-relaxed">
             {settings.description}
           </p>
 
@@ -107,11 +107,11 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
             return (
               <div
                 key={ep.id}
-                className="group rounded-xl border border-white/10 bg-neutral-900/80 hover:border-amber-500/50 backdrop-blur-md overflow-hidden transition-all duration-300 flex flex-col justify-between shadow-xl hover:-translate-y-1"
+                className="group rounded-xl border border-neutral-200 dark:border-white/10 bg-white/90 dark:bg-neutral-900/80 hover:border-amber-500/50 backdrop-blur-md overflow-hidden transition-all duration-300 flex flex-col justify-between shadow-lg hover:-translate-y-1"
               >
                 <div>
                   {/* Thumbnail Banner */}
-                  <div className="relative aspect-video overflow-hidden bg-neutral-950">
+                  <div className="relative aspect-video overflow-hidden bg-neutral-200 dark:bg-neutral-950">
                     <img
                       src={thumb}
                       alt={ep.title}
@@ -144,10 +144,10 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
 
                   {/* Content */}
                   <div className="p-5 space-y-3">
-                    <h3 className="font-display font-bold text-lg text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+                    <h3 className="font-display font-bold text-lg text-neutral-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
                       {ep.title}
                     </h3>
-                    <p className="text-xs text-neutral-400 leading-relaxed line-clamp-3">
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed line-clamp-3">
                       {ep.description}
                     </p>
 
@@ -156,7 +156,7 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
                         {ep.topics.split(',').slice(0, 3).map((topic, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-neutral-400 flex items-center gap-1"
+                            className="px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 flex items-center gap-1"
                           >
                             <Tag className="w-2.5 h-2.5 text-amber-400" />
                             <span>{topic.trim()}</span>
@@ -170,7 +170,7 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
                 <div className="p-5 pt-0">
                   <button
                     onClick={() => setActiveEpisode(ep)}
-                    className="w-full py-2.5 px-4 rounded border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400 hover:text-neutral-950 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 rounded border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400 hover:text-neutral-950 text-amber-700 dark:text-amber-400 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
                     <span>{ep.action_button_text || 'WATCH ARCHIVAL TAPE'}</span>
