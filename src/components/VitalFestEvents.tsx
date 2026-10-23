@@ -309,24 +309,24 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl max-h-[90vh] rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl flex flex-col"
+            className="relative w-full max-w-[calc(100vw-1.5rem)] sm:max-w-2xl max-h-[calc(100vh-2rem)] rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white">
-              <span className="text-xs font-industrial font-bold uppercase tracking-wider truncate pr-4 text-neutral-900 dark:text-white">
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-6 sm:py-3 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white min-w-0">
+              <span className="min-w-0 flex-1 text-[10px] sm:text-xs font-industrial font-bold uppercase tracking-wider truncate pr-2 text-neutral-900 dark:text-white">
                 {enlargedFlyer.title} — Official Event Flyer
               </span>
               <button
                 onClick={() => setEnlargedFlyer(null)}
-                className="p-1 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer"
+                className="flex-shrink-0 p-1.5 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
             <div className="overflow-auto p-2 bg-neutral-100 dark:bg-neutral-950">
               <img
                 src={enlargedFlyer.image}
                 alt={enlargedFlyer.title}
-                className="w-full h-auto rounded object-contain max-h-[78vh]"
+                className="w-full h-auto rounded object-contain max-h-[calc(100vh-8rem)]"
               />
             </div>
           </div>

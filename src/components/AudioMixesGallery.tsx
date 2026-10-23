@@ -463,24 +463,25 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
 
       {/* Video Modal Player */}
       {activeVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white">
-              <div className="flex items-center gap-2">
-                <Video className="w-4 h-4 text-amber-400" />
-                <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-neutral-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200">
+          <div className="relative flex w-full max-w-[calc(100vw-1.5rem)] sm:max-w-4xl max-h-[calc(100vh-1.5rem)] flex-col rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl">
+            <div className="flex min-w-0 shrink-0 items-center justify-between gap-3 px-3 py-2.5 sm:px-6 sm:py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Video className="w-4 h-4 shrink-0 text-amber-400" />
+                <span className="min-w-0 flex-1 font-display font-black text-xs sm:text-sm uppercase tracking-wide truncate text-neutral-900 dark:text-white">
                   {activeVideo.title}
                 </span>
               </div>
               <button
                 onClick={() => setActiveVideo(null)}
-                className="p-1 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                className="shrink-0 p-1.5 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close video"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            <div className="relative aspect-video bg-black flex items-center justify-center">
+            <div className="relative aspect-video w-full shrink-0 bg-black flex items-center justify-center">
               {isVideoFile(activeVideo.video_url) ? (
                 <video
                   src={activeVideo.video_url}
