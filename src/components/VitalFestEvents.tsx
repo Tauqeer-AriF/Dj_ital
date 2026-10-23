@@ -309,20 +309,20 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl max-h-[90vh] rounded sound-cabinet overflow-hidden border border-white/20 bg-neutral-950 shadow-2xl flex flex-col"
+            className="relative max-w-2xl max-h-[90vh] rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 text-white">
-              <span className="text-xs font-industrial font-bold uppercase tracking-wider truncate pr-4 text-white">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white">
+              <span className="text-xs font-industrial font-bold uppercase tracking-wider truncate pr-4 text-neutral-900 dark:text-white">
                 {enlargedFlyer.title} — Official Event Flyer
               </span>
               <button
                 onClick={() => setEnlargedFlyer(null)}
-                className="p-1 rounded text-white/80 hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="overflow-auto p-2">
+            <div className="overflow-auto p-2 bg-neutral-100 dark:bg-neutral-950">
               <img
                 src={enlargedFlyer.image}
                 alt={enlargedFlyer.title}

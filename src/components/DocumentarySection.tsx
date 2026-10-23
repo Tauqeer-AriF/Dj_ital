@@ -195,15 +195,15 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
             type="button"
             onClick={() => setActiveEpisode(null)}
             aria-label="Close documentary player"
-            className="fixed right-3 top-3 z-[122] flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-neutral-900 text-white shadow-xl transition-colors hover:bg-neutral-700 sm:right-6 sm:top-6"
+            className="fixed right-3 top-3 z-[122] flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 dark:border-white/30 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white shadow-xl transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700 sm:right-6 sm:top-6"
           >
             <X className="h-6 w-6" />
           </button>
           <div
-            className="relative my-auto w-full max-w-4xl overflow-hidden rounded-xl border border-white/20 bg-neutral-950 shadow-2xl sm:rounded-2xl"
+            className="relative my-auto w-full max-w-4xl overflow-hidden rounded-xl border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-2xl sm:rounded-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex min-h-14 items-center gap-2 border-b border-white/10 px-4 py-3 pr-14 text-white sm:px-6">
+            <div className="flex min-h-14 items-center gap-2 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 px-4 py-3 pr-14 text-neutral-900 dark:text-white sm:px-6">
               <Film className="h-5 w-5 shrink-0 text-amber-400" />
               <h3 className="min-w-0 break-words font-display text-sm font-bold uppercase sm:text-base">
                 {activeEpisode.badge_label || `Episode ${activeEpisode.episode_number}`}: {activeEpisode.title}
@@ -230,7 +230,7 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
               ) : (
                 <div className="space-y-4 p-8 text-center">
                   <Film className="mx-auto h-12 w-12 text-amber-400 opacity-60" />
-                  <p className="text-sm font-mono text-neutral-400">
+                  <p className="text-sm font-mono text-neutral-600 dark:text-neutral-400">
                     This video source cannot be embedded. Open it in a new tab instead.
                   </p>
                   <a

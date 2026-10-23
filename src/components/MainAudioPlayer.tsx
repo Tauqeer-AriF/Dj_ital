@@ -188,22 +188,22 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
     <>
       {/* Embedded Stream Modal (for SoundCloud or Mixcloud streams) */}
       {activeEmbedUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl sound-cabinet rounded border border-neutral-700 p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/65 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl sound-cabinet rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between text-xs font-industrial uppercase tracking-wider">
-              <div className="flex items-center gap-2 text-amber-400 font-bold">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold">
                 <Radio className="w-4 h-4 animate-pulse" />
                 <span>EXTERNAL AUDIO STREAM DECK</span>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveEmbedUrl(null)}
-                className="hardware-btn p-1.5 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                className="hardware-btn p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="w-full rounded overflow-hidden bg-black aspect-[16/6] min-h-[160px] border border-white/10">
+            <div className="w-full rounded overflow-hidden bg-black aspect-[16/6] min-h-[160px] border border-neutral-200 dark:border-white/10">
               <iframe
                 width="100%"
                 height="160"
@@ -221,7 +221,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveEmbedUrl(null)}
-                className="hardware-btn px-4 py-2 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-industrial text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="hardware-btn px-4 py-2 rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-industrial text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Close Deck
               </button>

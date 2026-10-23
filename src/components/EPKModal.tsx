@@ -211,7 +211,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
               {/* Quick Summary Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-5 rounded sound-card space-y-2">
-                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
+                  <div className="text-[11px] font-industrial text-neutral-600 dark:text-neutral-400 uppercase tracking-wider font-bold">
                     Artist Tagline
                   </div>
                   <div className="text-sm font-display font-bold text-neutral-900 dark:text-white">
@@ -223,7 +223,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                 </div>
 
                 <div className="p-5 rounded sound-card space-y-2">
-                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
+                  <div className="text-[11px] font-industrial text-neutral-600 dark:text-neutral-400 uppercase tracking-wider font-bold">
                     Genres & Musical Styles
                   </div>
                   <div className="text-sm font-display font-bold text-amber-600 dark:text-amber-400">
@@ -235,7 +235,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                 </div>
 
                 <div className="p-5 rounded sound-card space-y-2">
-                  <div className="text-[11px] font-industrial text-neutral-400 uppercase tracking-wider font-bold">
+                  <div className="text-[11px] font-industrial text-neutral-600 dark:text-neutral-400 uppercase tracking-wider font-bold">
                     Booking Management
                   </div>
                   <div className="text-sm font-display font-bold text-neutral-900 dark:text-white">
@@ -302,7 +302,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                   </button>
                   <button
                     onClick={handleDownloadRiderTxt}
-                    className="hardware-btn flex items-center gap-2 px-4 py-2.5 rounded bg-neutral-950 hover:bg-neutral-800 text-white dark:bg-white/10 dark:hover:bg-white/20 font-industrial text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                    className="hardware-btn flex items-center gap-2 px-4 py-2.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white font-industrial text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download Tech Rider (.txt)</span>
@@ -426,7 +426,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
               </div>
 
               {/* Rider Code/Text Display */}
-              <div className="p-6 rounded-2xl bg-neutral-950 text-neutral-200 font-mono text-xs leading-relaxed border border-neutral-800 shadow-inner overflow-x-auto whitespace-pre-wrap">
+              <div className="p-6 rounded-2xl bg-neutral-100 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 font-mono text-xs leading-relaxed border border-neutral-200 dark:border-neutral-800 shadow-inner overflow-x-auto whitespace-pre-wrap">
                 {techRider}
               </div>
             </div>
@@ -446,7 +446,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* Official Vital Fest Logo */}
-                <div className="p-6 rounded-2xl bg-neutral-950 border border-amber-400/40 flex flex-col items-center justify-between gap-6 shadow-xl">
+                <div className="p-6 rounded-2xl bg-neutral-100 dark:bg-neutral-950 border border-amber-400/40 flex flex-col items-center justify-between gap-6 shadow-xl">
                   <div className="py-6 flex flex-col items-center text-center">
                     <img
                       src={logoSrc}
@@ -460,8 +460,8 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                       VITAL FEST JUNGLE OFFICIAL
                     </div>
                   </div>
-                  <div className="w-full flex items-center justify-between pt-4 border-t border-neutral-800 text-xs">
-                    <span className="font-mono text-white/80">Transparent PNG</span>
+                  <div className="w-full flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-800 text-xs">
+                    <span className="font-mono text-neutral-700 dark:text-white/80">Transparent PNG</span>
                     <a
                       href={logoSrc}
                       download="Vital_Fest_Official_Logo.png"
@@ -474,17 +474,17 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                 </div>
 
                 {/* Dark Logo Presentation */}
-                <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col items-center justify-between gap-6">
+                <div className="p-6 rounded-2xl bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 flex flex-col items-center justify-between gap-6">
                   <div className="py-8 text-center">
-                    <span className="text-4xl sm:text-5xl font-display font-black tracking-tighter text-white uppercase">
+                    <span className="text-4xl sm:text-5xl font-display font-black tracking-tighter text-neutral-900 dark:text-white uppercase">
                       DJ <span className="text-amber-400">ITAL</span>
                     </span>
-                    <div className="text-[10px] font-mono tracking-widest text-neutral-400 uppercase mt-1">
+                    <div className="text-[10px] font-mono tracking-widest text-neutral-600 dark:text-neutral-400 uppercase mt-1">
                       EAST LONDON SOUNDS
                     </div>
                   </div>
                   <div className="w-full flex items-center justify-between pt-4 border-t border-neutral-800 text-xs">
-                    <span className="font-mono text-neutral-400">Dark / Amber Vector</span>
+                    <span className="font-mono text-neutral-600 dark:text-neutral-400">Dark / Amber Vector</span>
                     <button
                       onClick={() => {
                         const svgData = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120"><rect width="100%" height="100%" fill="#0a0a0c"/><text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="46" fill="#ffffff">DJ <tspan fill="#f59e0b">ITAL</tspan></text><text x="50%" y="88%" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-weight="700" font-size="12" fill="#9ca3af" letter-spacing="4">EAST LONDON SOUNDS</text></svg>`;
@@ -527,7 +527,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
                         a.click();
                         URL.revokeObjectURL(url);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-mono font-bold transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-mono font-bold transition-colors cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download SVG</span>
@@ -591,13 +591,13 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
 
                 <div className="pt-3 border-t border-neutral-200 dark:border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                   <div>
-                    <span className="text-neutral-400 uppercase font-bold block">Key Venues & Festivals:</span>
+                    <span className="text-neutral-600 dark:text-neutral-400 uppercase font-bold block">Key Venues & Festivals:</span>
                     <span className="text-neutral-900 dark:text-white font-medium">
                       {profile?.key_venues || 'Fabric London, The Hackney Social, Ministry of Sound, Boomtown Fair'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 uppercase font-bold block">Radio & Broadcasts:</span>
+                    <span className="text-neutral-600 dark:text-neutral-400 uppercase font-bold block">Radio & Broadcasts:</span>
                     <span className="text-neutral-900 dark:text-white font-medium">
                       {profile?.radio_show || 'The Ital Show on Dejavu FM'} / Kool FM 94.5 (Heritage)
                     </span>
@@ -635,7 +635,7 @@ WhatsApp Quick Contact: ${profile?.whatsapp_number || '+44 7900 123456'}`;
             )}
             <button
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg bg-neutral-950 text-white dark:bg-white/10 dark:hover:bg-white/20 text-xs font-bold transition-colors cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-bold transition-colors cursor-pointer"
             >
               Close EPK
             </button>

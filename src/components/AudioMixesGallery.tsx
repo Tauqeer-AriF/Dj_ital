@@ -464,17 +464,17 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
       {/* Video Modal Player */}
       {activeVideo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl rounded sound-cabinet overflow-hidden border border-white/20 shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 text-white">
+          <div className="relative w-full max-w-4xl rounded sound-cabinet overflow-hidden border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white">
               <div className="flex items-center gap-2">
                 <Video className="w-4 h-4 text-amber-400" />
-                <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-white">
+                <span className="font-display font-black text-sm uppercase tracking-wide truncate max-w-md text-neutral-900 dark:text-white">
                   {activeVideo.title}
                 </span>
               </div>
               <button
                 onClick={() => setActiveVideo(null)}
-                className="p-1 rounded text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1 rounded text-neutral-500 dark:text-white/80 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

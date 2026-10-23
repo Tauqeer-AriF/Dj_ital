@@ -282,13 +282,13 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
           onClick={() => setLightboxItem(null)}
         >
           <div
-            className="relative max-w-4xl w-full sound-cabinet rounded border border-neutral-400 dark:border-white/25 overflow-hidden shadow-2xl space-y-4 p-6 text-white"
+            className="relative max-w-4xl w-full sound-cabinet rounded border border-neutral-200 dark:border-white/25 bg-white dark:bg-neutral-900 overflow-hidden shadow-2xl space-y-4 p-6 text-neutral-900 dark:text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setLightboxItem(null)}
-              className="absolute right-4 top-4 z-10 rounded bg-neutral-800 p-2 text-white transition-colors hover:bg-amber-400 hover:text-neutral-950 cursor-pointer"
+              className="absolute right-4 top-4 z-10 rounded bg-neutral-100 dark:bg-neutral-800 p-2 text-neutral-700 dark:text-white transition-colors hover:bg-amber-400 hover:text-neutral-950 cursor-pointer"
               aria-label="Close Lightbox"
             >
               <X className="w-5 h-5" />
@@ -315,26 +315,26 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white pt-2 border-t border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-neutral-900 dark:text-white pt-2 border-t border-neutral-200 dark:border-white/10">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
                   <span>{lightboxItem.category}</span>
-                  <span aria-hidden="true" className="text-white/40">·</span>
+                  <span aria-hidden="true" className="text-neutral-400 dark:text-white/40">·</span>
                   <span>{lightboxItem.year}</span>
                   {lightboxItem.location && (
                     <>
-                      <span aria-hidden="true" className="text-white/40">·</span>
+                      <span aria-hidden="true" className="text-neutral-400 dark:text-white/40">·</span>
                       <span>{lightboxItem.location}</span>
                     </>
                   )}
                 </div>
-                <h3 className="text-lg sm:text-xl font-display font-black text-white">{lightboxItem.title}</h3>
+                <h3 className="text-lg sm:text-xl font-display font-black text-neutral-900 dark:text-white">{lightboxItem.title}</h3>
                 {lightboxItem.caption && (
-                  <p className="text-xs text-white/90 leading-relaxed max-w-xl font-normal">{lightboxItem.caption}</p>
+                  <p className="text-xs text-neutral-700 dark:text-white/90 leading-relaxed max-w-xl font-normal">{lightboxItem.caption}</p>
                 )}
               </div>
 
-              <div className="text-[11px] font-industrial text-white/70 shrink-0 self-start sm:self-center font-bold tracking-wider uppercase">
+              <div className="text-[11px] font-industrial text-neutral-500 dark:text-white/70 shrink-0 self-start sm:self-center font-bold tracking-wider uppercase">
                 ARCHIVE REF #GAL-{lightboxItem.id}
               </div>
             </div>
