@@ -488,10 +488,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
-              <div className="rounded border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
-                Visits are measured with a temporary first-party browser session ID. No IP addresses or third-party tracking services are used. A session is an estimate, not a guaranteed count of individual people.
-              </div>
-
               <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
