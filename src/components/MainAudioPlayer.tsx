@@ -13,6 +13,7 @@ import {
   Sparkles,
   AlertCircle,
   RefreshCw,
+  Repeat,
 } from 'lucide-react';
 import { ProfileData } from '../db/sqlite';
 import { ActiveTrack } from '../types';
@@ -22,6 +23,8 @@ interface MainAudioPlayerProps {
   profile: ProfileData | null;
   activeTrack: ActiveTrack | null;
   isPlaying: boolean;
+  isLooping: boolean;
+  onToggleLoop: () => void;
   onTogglePlay: () => void;
   onPlayLiveStream?: () => void;
 }
@@ -30,6 +33,8 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
   profile,
   activeTrack,
   isPlaying,
+  isLooping,
+  onToggleLoop,
   onTogglePlay,
   onPlayLiveStream,
 }) => {
@@ -69,6 +74,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
   const currentStreamUrl = isLiveOnAir
     ? (activeTrack?.streamUrl?.trim() || (isCurrentLiveStream ? liveStreamUrl : null))
     : (activeTrack?.type !== 'live_stream' && activeTrack?.streamUrl ? activeTrack.streamUrl.trim() : null);
+  const canLoopCurrentTrack = Boolean(activeTrack && currentStreamUrl && !isCurrentLiveStream && !isEmbedStream(currentStreamUrl));
 
   // Handle direct HTML5 audio stream playback when streamUrl is provided
   useEffect(() => {
@@ -234,6 +240,7 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
       <audio
         ref={audioRef}
         preload="auto"
+        loop={isLooping && canLoopCurrentTrack}
         onWaiting={() => setIsBuffering(true)}
         onPlaying={() => {
           setIsBuffering(false);
@@ -291,6 +298,23 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               )}
             </button>
+
+            {canLoopCurrentTrack && (
+              <button
+                type="button"
+                onClick={onToggleLoop}
+                aria-label={isLooping ? 'Turn repeat off' : 'Repeat this track'}
+                aria-pressed={isLooping}
+                title={isLooping ? 'Repeat is on' : 'Repeat this track'}
+                className={`hardware-btn p-1.5 rounded border transition-colors ${
+                  isLooping
+                    ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                    : 'border-neutral-300 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Expand Console Trigger */}
             <button
@@ -454,7 +478,24 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
                 )}
               </button>
 
-              {/* Volume Button */}
+                {canLoopCurrentTrack && (
+                  <button
+                    type="button"
+                    onClick={onToggleLoop}
+                    aria-label={isLooping ? 'Turn repeat off' : 'Repeat this track'}
+                    aria-pressed={isLooping}
+                    title={isLooping ? 'Repeat is on' : 'Repeat this track'}
+                    className={`hardware-btn p-2 rounded border transition-colors ${
+                      isLooping
+                        ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                        : 'border-neutral-300 text-neutral-700 hover:bg-neutral-200 dark:border-white/15 dark:text-neutral-300 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    <Repeat className="h-4 w-4" />
+                  </button>
+                )}
+
+                {/* Volume Button */}
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}

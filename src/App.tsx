@@ -87,6 +87,7 @@ function AppContent() {
   const hasLoadedData = useRef(false);
   const [activeTrack, setActiveTrack] = useState<ActiveTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
   const [isEpkOpen, setIsEpkOpen] = useState(false);
   const [isAdminRoute, setIsAdminRoute] = useState(
     () => window.location.pathname.replace(/\/+$/, '') === '/admin'
@@ -355,7 +356,12 @@ function AppContent() {
             testimonials={data.testimonials}
             venueLogos={data.venueLogos}
           />
-          <AudioMixesGallery mixes={data.audioMixes} videos={data.videos} />
+          <AudioMixesGallery
+            mixes={data.audioMixes}
+            videos={data.videos}
+            isLooping={isLooping}
+            onToggleLoop={() => setIsLooping((looping) => !looping)}
+          />
           <ReleasesSection
             releases={data.releases}
             activeTrack={activeTrack}
@@ -393,6 +399,8 @@ function AppContent() {
         profile={data.profile}
         activeTrack={activeTrack}
         isPlaying={isPlaying}
+        isLooping={isLooping}
+        onToggleLoop={() => setIsLooping((looping) => !looping)}
         onTogglePlay={() => setIsPlaying((playing) => !playing)}
         onPlayLiveStream={startLiveStream}
       />

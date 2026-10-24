@@ -9,6 +9,7 @@ import {
   Filter,
   ChevronDown,
   Check,
+  Repeat,
 } from 'lucide-react';
 import { AudioMixData, VideoData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
@@ -18,9 +19,16 @@ import { isVideoFile, extractYouTubeEmbedUrl } from './DocumentarySection';
 interface AudioMixesGalleryProps {
   mixes: AudioMixData[];
   videos: VideoData[];
+  isLooping: boolean;
+  onToggleLoop: () => void;
 }
 
-export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, videos }) => {
+export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
+  mixes,
+  videos,
+  isLooping,
+  onToggleLoop,
+}) => {
   const [selectedStyle, setSelectedStyle] = useState<string>('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeEmbedUrl, setActiveEmbedUrl] = useState<string | null>(null);
@@ -247,7 +255,23 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                               <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
                               <span>LIVE SOUND SYSTEM STREAM DECK</span>
                             </div>
-                            <audio controls autoPlay src={clean} className="w-full max-w-xl" />
+                            <div className="flex w-full max-w-xl items-center gap-2">
+                              <audio controls autoPlay loop={isLooping} src={clean} className="min-w-0 flex-1" />
+                              <button
+                                type="button"
+                                onClick={onToggleLoop}
+                                aria-label={isLooping ? 'Turn repeat off' : 'Repeat this audio'}
+                                aria-pressed={isLooping}
+                                title={isLooping ? 'Repeat is on' : 'Repeat this audio'}
+                                className={`shrink-0 rounded border p-2 transition-colors ${
+                                  isLooping
+                                    ? 'border-amber-500 bg-amber-400/20 text-amber-300'
+                                    : 'border-white/20 text-neutral-300 hover:border-amber-400 hover:text-amber-300'
+                                }`}
+                              >
+                                <Repeat className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         );
                       }
