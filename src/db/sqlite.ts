@@ -198,6 +198,7 @@ export interface AudioMixData {
   mediafire_url?: string;
   rinse_fm_url?: string;
   dejavu_fm_url?: string;
+  cover_image_url: string;
 }
 
 export interface VideoData {
@@ -469,6 +470,14 @@ export function ensureSchemaMigrations(db: Database) {
       }
       if (!columns.has('video_url')) {
         db.run("ALTER TABLE releases ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
+      }
+    }
+
+    const audioMixesTable = db.exec('PRAGMA table_info(audio_mixes)');
+    if (audioMixesTable.length > 0) {
+      const columns = new Set(audioMixesTable[0].values.map((column) => String(column[1])));
+      if (!columns.has('cover_image_url')) {
+        db.run("ALTER TABLE audio_mixes ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT ''");
       }
     }
   } catch (e) {
@@ -1133,8 +1142,8 @@ export async function getAudioMixes(): Promise<AudioMixData[]> {
 export async function createAudioMix(data: Partial<AudioMixData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO audio_mixes (title, style, platform, embed_url, stream_url, duration, description, is_featured, order_index)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO audio_mixes (title, style, platform, embed_url, stream_url, duration, description, is_featured, order_index, cover_image_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title || 'Live Jungle Set',
       data.style || 'Jungle / D&B',
@@ -1145,6 +1154,7 @@ export async function createAudioMix(data: Partial<AudioMixData>): Promise<numbe
       data.description || '',
       data.is_featured ? 1 : 0,
       data.order_index || 0,
+      data.cover_image_url || '',
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');

@@ -291,6 +291,20 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({ mixes, vid
                     <ScrollReveal key={mix.id} variant="fade-up" delay={idx * 80}>
                       <div className="p-6 sm:p-7 rounded sound-cabinet shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1 h-full text-neutral-900 dark:text-white relative overflow-hidden">
                         <div className="space-y-4">
+                          {mix.cover_image_url && (
+                            <div className="aspect-video overflow-hidden rounded border border-neutral-200 dark:border-white/10">
+                              <img
+                                src={normalizeImageUrl(mix.cover_image_url)}
+                                alt={`${mix.title} cover`}
+                                loading="lazy"
+                                onError={(event) => {
+                                  event.currentTarget.src = FALLBACK_IMAGE;
+                                }}
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                            </div>
+                          )}
+
                           {/* Top Row: Platform & Style Tag */}
                           <div className="flex items-center justify-between gap-3 text-xs font-industrial">
                             <div className="flex items-center gap-2">

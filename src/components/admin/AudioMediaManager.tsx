@@ -84,6 +84,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
     description: '',
     is_featured: 1,
     order_index: 0,
+    cover_image_url: '',
   });
 
   // Video Modal
@@ -188,6 +189,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       description: '',
       is_featured: 1,
       order_index: mixes.length + 1,
+      cover_image_url: '',
     });
     setIsMixModalOpen(true);
   };
@@ -204,6 +206,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       description: mix.description || '',
       is_featured: mix.is_featured,
       order_index: mix.order_index,
+      cover_image_url: mix.cover_image_url || '',
     });
     setIsMixModalOpen(true);
   };
@@ -385,6 +388,13 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
               className="p-5 rounded border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900/60 shadow-sm flex flex-col justify-between space-y-4"
             >
               <div className="space-y-2">
+                {mix.cover_image_url && (
+                  <img
+                    src={mix.cover_image_url}
+                    alt={`${mix.title} cover`}
+                    className="mb-3 aspect-video w-full rounded border border-neutral-200 object-cover dark:border-white/10"
+                  />
+                )}
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-800 dark:text-amber-300 font-bold">
                     {mix.style}
@@ -476,7 +486,7 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
       {/* Edit/Create Mix Modal */}
       {isMixModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-xl rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 p-6 space-y-4 shadow-2xl">
             <ComponentLoadingOverlay isSaving={isSaving} message="Saving audio set to database..." />
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/10">
               <h4 className="font-display font-bold text-base text-neutral-900 dark:text-white">
@@ -502,6 +512,18 @@ export const AudioMediaManager: React.FC<AudioMediaManagerProps> = ({ onRefresh 
                   onChange={(e) => setMixFormData({ ...mixFormData, title: e.target.value })}
                   placeholder="e.g. Kool FM 94.5 Archive (1994)"
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-white/10 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-mono font-bold text-neutral-600 dark:text-neutral-300 uppercase">
+                  Audio Set Photo / Cover
+                </label>
+                <ImageInput
+                  value={mixFormData.cover_image_url || ''}
+                  onChange={(url) => setMixFormData({ ...mixFormData, cover_image_url: url })}
+                  aspectRatio="video"
+                  helperText="Upload a photo, choose one from the Media Library, or paste an image URL."
                 />
               </div>
 
