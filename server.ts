@@ -41,6 +41,8 @@ const UPLOADS_DIR = path.resolve(
 const BACKUPS_DIR = path.resolve(DATA_DIR, 'backups');
 const SITE_IMAGES_DIR = path.resolve(DATA_DIR, 'site-images');
 const PUBLIC_IMAGES_DIR = path.resolve(__dirname, 'public', 'images');
+const ANALYTICS_PATH = path.resolve(DATA_DIR, 'site_analytics.json');
+const ANALYTICS_RETENTION_DAYS = 365;
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -130,6 +132,67 @@ app.get('/api/health', (_req: Request, res: Response) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
+});
+
+app.post('/api/analytics/visit', (req: Request, res: Response) => {
+  const sessionId = req.body?.sessionId;
+  if (typeof sessionId !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[1-8][\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(sessionId)) {
+    return res.status(400).json({ success: false, error: 'A valid anonymous session ID is required.' });
+  }
+
+  try {
+    const today = new Date();
+    const day = today.toISOString().slice(0, 10);
+    const sessionHash = createHash('sha256').update(sessionId, 'utf8').digest('hex');
+    const analytics = loadSiteAnalytics();
+    pruneSiteAnalytics(analytics, today);
+
+    const dayStats = analytics.days[day] || { visits: 0, sessionHashes: [] };
+    if (!dayStats.sessionHashes.includes(sessionHash)) {
+      dayStats.sessionHashes.push(sessionHash);
+      dayStats.visits += 1;
+      analytics.totalVisits += 1;
+    }
+    analytics.days[day] = dayStats;
+    saveSiteAnalytics(analytics);
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Could not record site visit:', error);
+    res.status(500).json({ success: false, error: 'Could not record site visit.' });
+  }
+});
+
+app.get('/api/analytics/visits', (_req: Request, res: Response) => {
+  try {
+    const today = new Date();
+    const analytics = loadSiteAnalytics();
+    pruneSiteAnalytics(analytics, today);
+    const daily = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date(today);
+      date.setUTCHours(0, 0, 0, 0);
+      date.setUTCDate(date.getUTCDate() - (29 - index));
+      const day = date.toISOString().slice(0, 10);
+      const dayStats = analytics.days[day];
+      return { date: day, visits: dayStats?.visits || 0 };
+    });
+    const uniqueSessions = new Set(
+      daily.flatMap(({ date }) => analytics.days[date]?.sessionHashes || [])
+    );
+
+    saveSiteAnalytics(analytics);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      totalVisits: analytics.totalVisits,
+      visitsLast30Days: daily.reduce((total, day) => total + day.visits, 0),
+      uniqueSessionsLast30Days: uniqueSessions.size,
+      daily,
+    });
+  } catch (error) {
+    console.error('Could not load site visit analytics:', error);
+    res.status(500).json({ success: false, error: 'Could not load site visit analytics.' });
+  }
 });
 
 function collectFiles(directory: string, relativeTo = directory): Array<{ path: string; fullPath: string; size: number }> {
@@ -270,6 +333,71 @@ function writeFileAtomically(targetPath: string, contents: Buffer | string): voi
   const temporaryPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(temporaryPath, contents);
   fs.renameSync(temporaryPath, targetPath);
+}
+
+interface DailyVisitStats {
+  visits: number;
+  sessionHashes: string[];
+}
+
+interface SiteAnalyticsData {
+  totalVisits: number;
+  days: Record<string, DailyVisitStats>;
+}
+
+function loadSiteAnalytics(): SiteAnalyticsData {
+  if (!fs.existsSync(ANALYTICS_PATH)) return { totalVisits: 0, days: {} };
+
+  const parsed: unknown = JSON.parse(fs.readFileSync(ANALYTICS_PATH, 'utf8'));
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('totalVisits' in parsed) ||
+    typeof parsed.totalVisits !== 'number' ||
+    !Number.isSafeInteger(parsed.totalVisits) ||
+    parsed.totalVisits < 0 ||
+    !('days' in parsed) ||
+    typeof parsed.days !== 'object' ||
+    parsed.days === null ||
+    Array.isArray(parsed.days)
+  ) {
+    throw new Error('Stored site analytics data has an invalid format.');
+  }
+
+  const days: SiteAnalyticsData['days'] = {};
+  for (const [date, stats] of Object.entries(parsed.days)) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      typeof stats !== 'object' ||
+      stats === null ||
+      !('visits' in stats) ||
+      typeof stats.visits !== 'number' ||
+      !Number.isSafeInteger(stats.visits) ||
+      stats.visits < 0 ||
+      !('sessionHashes' in stats) ||
+      !Array.isArray(stats.sessionHashes) ||
+      !stats.sessionHashes.every(
+        (hash: unknown): hash is string => typeof hash === 'string' && /^[\da-f]{64}$/i.test(hash)
+      )
+    ) {
+      throw new Error('Stored site analytics data has an invalid daily record.');
+    }
+    days[date] = { visits: stats.visits, sessionHashes: stats.sessionHashes };
+  }
+  return { totalVisits: parsed.totalVisits, days };
+}
+
+function saveSiteAnalytics(analytics: SiteAnalyticsData): void {
+  writeFileAtomically(ANALYTICS_PATH, JSON.stringify(analytics));
+}
+
+function pruneSiteAnalytics(analytics: SiteAnalyticsData, today: Date): void {
+  const cutoff = new Date(today);
+  cutoff.setUTCDate(cutoff.getUTCDate() - ANALYTICS_RETENTION_DAYS + 1);
+  const oldestDay = cutoff.toISOString().slice(0, 10);
+  for (const day of Object.keys(analytics.days)) {
+    if (day < oldestDay) delete analytics.days[day];
+  }
 }
 
 function isUploadReferenced(database: SqlDatabase, url: string): boolean {

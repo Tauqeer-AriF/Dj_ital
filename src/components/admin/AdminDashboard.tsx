@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  LayoutDashboard,
+  BarChart3,
   Calendar,
   Disc3,
   Image,
@@ -12,7 +12,6 @@ import {
   CheckCircle,
   RotateCcw,
   Lock,
-  Layers,
   Music,
   FileText,
   Quote,
@@ -67,7 +66,7 @@ interface AdminDashboardProps {
 }
 
 type TabType =
-  | 'overview'
+  | 'analytics'
   | 'security'
   | 'backup_restore'
   | 'storage'
@@ -86,6 +85,13 @@ type TabType =
   | 'sqlite'
   | 'help';
 
+interface VisitAnalyticsData {
+  totalVisits: number;
+  visitsLast30Days: number;
+  uniqueSessionsLast30Days: number;
+  daily: Array<{ date: string; visits: number }>;
+}
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onClose,
   onLock,
@@ -97,13 +103,139 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   documentaries = [],
   onRefreshData,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('analytics');
   const [isTogglingLive, setIsTogglingLive] = useState(false);
+  const [visitAnalytics, setVisitAnalytics] = useState<VisitAnalyticsData | null>(null);
+  const [visitAnalyticsError, setVisitAnalyticsError] = useState<string | null>(null);
+  const [isLoadingVisitAnalytics, setIsLoadingVisitAnalytics] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { showSuccess, showError } = useToast();
   const { isSaving, savingMessage, recentlySaved, withSaving } = useSaving();
 
   const pendingBookings = bookings.filter((b) => b.status === 'Pending').length;
+  const upcomingEvents = events.filter((event) => event.status.toLowerCase() === 'upcoming').length;
+  const confirmedBookings = bookings.filter((booking) =>
+    ['confirmed', 'accepted', 'approved'].includes(booking.status.trim().toLowerCase())
+  ).length;
+  const bookingStatusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    bookings.forEach((booking) => {
+      const status = booking.status.trim() || 'Unknown';
+      counts.set(status, (counts.get(status) || 0) + 1);
+    });
+    return Array.from(counts, ([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+  }, [bookings]);
+  const eventStatusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    events.forEach((event) => {
+      const status = event.status.trim() || 'Unknown';
+      counts.set(status, (counts.get(status) || 0) + 1);
+    });
+    return Array.from(counts, ([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+  }, [events]);
+  const monthlyBookings = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        label: date.toLocaleDateString(undefined, { month: 'short' }),
+        count: 0,
+      };
+    });
+    const monthIndexes = new Map(months.map((month, index) => [month.key, index]));
+
+    bookings.forEach((booking) => {
+      const createdAt = new Date(booking.created_at);
+      if (Number.isNaN(createdAt.getTime())) return;
+      const index = monthIndexes.get(`${createdAt.getFullYear()}-${createdAt.getMonth()}`);
+      if (index !== undefined) months[index].count += 1;
+    });
+    return months;
+  }, [bookings]);
+  const topBookingTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+    bookings.forEach((booking) => {
+      const type = booking.event_type.trim() || 'Unspecified';
+      counts.set(type, (counts.get(type) || 0) + 1);
+    });
+    return Array.from(counts, ([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [bookings]);
+  const galleryCategoryStats = useMemo(() => {
+    const counts = new Map<string, number>();
+    gallery.forEach((item) => {
+      const category = item.category.trim() || 'Uncategorised';
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+    return Array.from(counts, ([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [gallery]);
+  const releaseAssetStats = [
+    { label: 'With audio', count: releases.filter((release) => Boolean(release.stream_url?.trim())).length },
+    { label: 'With cover', count: releases.filter((release) => Boolean(release.album_cover_url?.trim())).length },
+    { label: 'With video', count: releases.filter((release) => Boolean(release.video_url?.trim())).length },
+  ];
+  const maxMonthlyBookings = Math.max(...monthlyBookings.map((month) => month.count), 1);
+  const maxBookingTypeCount = Math.max(...topBookingTypes.map((item) => item.count), 1);
+  const maxGalleryCategoryCount = Math.max(...galleryCategoryStats.map((item) => item.count), 1);
+  const maxBookingStatusCount = Math.max(...bookingStatusData.map((item) => item.count), 1);
+  const maxEventStatusCount = Math.max(...eventStatusData.map((item) => item.count), 1);
+  const maxDailyVisits = Math.max(...(visitAnalytics?.daily.map((day) => day.visits) || []), 1);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+
+    const controller = new AbortController();
+    const loadVisitAnalytics = async () => {
+      setIsLoadingVisitAnalytics(true);
+      setVisitAnalyticsError(null);
+      try {
+        const response = await fetch('/api/analytics/visits', {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`Could not load visitor analytics (HTTP ${response.status}).`);
+
+        const result: unknown = await response.json();
+        if (
+          typeof result !== 'object' ||
+          result === null ||
+          !('totalVisits' in result) ||
+          typeof result.totalVisits !== 'number' ||
+          !('visitsLast30Days' in result) ||
+          typeof result.visitsLast30Days !== 'number' ||
+          !('uniqueSessionsLast30Days' in result) ||
+          typeof result.uniqueSessionsLast30Days !== 'number' ||
+          !('daily' in result) ||
+          !Array.isArray(result.daily) ||
+          !result.daily.every(
+            (day) =>
+              typeof day === 'object' &&
+              day !== null &&
+              'date' in day &&
+              typeof day.date === 'string' &&
+              'visits' in day &&
+              typeof day.visits === 'number'
+          )
+        ) {
+          throw new Error('The server returned invalid visitor analytics data.');
+        }
+        setVisitAnalytics(result as VisitAnalyticsData);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load visitor analytics.';
+        setVisitAnalyticsError(message);
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingVisitAnalytics(false);
+      }
+    };
+
+    void loadVisitAnalytics();
+    return () => controller.abort();
+  }, [activeTab]);
 
   const handleToggleLive = async () => {
     if (isTogglingLive) return;
@@ -136,7 +268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
     { id: 'backup_restore', label: 'Backup & Restore', icon: <RotateCcw className="w-4 h-4" /> },
@@ -338,210 +470,264 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
-          {activeTab === 'overview' && (
-            <div className="space-y-8">
-              {/* Welcome Banner */}
-              <div className="p-6 sm:p-8 rounded sound-cabinet border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 backdrop-blur-xl relative overflow-hidden">
-                <div className="relative z-10 max-w-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold uppercase">
-                    <span>SQLite Relational Engine</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Server Sync Active</span>
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    <BarChart3 className="h-4 w-4" />
+                    Dashboard Analytics
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-display font-black text-neutral-950 dark:text-white tracking-tight">
-                    DJ Ital Heritage Management Console
-                  </h2>
-                  <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
-                    Manage real-time tour dates, discography releases, gallery archives, biographical copy, and customise every image across the website with automatic cloud persistence across Windows, iOS, Mac, and Android.
+                  <h2 className="text-2xl sm:text-3xl font-display font-black text-neutral-950 dark:text-white">Performance & Content Insights</h2>
+                  <p className="mt-1 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
+                    Live summaries from booking requests and the content currently managed on your site.
                   </p>
                 </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div
-                  onClick={() => setActiveTab('heritage')}
-                  className="p-5 rounded sound-card border border-cyan-400/40 bg-white shadow-sm hover:shadow-md hover:border-cyan-500 dark:border-cyan-400/20 dark:bg-neutral-900/70 dark:hover:border-cyan-400 cursor-pointer transition-all space-y-2 group"
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span className="font-semibold text-neutral-900 dark:text-white">Heritage & V&A</span>
-                    <Landmark className="w-4 h-4 text-cyan-500 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white">
-                    100%
-                  </div>
-                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
-                    Fully Customisable
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('media')}
-                  className="p-5 rounded sound-card border border-amber-400/40 bg-white shadow-sm hover:shadow-md hover:border-amber-500 dark:border-amber-400/20 dark:bg-neutral-900/70 dark:hover:border-amber-400 cursor-pointer transition-all space-y-2 group"
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span className="font-semibold text-neutral-900 dark:text-white">Site Images & Media</span>
-                    <Layers className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white">
-                    10 Slots
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
-                    Hero, V&A, Vital Fest, Docs
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('events')}
-                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span>Events & Shows</span>
-                    <Calendar className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                  </div>
-                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white tabular-nums">
-                    {events.length}
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400/80 font-mono font-medium">
-                    {events.filter((e) => e.status === 'Upcoming').length} upcoming
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('releases')}
-                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span>Releases & Dubs</span>
-                    <Disc3 className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                  </div>
-                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white tabular-nums">
-                    {releases.length}
-                  </div>
-                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
-                    Mid-90s to Present
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('bookings')}
-                  className="p-5 rounded sound-card border border-neutral-200 bg-white shadow-sm hover:shadow-md hover:border-amber-500/40 dark:border-white/10 dark:bg-neutral-900/70 dark:hover:border-amber-400/40 cursor-pointer transition-all space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                    <span>Booking Enquiries</span>
-                    <Inbox className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                  </div>
-                  <div className="text-3xl font-display font-bold text-neutral-950 dark:text-white tabular-nums">
-                    {bookings.length}
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                    {pendingBookings} pending review
-                  </div>
+                <div className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+                  Data updates when dashboard records change
                 </div>
               </div>
 
-              {/* Quick Actions & Recent Bookings */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Enquiries Card */}
-                <div className="p-6 rounded sound-card border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-display font-bold text-neutral-950 dark:text-white">Recent Booking Requests</h3>
-                    <button
-                      onClick={() => setActiveTab('bookings')}
-                      className="text-xs text-amber-600 dark:text-amber-400 font-medium hover:underline cursor-pointer"
-                    >
-                      View All
+              <div className="rounded border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
+                Visits are measured with a temporary first-party browser session ID. No IP addresses or third-party tracking services are used. A session is an estimate, not a guaranteed count of individual people.
+              </div>
+
+              <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h3 className="font-display font-bold text-neutral-950 dark:text-white">Site visits</h3>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Public site sessions recorded by the server</p>
+                  </div>
+                  {isLoadingVisitAnalytics && !visitAnalytics ? (
+                    <div role="status" className="text-xs text-neutral-500 dark:text-neutral-400">Loading visit data...</div>
+                  ) : visitAnalyticsError ? (
+                    <div role="alert" className="text-xs text-red-600 dark:text-red-400">{visitAnalyticsError}</div>
+                  ) : visitAnalytics ? (
+                    <div className="grid grid-cols-3 gap-3 sm:gap-6">
+                      {[
+                        { label: 'All-time visits', value: visitAnalytics.totalVisits },
+                        { label: 'Last 30 days', value: visitAnalytics.visitsLast30Days },
+                        { label: 'Sessions (30d)', value: visitAnalytics.uniqueSessionsLast30Days },
+                      ].map((metric) => (
+                        <div key={metric.label} className="min-w-0">
+                          <div className="text-xl sm:text-2xl font-display font-black tabular-nums text-neutral-950 dark:text-white">{metric.value}</div>
+                          <div className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{metric.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">No visit data recorded yet.</div>
+                  )}
+                </div>
+                {visitAnalytics && !visitAnalyticsError && (
+                  <div className="mt-6">
+                    <div className="flex h-36 items-end gap-1 border-b border-neutral-200 dark:border-white/10 sm:gap-1.5">
+                      {visitAnalytics.daily.map((day, index) => {
+                        const dayLabel = new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          timeZone: 'UTC',
+                        });
+                        return (
+                          <div key={day.date} className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end">
+                            <div
+                              className="w-full max-w-3 rounded-t bg-emerald-500 transition-colors group-hover:bg-amber-400 sm:max-w-4"
+                              style={{ height: `${Math.max((day.visits / maxDailyVisits) * 100, day.visits ? 7 : 2)}%` }}
+                              title={`${dayLabel}: ${day.visits} visits`}
+                            />
+                            {index % 5 === 0 && (
+                              <span className="absolute -bottom-5 whitespace-nowrap text-[8px] font-mono text-neutral-500 dark:text-neutral-400 sm:text-[9px]">
+                                {dayLabel}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-8 text-[10px] text-neutral-500 dark:text-neutral-400">Daily visits for the last 30 days. Each browser session is counted once per day.</p>
+                  </div>
+                )}
+              </section>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: 'Booking enquiries', value: bookings.length, detail: `${pendingBookings} awaiting review`, icon: <Inbox className="h-4 w-4" />, tab: 'bookings' as TabType },
+                  { label: 'Upcoming events', value: upcomingEvents, detail: `${events.length} events in catalogue`, icon: <Calendar className="h-4 w-4" />, tab: 'events' as TabType },
+                  { label: 'Music releases', value: releases.length, detail: `${releaseAssetStats[0].count} with audio attached`, icon: <Disc3 className="h-4 w-4" />, tab: 'releases' as TabType },
+                  { label: 'Gallery assets', value: gallery.length, detail: `${new Set(gallery.map((item) => item.category).filter(Boolean)).size} categories`, icon: <Image className="h-4 w-4" />, tab: 'gallery' as TabType },
+                ].map((metric) => (
+                  <button
+                    key={metric.label}
+                    type="button"
+                    onClick={() => setActiveTab(metric.tab)}
+                    className="rounded sound-card border border-neutral-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-amber-400 dark:border-white/10 dark:bg-neutral-900/70"
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+                      {metric.label}
+                      <span className="text-amber-500">{metric.icon}</span>
+                    </div>
+                    <div className="mt-3 text-3xl font-display font-black tabular-nums text-neutral-950 dark:text-white">{metric.value}</div>
+                    <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{metric.detail}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-neutral-950 dark:text-white">Booking enquiry trend</h3>
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">New submissions over the last six months</p>
+                    </div>
+                    <button type="button" onClick={() => setActiveTab('bookings')} className="text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400">
+                      View bookings
                     </button>
                   </div>
-
-                  <div className="space-y-3">
-                    {bookings.slice(0, 3).map((b) => (
-                      <div
-                        key={b.id}
-                        className="p-3 rounded bg-neutral-50 border border-neutral-200 text-neutral-900 dark:bg-black/40 dark:border-white/5 dark:text-white flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <div className="font-semibold text-neutral-950 dark:text-white">{b.client_name}</div>
-                          <div className="text-neutral-500 dark:text-neutral-400">{b.event_type} · {b.target_date || 'Date TBD'}</div>
-                        </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300">
-                          {b.status}
-                        </span>
+                  <div className="flex h-40 items-end gap-3 border-b border-neutral-200 dark:border-white/10">
+                    {monthlyBookings.map((month) => (
+                      <div key={month.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                        <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-300">{month.count}</span>
+                        <div
+                          className="w-full max-w-12 rounded-t bg-amber-400 transition-all"
+                          style={{ height: `${Math.max((month.count / maxMonthlyBookings) * 100, month.count ? 8 : 2)}%` }}
+                          title={`${month.label}: ${month.count} enquiries`}
+                        />
+                        <span className="pb-2 text-[10px] font-mono text-neutral-500 dark:text-neutral-400">{month.label}</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                  <p className="mt-3 text-[11px] text-neutral-500 dark:text-neutral-400">
+                    {bookings.filter((booking) => {
+                      const date = new Date(booking.created_at);
+                      const start = new Date();
+                      start.setDate(start.getDate() - 30);
+                      return !Number.isNaN(date.getTime()) && date >= start;
+                    }).length} enquiries received in the last 30 days · {confirmedBookings} confirmed or approved overall
+                  </p>
+                </section>
 
-                {/* Profile Snapshot & Quick Shortcuts */}
-                <div className="p-6 rounded sound-card border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900/60 space-y-4">
-                  <h3 className="text-base font-display font-bold text-neutral-950 dark:text-white">Artist Profile & Media Status</h3>
-                  <div className="text-xs space-y-2 text-neutral-700 dark:text-neutral-300">
-                    <div>
-                      <span className="text-neutral-500">Artist: </span>
-                      <span className="font-semibold text-neutral-950 dark:text-white">{profile?.stage_name}</span>
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                  <h3 className="font-display font-bold text-neutral-950 dark:text-white">Booking pipeline</h3>
+                  <p className="mb-5 text-[11px] text-neutral-500 dark:text-neutral-400">Distribution by current request status</p>
+                  {bookingStatusData.length ? (
+                    <div className="space-y-4">
+                      {bookingStatusData.map((item) => (
+                        <div key={item.label}>
+                          <div className="mb-1.5 flex items-center justify-between text-xs">
+                            <span className="font-medium text-neutral-800 dark:text-neutral-200">{item.label}</span>
+                            <span className="font-mono text-neutral-500 dark:text-neutral-400">{item.count} ({Math.round((item.count / bookings.length) * 100)}%)</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+                            <div className="h-full rounded-full bg-amber-400" style={{ width: `${(item.count / maxBookingStatusCount) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <span className="text-neutral-500">Tagline: </span>
-                      <span>{profile?.tagline}</span>
+                  ) : (
+                    <p className="py-8 text-center text-xs text-neutral-500">No booking enquiries yet.</p>
+                  )}
+                </section>
+
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                  <h3 className="font-display font-bold text-neutral-950 dark:text-white">Popular enquiry types</h3>
+                  <p className="mb-5 text-[11px] text-neutral-500 dark:text-neutral-400">Most requested booking categories</p>
+                  {topBookingTypes.length ? (
+                    <div className="space-y-4">
+                      {topBookingTypes.map((item) => (
+                        <div key={item.label}>
+                          <div className="mb-1.5 flex items-center justify-between text-xs">
+                            <span className="truncate pr-3 font-medium text-neutral-800 dark:text-neutral-200">{item.label}</span>
+                            <span className="font-mono text-neutral-500 dark:text-neutral-400">{item.count}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+                            <div className="h-full rounded-full bg-cyan-500" style={{ width: `${(item.count / maxBookingTypeCount) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    {Boolean(profile?.navbar_subtitle || profile?.subtitle) && (
-                      <div>
-                        <span className="text-neutral-500">Navbar Sub-title: </span>
-                        <span className="text-amber-500 dark:text-amber-400 font-medium">
-                          {profile?.navbar_subtitle || profile?.subtitle}
-                        </span>
+                  ) : (
+                    <p className="py-8 text-center text-xs text-neutral-500">No enquiry category data yet.</p>
+                  )}
+                </section>
+
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-neutral-950 dark:text-white">Event catalogue status</h3>
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Event records grouped by status</p>
+                    </div>
+                    <button type="button" onClick={() => setActiveTab('events')} className="text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400">
+                      Manage events
+                    </button>
+                  </div>
+                  {eventStatusData.length ? (
+                    <div className="space-y-4">
+                      {eventStatusData.map((item) => (
+                        <div key={item.label}>
+                          <div className="mb-1.5 flex items-center justify-between text-xs">
+                            <span className="font-medium text-neutral-800 dark:text-neutral-200">{item.label}</span>
+                            <span className="font-mono text-neutral-500 dark:text-neutral-400">{item.count}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(item.count / maxEventStatusCount) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-8 text-center text-xs text-neutral-500">No events in the catalogue yet.</p>
+                  )}
+                </section>
+
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-neutral-950 dark:text-white">Release asset coverage</h3>
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Releases with linked media</p>
+                    </div>
+                    <button type="button" onClick={() => setActiveTab('releases')} className="text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400">
+                      Manage releases
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {releaseAssetStats.map((item) => (
+                      <div key={item.label} className="rounded border border-neutral-200 bg-neutral-50 p-3 text-center dark:border-white/10 dark:bg-black/20">
+                        <div className="text-2xl font-display font-black tabular-nums text-neutral-950 dark:text-white">{item.count}</div>
+                        <div className="mt-1 text-[10px] font-mono uppercase text-neutral-500 dark:text-neutral-400">{item.label}</div>
+                        <div className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                          {releases.length ? Math.round((item.count / releases.length) * 100) : 0}% of releases
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <span className="text-neutral-500">Kool FM Role: </span>
-                      <span>{profile?.kool_fm_role}</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-500">V&A Museum Honour: </span>
-                      <span className="text-cyan-600 dark:text-cyan-300 font-medium">{profile?.va_recognition_year} Recognised</span>
-                    </div>
+                    ))}
                   </div>
+                  <div className="mt-5 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded bg-neutral-100 px-2.5 py-1.5 text-neutral-700 dark:bg-white/10 dark:text-neutral-300">{events.length} events</span>
+                    <span className="rounded bg-neutral-100 px-2.5 py-1.5 text-neutral-700 dark:bg-white/10 dark:text-neutral-300">{documentaries.length} documentary episodes</span>
+                    <span className="rounded bg-neutral-100 px-2.5 py-1.5 text-neutral-700 dark:bg-white/10 dark:text-neutral-300">{gallery.filter((item) => /video/i.test(item.category)).length} gallery video clips</span>
+                  </div>
+                </section>
 
-                  <div className="pt-2 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setActiveTab('heritage')}
-                      className="px-3 py-1.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      Edit Heritage & V&A Archive
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('documentary')}
-                      className="px-3 py-1.5 rounded bg-amber-400 text-neutral-950 hover:bg-amber-300 text-xs font-semibold cursor-pointer transition-colors shadow-sm"
-                    >
-                      Edit Documentary Series
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('media')}
-                      className="px-3 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 text-xs font-semibold dark:text-white transition-colors cursor-pointer"
-                    >
-                      Manage Media & Documents
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('profile')}
-                      className="px-3 py-1.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:hover:bg-white/20 text-xs font-semibold dark:text-white transition-colors cursor-pointer"
-                    >
-                      Edit Profile and Branding
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('sqlite')}
-                      className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      Open SQLite Query Tool
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('backup_restore')}
-                      className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Backup & Restore</span>
-                    </button>
-                  </div>
-                </div>
+                <section className="rounded sound-card border border-neutral-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900/60 xl:col-span-2">
+                  <h3 className="font-display font-bold text-neutral-950 dark:text-white">Gallery category distribution</h3>
+                  <p className="mb-5 text-[11px] text-neutral-500 dark:text-neutral-400">Assets grouped by their assigned category</p>
+                  {galleryCategoryStats.length ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {galleryCategoryStats.map((item) => (
+                        <div key={item.label}>
+                          <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+                            <span className="truncate font-medium text-neutral-800 dark:text-neutral-200">{item.label}</span>
+                            <span className="font-mono text-neutral-500 dark:text-neutral-400">{item.count}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+                            <div className="h-full rounded-full bg-violet-500" style={{ width: `${(item.count / maxGalleryCategoryCount) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-6 text-center text-xs text-neutral-500">No gallery assets yet.</p>
+                  )}
+                </section>
               </div>
             </div>
           )}

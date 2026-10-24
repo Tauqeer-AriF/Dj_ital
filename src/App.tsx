@@ -169,6 +169,33 @@ function AppContent() {
   }, [refreshData]);
 
   useEffect(() => {
+    if (window.location.pathname.replace(/\/+$/, '') === '/admin') return;
+
+    let sessionId: string;
+    try {
+      const storedSessionId = window.sessionStorage.getItem('djital_analytics_session_id');
+      sessionId = storedSessionId || window.crypto.randomUUID();
+      if (!storedSessionId) {
+        window.sessionStorage.setItem('djital_analytics_session_id', sessionId);
+      }
+    } catch (error) {
+      console.warn('Site visit was not recorded because browser session storage is unavailable:', error);
+      return;
+    }
+
+    void fetch('/api/analytics/visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+      keepalive: true,
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Visit tracking failed (HTTP ${response.status}).`);
+    }).catch((error: unknown) => {
+      console.warn('Could not record site visit:', error);
+    });
+  }, []);
+
+  useEffect(() => {
     if (!data) return;
     const { profile } = data;
     applyThemeToDOM(
