@@ -34,6 +34,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
   const [activeEmbedUrl, setActiveEmbedUrl] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const audioPlayerRef = useRef<HTMLDivElement>(null);
 
   const styles = ['All', 'Jungle / D&B', 'Reggae / Dub', 'Oldskool Tape Archive', 'UK Bass'];
 
@@ -67,6 +68,11 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
     if (selectedStyle === 'All') return true;
     return m.style === selectedStyle;
   });
+
+  useEffect(() => {
+    if (!activeEmbedUrl) return;
+    audioPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [activeEmbedUrl]);
 
   return (
     <section id="audio-media" className="py-24 md:py-32 lg:py-36 border-t border-neutral-200 dark:border-white/10 relative transition-colors duration-200">
@@ -196,7 +202,10 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
 
               {/* Active Audio Embed Player Modal / Top Bar */}
               {activeEmbedUrl && (
-                <div className="mb-8 p-5 rounded sound-cabinet border border-amber-500/60 dark:border-amber-400/50 text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300">
+                <div
+                  ref={audioPlayerRef}
+                  className="mb-8 p-5 rounded sound-cabinet border border-amber-500/60 dark:border-amber-400/50 text-neutral-900 dark:text-white shadow-2xl relative z-10 animate-in slide-in-from-top-4 duration-300"
+                >
                   <div className="flex items-center justify-between mb-3 text-xs font-industrial">
                     <div className="flex items-center gap-2">
                       <Radio className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
