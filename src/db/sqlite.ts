@@ -108,6 +108,8 @@ export interface ReleaseData {
   stream_url: string;
   description: string;
   is_featured: number;
+  album_cover_url: string;
+  video_url: string;
 }
 
 export interface GalleryData {
@@ -458,8 +460,19 @@ export function ensureSchemaMigrations(db: Database) {
       CREATE TABLE IF NOT EXISTS deleted_media_urls (url TEXT PRIMARY KEY, deleted_at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS _system_meta (key TEXT PRIMARY KEY, value TEXT);
     `);
+
+    const releasesTable = db.exec('PRAGMA table_info(releases)');
+    if (releasesTable.length > 0) {
+      const columns = new Set(releasesTable[0].values.map((column) => String(column[1])));
+      if (!columns.has('album_cover_url')) {
+        db.run("ALTER TABLE releases ADD COLUMN album_cover_url TEXT NOT NULL DEFAULT ''");
+      }
+      if (!columns.has('video_url')) {
+        db.run("ALTER TABLE releases ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
+      }
+    }
   } catch (e) {
-    console.warn('Migration note:', e);
+    console.error('Could not migrate release media fields:', e);
   }
 }
 
@@ -826,8 +839,8 @@ export async function getReleases(): Promise<ReleaseData[]> {
 export async function createRelease(data: Partial<ReleaseData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO releases (title, release_year, label, catalog_number, format, bpm, audio_theme, stream_url, description, is_featured)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO releases (title, release_year, label, catalog_number, format, bpm, audio_theme, stream_url, description, is_featured, album_cover_url, video_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title || 'Untitled Dubplate',
       data.release_year || new Date().getFullYear(),
@@ -839,6 +852,8 @@ export async function createRelease(data: Partial<ReleaseData>): Promise<number>
       data.stream_url || '',
       data.description || '',
       data.is_featured ? 1 : 0,
+      data.album_cover_url || '',
+      data.video_url || '',
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');

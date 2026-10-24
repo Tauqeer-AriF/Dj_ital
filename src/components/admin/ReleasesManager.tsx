@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Plus, X, Loader2, Upload, FolderArchive, Video, Music } from 'lucide-react';
 import { ReleaseData, createRelease, updateRelease, deleteRelease } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
+import { ImageInput } from './ImageInput';
+import { MediaPickerModal } from './MediaPickerModal';
+import { uploadMediaFileToServer } from '../../utils/mediaUpload';
 import { useToast } from '../../context/ToastContext';
 import { useSaving } from '../../context/SavingContext';
 import { ComponentLoadingOverlay } from './ComponentLoadingOverlay';
@@ -17,8 +20,12 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [isVideoPickerOpen, setIsVideoPickerOpen] = useState(false);
+  const [isAudioPickerOpen, setIsAudioPickerOpen] = useState(false);
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -28,9 +35,11 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
     format: '12" Vinyl / Digital',
     bpm: 168,
     audio_theme: '',
-    stream_url: 'https://djital.me',
+    stream_url: '',
     description: '',
     is_featured: 0,
+    album_cover_url: '',
+    video_url: '',
   });
 
   const openCreateModal = () => {
@@ -43,9 +52,11 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       format: '12" Vinyl / Digital',
       bpm: 168,
       audio_theme: 'Heavyweight sub-bass roller with timestretched jungle breakbeats.',
-      stream_url: 'https://djital.me',
+      stream_url: '',
       description: '',
       is_featured: 1,
+      album_cover_url: '',
+      video_url: '',
     });
     setIsModalOpen(true);
   };
@@ -63,8 +74,29 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       stream_url: rel.stream_url || '',
       description: rel.description || '',
       is_featured: rel.is_featured,
+      album_cover_url: rel.album_cover_url || '',
+      video_url: rel.video_url || '',
     });
     setIsModalOpen(true);
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingVideo(true);
+      const result = await uploadMediaFileToServer(file, undefined, undefined, {
+        category: 'Videos',
+        source: 'Release Video Upload',
+      });
+      setFormData((current) => ({ ...current, video_url: result.url }));
+      showSuccess('Video Uploaded', `${file.name} is ready to attach to this release.`);
+    } catch (error) {
+      showError('Video Upload Failed', error instanceof Error ? error.message : 'Could not upload the video.');
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,6 +190,23 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
               <p className="text-xs text-neutral-700 dark:text-neutral-300 line-clamp-2">
                 {rel.description}
               </p>
+              {(rel.album_cover_url || rel.video_url) && (
+                <div className="flex items-center gap-3 pt-2">
+                  {rel.album_cover_url && (
+                    <img
+                      src={rel.album_cover_url}
+                      alt={`${rel.title} album cover`}
+                      className="h-14 w-14 rounded border border-neutral-200 dark:border-white/10 object-cover"
+                    />
+                  )}
+                  {rel.video_url && (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase text-amber-600 dark:text-amber-400">
+                      <Video className="h-3.5 w-3.5" />
+                      Video attached
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pt-3 border-t border-neutral-100 dark:border-white/10 flex items-center justify-between">
@@ -284,6 +333,30 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
               </div>
 
               <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                  Audio URL <span className="font-normal text-neutral-500">(used by the cover play button)</span>
+                </label>
+                <input
+                  type="url"
+                  value={formData.stream_url || ''}
+                  onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
+                  placeholder="https://... (direct audio file or supported audio stream)"
+                  className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsAudioPickerOpen(true)}
+                  className="flex items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200 dark:hover:bg-white/20"
+                >
+                  <Music className="h-3.5 w-3.5 text-amber-500" />
+                  Choose Audio from Media Library
+                </button>
+                <p className="text-[11px] text-neutral-500">
+                  Optional. Add a playable audio URL; the album cover play button uses this field. Video clips are configured separately below.
+                </p>
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Historical & Liner Notes</label>
                 <textarea
                   rows={3}
@@ -292,6 +365,54 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   placeholder="Details on production, hardware samplers, release context..."
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Album Cover</label>
+                <ImageInput
+                  value={formData.album_cover_url || ''}
+                  onChange={(url) => setFormData({ ...formData, album_cover_url: url })}
+                  aspectRatio="square"
+                  helperText="Upload artwork, select it from the Media Library, or paste an image URL."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">Video Clip</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsVideoPickerOpen(true)}
+                    className="flex items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200 dark:hover:bg-white/20"
+                  >
+                    <FolderArchive className="h-3.5 w-3.5 text-amber-500" />
+                    Choose from Library
+                  </button>
+                  <input
+                    ref={videoFileInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => videoFileInputRef.current?.click()}
+                    disabled={isUploadingVideo}
+                    className="flex items-center gap-1.5 rounded bg-amber-400 px-3 py-2 text-xs font-bold text-neutral-950 hover:bg-amber-300 disabled:opacity-50"
+                  >
+                    {isUploadingVideo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {isUploadingVideo ? 'Uploading...' : 'Upload Video'}
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={formData.video_url || ''}
+                  onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                  placeholder="Paste a YouTube, Vimeo, or video file URL"
+                  className="w-full rounded border border-neutral-300 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-900 focus:border-amber-500 focus:outline-none dark:border-white/10 dark:bg-neutral-950 dark:text-white"
+                />
+                <p className="text-[11px] text-neutral-500">Optional. Accepts uploaded video files and YouTube or Vimeo URLs.</p>
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-3 border-t border-neutral-200 dark:border-white/10">
@@ -322,6 +443,30 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
           </div>
         </div>
       )}
+
+      <MediaPickerModal
+        isOpen={isAudioPickerOpen}
+        onClose={() => setIsAudioPickerOpen(false)}
+        onSelect={(url) => {
+          setFormData((current) => ({ ...current, stream_url: url }));
+          setIsAudioPickerOpen(false);
+        }}
+        filterType="audio"
+        title="Select Release Audio"
+        selectedUrl={formData.stream_url}
+      />
+
+      <MediaPickerModal
+        isOpen={isVideoPickerOpen}
+        onClose={() => setIsVideoPickerOpen(false)}
+        onSelect={(url) => {
+          setFormData((current) => ({ ...current, video_url: url }));
+          setIsVideoPickerOpen(false);
+        }}
+        filterType="video"
+        title="Select Release Video"
+        selectedUrl={formData.video_url}
+      />
 
       {/* Action Confirmation Modal */}
       <ConfirmModal

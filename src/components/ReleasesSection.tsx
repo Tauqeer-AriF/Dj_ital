@@ -1,8 +1,9 @@
 import React from 'react';
-import { Play, Pause, Disc3, Radio, Music, ExternalLink } from 'lucide-react';
+import { Play, Pause, Radio, Music, ExternalLink, Video, X } from 'lucide-react';
 import { ReleaseData } from '../db/sqlite';
 import { ActiveTrack } from '../types';
 import { ScrollReveal } from './ScrollReveal';
+import { extractYouTubeEmbedUrl, isVideoFile } from './DocumentarySection';
 
 interface ReleasesSectionProps {
   releases: ReleaseData[];
@@ -24,6 +25,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
   signatureBpm = 164,
 }) => {
   const activeLogo = logoUrl || '/images/vital_fest_logo.png';
+  const [activeVideoRelease, setActiveVideoRelease] = React.useState<ReleaseData | null>(null);
   return (
     <section id="releases" className="py-24 md:py-32 lg:py-36 border-t border-neutral-200 dark:border-white/10 relative transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -75,31 +77,39 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                     <div className="flex items-start justify-between gap-4">
                       {/* Vinyl Sleeve & Rotating Dubplate Preview */}
                       <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded bg-neutral-950 border border-neutral-300 dark:border-white/15 p-1 flex items-center justify-center shrink-0 shadow-lg overflow-hidden group/disc transition-transform ${trackActiveAndPlaying ? 'scale-105 animate-subwoofer' : 'group-hover/disc:scale-105'}`}>
-                        {/* Realistic Vinyl Grooves */}
-                        <div
-                          className={`w-full h-full rounded-full relative flex items-center justify-center shadow-inner ${
-                            trackActiveAndPlaying ? 'animate-spin-vinyl' : ''
-                          }`}
-                          style={{
-                            background: `
-                              radial-gradient(circle, #1c1c20 0%, #1c1c20 28%, #141416 29%, #141416 35%, 
-                              #25252b 36%, #141416 48%, #2a2a32 49%, #141416 65%, 
-                              #202025 66%, #101012 85%, #202025 86%, #0a0a0c 100%)
-                            `,
-                          }}
-                        >
-                          {/* Center Vinyl Label with Vital Fest Logo */}
-                          <div className="w-8 h-8 rounded-full bg-neutral-900 border border-amber-400/50 flex items-center justify-center p-0.5 text-center shadow-inner">
-                            <img
-                              src={activeLogo}
-                              alt="Vital Fest"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
-                              }}
-                              className="w-5 h-5 object-contain"
-                            />
+                        {rel.album_cover_url ? (
+                          <img
+                            src={rel.album_cover_url}
+                            alt={`${rel.title} album cover`}
+                            className="w-full h-full rounded object-cover"
+                          />
+                        ) : (
+                          /* Realistic Vinyl Grooves */
+                          <div
+                            className={`w-full h-full rounded-full relative flex items-center justify-center shadow-inner ${
+                              trackActiveAndPlaying ? 'animate-spin-vinyl' : ''
+                            }`}
+                            style={{
+                              background: `
+                                radial-gradient(circle, #1c1c20 0%, #1c1c20 28%, #141416 29%, #141416 35%, 
+                                #25252b 36%, #141416 48%, #2a2a32 49%, #141416 65%, 
+                                #202025 66%, #101012 85%, #202025 86%, #0a0a0c 100%)
+                              `,
+                            }}
+                          >
+                            {/* Center Vinyl Label with Vital Fest Logo */}
+                            <div className="w-8 h-8 rounded-full bg-neutral-900 border border-amber-400/50 flex items-center justify-center p-0.5 text-center shadow-inner">
+                              <img
+                                src={activeLogo}
+                                alt="Vital Fest"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/images/vital_fest_logo.png';
+                                }}
+                                className="w-5 h-5 object-contain"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Play trigger overlay on vinyl */}
                         <button
@@ -110,7 +120,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                               onPlayTrack(rel);
                             }
                           }}
-                          className={`hardware-btn absolute inset-0 m-auto w-10 h-10 rounded flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                          className={`absolute inset-0 m-auto w-10 h-10 rounded flex items-center justify-center shadow-lg transition-all cursor-pointer ${
                             trackActiveAndPlaying
                               ? 'bg-amber-400 text-neutral-950 scale-105 shadow-amber-400/50'
                               : 'bg-black/85 hover:bg-amber-400 text-white hover:text-neutral-950 hover:scale-105'
@@ -157,6 +167,16 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                         <span className="leading-snug break-words font-industrial font-bold uppercase text-[11px] tracking-wide">{rel.audio_theme}</span>
                       </div>
                     )}
+                    {rel.video_url && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveVideoRelease(rel)}
+                        className="inline-flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-industrial font-black uppercase tracking-wider text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-300"
+                      >
+                        <Video className="h-4 w-4" />
+                        Watch Video Clip
+                      </button>
+                    )}
                   </div>
 
                   {/* Footer status bar */}
@@ -200,6 +220,68 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
         </div>
 
       </div>
+
+      {activeVideoRelease && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${activeVideoRelease.title} video`}
+          onClick={() => setActiveVideoRelease(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="relative flex w-full max-w-[calc(100vw-1.5rem)] sm:max-w-4xl max-h-[calc(100vh-1.5rem)] flex-col overflow-hidden rounded sound-cabinet border border-neutral-200 dark:border-white/20 bg-white dark:bg-neutral-950 shadow-2xl"
+          >
+            <div className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 px-3 py-2.5 text-neutral-900 dark:text-white sm:px-6 sm:py-4">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Video className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="min-w-0 flex-1 truncate text-xs font-display font-black uppercase tracking-wide sm:text-sm">
+                  {activeVideoRelease.title}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveVideoRelease(null)}
+                aria-label="Close video"
+                className="shrink-0 rounded p-1.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-950 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </div>
+            <div className="relative aspect-video w-full shrink-0 bg-black">
+              {isVideoFile(activeVideoRelease.video_url) ? (
+                <video
+                  src={activeVideoRelease.video_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="h-full w-full object-contain"
+                />
+              ) : extractYouTubeEmbedUrl(activeVideoRelease.video_url) ? (
+                <iframe
+                  src={extractYouTubeEmbedUrl(activeVideoRelease.video_url) || undefined}
+                  title={activeVideoRelease.title}
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center p-4 text-center text-white">
+                  <a
+                    href={activeVideoRelease.video_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-bold text-amber-300 underline underline-offset-4"
+                  >
+                    Open video in a new tab
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
