@@ -257,6 +257,23 @@ export interface AdminAuthInfo {
   lastLoginAt: string;
 }
 
+export interface SeoSettingsData {
+  id: number;
+  site_title: string;
+  meta_description: string;
+  meta_keywords: string;
+  canonical_url: string;
+  og_image_url: string;
+  og_type: string;
+  twitter_handle: string;
+  robots_index: string;
+  author_name: string;
+  structured_data_enabled: number;
+  google_site_verification: string;
+  bing_site_verification: string;
+  updated_at?: string;
+}
+
 export interface HeritageSettingsData {
   id: number;
   badge_text: string;
@@ -479,6 +496,50 @@ export function ensureSchemaMigrations(db: Database) {
       if (!columns.has('cover_image_url')) {
         db.run("ALTER TABLE audio_mixes ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT ''");
       }
+    }
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS seo_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        site_title TEXT NOT NULL DEFAULT 'DJ Ital Official | Jungle & D&B Pioneer & Vital Fest',
+        meta_description TEXT NOT NULL DEFAULT 'Official archive and booking portal for UK jungle pioneer DJ Ital (Kool FM 94.5, Vital Fest, and V&A East exhibition honouree). Explore live dubplates, audio sets, event dates, and festival bookings.',
+        meta_keywords TEXT NOT NULL DEFAULT 'DJ Ital, UK Jungle, Drum and Bass, D&B, Kool FM 94.5, Vital Fest, Dubplate, Sound System Culture, Dubplate Mastery, London DJ booking, 164 BPM, V&A Museum Music',
+        canonical_url TEXT NOT NULL DEFAULT '',
+        og_image_url TEXT NOT NULL DEFAULT '/images/dj_ital_hero_1790112374509.jpg',
+        og_type TEXT NOT NULL DEFAULT 'website',
+        twitter_handle TEXT NOT NULL DEFAULT '@djital',
+        robots_index TEXT NOT NULL DEFAULT 'index, follow',
+        author_name TEXT NOT NULL DEFAULT 'DJ Ital',
+        structured_data_enabled INTEGER NOT NULL DEFAULT 1,
+        google_site_verification TEXT NOT NULL DEFAULT '',
+        bing_site_verification TEXT NOT NULL DEFAULT '',
+        updated_at TEXT
+      );
+    `);
+
+    const seoCheck = db.exec('SELECT COUNT(*) FROM seo_settings WHERE id = 1');
+    if (!seoCheck.length || !seoCheck[0].values.length || Number(seoCheck[0].values[0][0]) === 0) {
+      db.run(`
+        INSERT OR IGNORE INTO seo_settings (
+          id, site_title, meta_description, meta_keywords, canonical_url,
+          og_image_url, og_type, twitter_handle, robots_index, author_name,
+          structured_data_enabled, google_site_verification, bing_site_verification
+        ) VALUES (
+          1,
+          'DJ Ital Official | Jungle & D&B Pioneer & Vital Fest',
+          'Official archive and booking portal for UK jungle pioneer DJ Ital (Kool FM 94.5, Vital Fest, and V&A East exhibition honouree). Explore live dubplates, audio sets, event dates, and festival bookings.',
+          'DJ Ital, UK Jungle, Drum and Bass, D&B, Kool FM 94.5, Vital Fest, Dubplate, Sound System Culture, Dubplate Mastery, London DJ booking, 164 BPM, V&A Museum Music',
+          '',
+          '/images/dj_ital_hero_1790112374509.jpg',
+          'website',
+          '@djital',
+          'index, follow',
+          'DJ Ital',
+          1,
+          '',
+          ''
+        )
+      `);
     }
   } catch (e) {
     console.error('Could not migrate release media fields:', e);
@@ -1817,4 +1878,73 @@ export const getMediaLibraryItems = getMediaLibrary;
 
 export async function trackMediaUpload(item: Partial<MediaLibraryItem>): Promise<number> {
   return await createMediaLibraryItem(item);
+}
+
+// ---------------------------------------------------------------------------
+// SEO Settings
+// ---------------------------------------------------------------------------
+
+export async function getSeoSettings(): Promise<SeoSettingsData> {
+  const db = await initDatabase();
+  const res = db.exec('SELECT * FROM seo_settings WHERE id = 1');
+  if (res.length > 0 && res[0].values.length > 0) {
+    const cols = res[0].columns;
+    const vals = res[0].values[0];
+    const obj: any = {};
+    cols.forEach((c, idx) => {
+      obj[c] = vals[idx];
+    });
+    return obj as SeoSettingsData;
+  }
+  return {
+    id: 1,
+    site_title: 'DJ Ital Official | Jungle & D&B Pioneer & Vital Fest',
+    meta_description:
+      'Official archive and booking portal for UK jungle pioneer DJ Ital (Kool FM 94.5, Vital Fest, and V&A East exhibition honouree). Explore live dubplates, audio sets, event dates, and festival bookings.',
+    meta_keywords:
+      'DJ Ital, UK Jungle, Drum and Bass, D&B, Kool FM 94.5, Vital Fest, Dubplate, Sound System Culture, Dubplate Mastery, London DJ booking, 164 BPM, V&A Museum Music',
+    canonical_url: '',
+    og_image_url: '/images/dj_ital_hero_1790112374509.jpg',
+    og_type: 'website',
+    twitter_handle: '@djital',
+    robots_index: 'index, follow',
+    author_name: 'DJ Ital',
+    structured_data_enabled: 1,
+    google_site_verification: '',
+    bing_site_verification: '',
+  };
+}
+
+export async function updateSeoSettings(data: Partial<SeoSettingsData>): Promise<void> {
+  const db = await initDatabase();
+  const entries = Object.entries(data).filter(([k]) => k !== 'id');
+  if (entries.length === 0) return;
+
+  const setClauses = entries.map(([k]) => `${k} = ?`).join(', ');
+  const values = entries.map(([, v]) => (v === undefined ? null : v));
+
+  db.run(`UPDATE seo_settings SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE id = 1`, values);
+  await saveDatabaseToServer();
+}
+
+export async function resetSeoSettings(): Promise<void> {
+  const db = await initDatabase();
+  db.run(`
+    UPDATE seo_settings SET
+      site_title = 'DJ Ital Official | Jungle & D&B Pioneer & Vital Fest',
+      meta_description = 'Official archive and booking portal for UK jungle pioneer DJ Ital (Kool FM 94.5, Vital Fest, and V&A East exhibition honouree). Explore live dubplates, audio sets, event dates, and festival bookings.',
+      meta_keywords = 'DJ Ital, UK Jungle, Drum and Bass, D&B, Kool FM 94.5, Vital Fest, Dubplate, Sound System Culture, Dubplate Mastery, London DJ booking, 164 BPM, V&A Museum Music',
+      canonical_url = '',
+      og_image_url = '/images/dj_ital_hero_1790112374509.jpg',
+      og_type = 'website',
+      twitter_handle = '@djital',
+      robots_index = 'index, follow',
+      author_name = 'DJ Ital',
+      structured_data_enabled = 1,
+      google_site_verification = '',
+      bing_site_verification = '',
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+  `);
+  await saveDatabaseToServer();
 }

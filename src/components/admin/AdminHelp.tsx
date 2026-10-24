@@ -817,9 +817,47 @@ export const AdminHelp: React.FC<{ onNavigateTab?: (tab: string) => void }> = ({
       ),
     },
     {
+      id: 'seo_management',
+      tabKey: 'seo',
+      title: '17. SEO & Search Engine Optimization',
+      badge: 'TRAFFIC & DISCOVERY',
+      badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+      icon: <Search className="w-4 h-4 text-emerald-500" />,
+      summary: 'Manage Google search results, social sharing link cards, XML sitemaps, robots.txt, and Schema.org rich snippets.',
+      content: (
+        <div className="space-y-4 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
+          <p>
+            The dedicated <strong>SEO &amp; Search Engine</strong> tab gives you full control over how DJ Ital appears in Google, Bing, WhatsApp, Twitter/X, and social messengers:
+          </p>
+
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li><strong>Page Title &amp; Meta Description:</strong> Customize browser headlines and snippet summaries with real-time character count guidance.</li>
+            <li><strong>Live Google &amp; Social Simulator:</strong> Preview how search snippets look on Desktop, Mobile, and social link cards before saving.</li>
+            <li><strong>Open Graph Image (`og:image`):</strong> Set the high-resolution 1200×630 image displayed when people share sound sets or dubplate links.</li>
+            <li><strong>Auto-Generated XML Sitemap:</strong> Search engines automatically index all archive sections via <code className="font-mono text-xs">/sitemap.xml</code>.</li>
+            <li><strong>Schema.org Structured Data:</strong> Automatically publishes <code className="font-mono text-xs">MusicGroup</code> and <code className="font-mono text-xs">Person</code> graph markup for Google Knowledge Panels and Tour Events.</li>
+          </ul>
+
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[11px] text-neutral-500 font-mono">Managed via: SEO &amp; Search Engine tab</span>
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('seo')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-industrial text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+              >
+                <span>Open SEO Manager</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
       id: 'sqlite_console',
       tabKey: 'sqlite',
-      title: '17. Direct SQLite Query Console (Power Tool)',
+      title: '18. Direct SQLite Query Console (Power Tool)',
       badge: 'DEVELOPER TOOL',
       badgeColor: 'bg-neutral-500/20 text-neutral-700 dark:text-neutral-300 border-neutral-500/30',
       icon: <Database className="w-4 h-4 text-neutral-400" />,

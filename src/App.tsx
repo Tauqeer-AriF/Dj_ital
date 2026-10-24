@@ -9,6 +9,7 @@ import {
   getHeritageFullData,
   getProfile,
   getReleases,
+  getSeoSettings,
   getSiteMedia,
   getStats,
   getTestimonials,
@@ -24,6 +25,7 @@ import {
   type HeritageFullData,
   type ProfileData,
   type ReleaseData,
+  type SeoSettingsData,
   type SiteMediaSlot,
   type StatData,
   type TestimonialData,
@@ -48,6 +50,7 @@ import { AudioMixesGallery } from './components/AudioMixesGallery';
 import { VitalFestEvents } from './components/VitalFestEvents';
 import { VitalFestMerchNewsletter } from './components/VitalFestMerchNewsletter';
 import { AppLoader } from './components/AppLoader';
+import { SEOHead } from './components/SEOHead';
 import { AdminEntryConfirmModal } from './components/admin/AdminEntryConfirmModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { SavingProvider } from './context/SavingContext';
@@ -71,6 +74,7 @@ interface AppData {
   venueLogos: VenueLogoData[];
   bookings: BookingData[];
   heritage: HeritageFullData;
+  seoSettings?: SeoSettingsData;
 }
 
 function hasAdminSession() {
@@ -121,6 +125,7 @@ function AppContent() {
         venueLogos,
         bookings,
         heritage,
+        seoSettings,
       ] = await Promise.all([
         getProfile(),
         getStats(),
@@ -136,6 +141,7 @@ function AppContent() {
         getVenueLogos(),
         getBookings(),
         getHeritageFullData(),
+        getSeoSettings().catch(() => null),
       ]);
 
       setData({
@@ -153,6 +159,7 @@ function AppContent() {
         venueLogos,
         bookings,
         heritage,
+        seoSettings: seoSettings || undefined,
       });
       hasLoadedData.current = true;
     } catch (error) {
@@ -330,6 +337,12 @@ function AppContent() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-neutral-50 text-neutral-950 transition-colors dark:bg-neutral-950 dark:text-white">
+      <SEOHead
+        seoSettings={data.seoSettings}
+        profile={data.profile}
+        events={data.events}
+        releases={data.releases}
+      />
       <DynamicBackground
         style={data.profile.bg_style}
         speed={data.profile.bg_speed}

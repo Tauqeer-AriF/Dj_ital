@@ -906,6 +906,66 @@ app.get('/api/audio-proxy', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
+// SEO Engine: Dynamic Robots.txt and Sitemap.xml
+// ---------------------------------------------------------------------------
+app.get('/robots.txt', (req: Request, res: Response) => {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const protocol = typeof forwardedProto === 'string' ? forwardedProto.split(',')[0].trim() : req.protocol || 'https';
+  const host = req.get('host') || 'localhost:3000';
+  const baseUrl = `${protocol}://${host}`;
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: ${baseUrl}/sitemap.xml
+`);
+});
+
+app.get('/sitemap.xml', (req: Request, res: Response) => {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const protocol = typeof forwardedProto === 'string' ? forwardedProto.split(',')[0].trim() : req.protocol || 'https';
+  const host = req.get('host') || 'localhost:3000';
+  const baseUrl = `${protocol}://${host}`;
+  const today = new Date().toISOString().split('T')[0];
+
+  const sections = [
+    { path: '', priority: '1.0', changefreq: 'daily' },
+    { path: '#releases', priority: '0.9', changefreq: 'weekly' },
+    { path: '#mixes', priority: '0.8', changefreq: 'weekly' },
+    { path: '#events', priority: '0.8', changefreq: 'daily' },
+    { path: '#heritage', priority: '0.7', changefreq: 'monthly' },
+    { path: '#documentary', priority: '0.7', changefreq: 'monthly' },
+    { path: '#gallery', priority: '0.6', changefreq: 'weekly' },
+    { path: '#epk', priority: '0.6', changefreq: 'monthly' },
+    { path: '#booking', priority: '0.8', changefreq: 'monthly' },
+  ];
+
+  const urlsXml = sections
+    .map(
+      (sec) => `  <url>
+    <loc>${baseUrl}/${sec.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${sec.changefreq}</changefreq>
+    <priority>${sec.priority}</priority>
+  </url>`
+    )
+    .join('\n');
+
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urlsXml}
+</urlset>`;
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(sitemapXml);
+});
+
+// ---------------------------------------------------------------------------
 // Server Initialization with Vite Middleware (Dev) or Static (Prod)
 // ---------------------------------------------------------------------------
 async function startServer() {

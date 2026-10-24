@@ -22,6 +22,7 @@ import {
   Video,
   HelpCircle,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -50,6 +51,7 @@ import { SecurityManager } from './SecurityManager';
 import { HeritageManager } from './HeritageManager';
 import { DocumentaryManager } from './DocumentaryManager';
 import { BackupRestoreManager } from './BackupRestoreManager';
+import { SeoManager } from './SeoManager';
 import { AdminHelp } from './AdminHelp';
 import { REMEMBERED_AUTH_KEY } from './AdminEntryConfirmModal';
 
@@ -68,6 +70,7 @@ interface AdminDashboardProps {
 type TabType =
   | 'analytics'
   | 'security'
+  | 'seo'
   | 'backup_restore'
   | 'storage'
   | 'heritage'
@@ -269,6 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'seo', label: 'SEO & Search Engine', icon: <Globe className="w-4 h-4" /> },
     { id: 'help', label: 'Admin Help & Guide', icon: <HelpCircle className="w-4 h-4" /> },
     { id: 'security', label: 'Security & Password', icon: <KeyRound className="w-4 h-4" /> },
     { id: 'backup_restore', label: 'Backup & Restore', icon: <RotateCcw className="w-4 h-4" /> },
@@ -731,6 +735,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'help' && (
             <AdminHelp onNavigateTab={(tab) => setActiveTab(tab as TabType)} />
           )}
+          {activeTab === 'seo' && <SeoManager onRefresh={onRefreshData} />}
           {activeTab === 'security' && <SecurityManager />}
           {(activeTab === 'backup_restore' || activeTab === 'storage') && (
             <BackupRestoreManager onRefresh={onRefreshData} />
