@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Image as ImageIcon, X, Maximize2, MapPin, ChevronDown, Filter, Check, Play, Film, Video } from 'lucide-react';
+import { X, Maximize2, MapPin, ChevronDown, Filter, Check, Play, Film, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GalleryData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../utils/imageOptimization';
@@ -10,7 +10,9 @@ interface GallerySectionProps {
 }
 
 export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
+  const ITEMS_PER_PAGE = 6;
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [currentPage, setCurrentPage] = useState(1);
   const [lightboxItem, setLightboxItem] = useState<GalleryData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -25,6 +27,14 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
     if (selectedCategory === 'All') return true;
     return item.category === selectedCategory;
   });
+  const totalPages = Math.ceil(filteredGallery.length / ITEMS_PER_PAGE);
+  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const pageStartIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const visibleGallery = filteredGallery.slice(pageStartIndex, pageStartIndex + ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (currentPage !== safeCurrentPage) setCurrentPage(safeCurrentPage);
+  }, [currentPage, safeCurrentPage]);
 
   const getCategoryCount = (cat: string) => {
     if (cat === 'All') return gallery.length;
@@ -145,6 +155,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                         aria-selected={isSelected}
                         onClick={() => {
                           setSelectedCategory(cat);
+                          setCurrentPage(1);
                           setIsDropdownOpen(false);
                         }}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs font-industrial font-bold uppercase tracking-wider transition-all cursor-pointer text-left ${
@@ -181,7 +192,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
 
         {/* Gallery Bento Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGallery.map((item, index) => {
+          {visibleGallery.map((item, index) => {
             const isSpan2 = index % 5 === 0 && index !== 0;
             const imgUrl = normalizeImageUrl(item.image_url);
 
@@ -272,6 +283,42 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
             );
           })}
         </div>
+
+        {totalPages > 1 && (
+          <nav
+            aria-label="Gallery pagination"
+            className="mt-8 flex flex-col items-center justify-between gap-4 sm:flex-row"
+          >
+            <p className="text-xs font-industrial font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+              Showing {pageStartIndex + 1}–{Math.min(pageStartIndex + ITEMS_PER_PAGE, filteredGallery.length)} of {filteredGallery.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={safeCurrentPage === 1}
+                aria-label="Previous gallery page"
+                className="inline-flex items-center gap-1 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-800 transition-colors hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:text-amber-300"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </button>
+              <span aria-live="polite" className="min-w-16 text-center text-xs font-industrial font-bold text-neutral-700 dark:text-neutral-200">
+                Page {safeCurrentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={safeCurrentPage === totalPages}
+                aria-label="Next gallery page"
+                className="inline-flex items-center gap-1 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-800 transition-colors hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:text-amber-300"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </nav>
+        )}
 
       </div>
 
