@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Maximize2, MapPin, ChevronDown, Filter, Check, Play, Film, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Maximize2, MapPin, ChevronDown, Filter, Check, Play, Film, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import { GalleryData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../utils/imageOptimization';
@@ -7,9 +7,11 @@ import { isVideoFile } from './DocumentarySection';
 
 interface GallerySectionProps {
   gallery: GalleryData[];
+  isVideoLooping: boolean;
+  onToggleVideoLoop: () => void;
 }
 
-export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
+export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideoLooping, onToggleVideoLoop }) => {
   const ITEMS_PER_PAGE = 6;
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -348,6 +350,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                   controls
                   autoPlay
                   playsInline
+                  loop={isVideoLooping}
                   className="max-h-full max-w-full object-contain"
                 />
               ) : (
@@ -361,6 +364,24 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery }) => {
                 />
               )}
             </div>
+            {isVideoFile(lightboxItem.image_url) && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={onToggleVideoLoop}
+                  aria-label={isVideoLooping ? 'Turn video repeat off' : 'Repeat this video'}
+                  aria-pressed={isVideoLooping}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-xs font-industrial font-bold uppercase transition-colors ${
+                    isVideoLooping
+                      ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                      : 'border-neutral-300 text-neutral-700 hover:border-amber-400 dark:border-white/15 dark:text-neutral-300 dark:hover:text-amber-300'
+                  }`}
+                >
+                  <Repeat className="h-4 w-4" />
+                  {isVideoLooping ? 'Repeat On' : 'Repeat Video'}
+                </button>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-neutral-900 dark:text-white pt-2 border-t border-neutral-200 dark:border-white/10">
               <div className="space-y-1">

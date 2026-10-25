@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Film, Youtube, Clock, Tag, ExternalLink, X } from 'lucide-react';
+import { Play, Film, Youtube, Clock, Tag, ExternalLink, X, Repeat } from 'lucide-react';
 import { DocumentaryData, DocumentarySettingsData } from '../db/sqlite';
 import { normalizeImageUrl } from '../utils/imageOptimization';
 
@@ -11,6 +11,19 @@ export function isVideoFile(url: string | null | undefined): boolean {
   } catch {
     return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url);
   }
+}
+
+export function getLoopingVideoEmbedUrl(url: string | null | undefined, loop: boolean): string | null {
+  const embedUrl = extractYouTubeEmbedUrl(url);
+  if (!embedUrl) return null;
+
+  const parsed = new URL(embedUrl);
+  if (parsed.hostname === 'www.youtube.com') {
+    const videoId = parsed.pathname.split('/').filter(Boolean).pop();
+    if (loop && videoId) parsed.searchParams.set('playlist', videoId);
+  }
+  parsed.searchParams.set('loop', loop ? '1' : '0');
+  return parsed.toString();
 }
 
 export function extractYouTubeEmbedUrl(url: string | null | undefined): string | null {
@@ -43,10 +56,20 @@ export interface DocumentarySectionProps {
   settings: DocumentarySettingsData;
   episodes: DocumentaryData[];
   isLivePreview?: boolean;
+  isVideoLooping?: boolean;
+  onToggleVideoLoop?: () => void;
 }
 
-export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings, episodes }) => {
+export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
+  settings,
+  episodes,
+  isVideoLooping: controlledVideoLooping,
+  onToggleVideoLoop: controlledToggleVideoLoop,
+}) => {
   const [activeEpisode, setActiveEpisode] = useState<DocumentaryData | null>(null);
+  const [localVideoLooping, setLocalVideoLooping] = useState(false);
+  const isVideoLooping = controlledVideoLooping ?? localVideoLooping;
+  const onToggleVideoLoop = controlledToggleVideoLoop ?? (() => setLocalVideoLooping((looping) => !looping));
 
   useEffect(() => {
     if (!activeEpisode) return;
@@ -217,11 +240,12 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
                   controls
                   autoPlay
                   playsInline
+                  loop={isVideoLooping}
                   className="h-full w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeEpisode.youtube_url) ? (
                 <iframe
-                  src={extractYouTubeEmbedUrl(activeEpisode.youtube_url)!}
+                  src={getLoopingVideoEmbedUrl(activeEpisode.youtube_url, isVideoLooping) || undefined}
                   title={activeEpisode.title}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -245,6 +269,24 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({ settings
                 </div>
               )}
             </div>
+            {(isVideoFile(activeEpisode.youtube_url) || extractYouTubeEmbedUrl(activeEpisode.youtube_url)) && (
+              <div className="flex justify-end border-t border-neutral-200 bg-neutral-100 p-2 dark:border-white/10 dark:bg-white/5">
+                <button
+                  type="button"
+                  onClick={onToggleVideoLoop}
+                  aria-label={isVideoLooping ? 'Turn video repeat off' : 'Repeat this video'}
+                  aria-pressed={isVideoLooping}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-xs font-industrial font-bold uppercase transition-colors ${
+                    isVideoLooping
+                      ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                      : 'border-neutral-300 text-neutral-700 hover:border-amber-400 dark:border-white/15 dark:text-neutral-300 dark:hover:text-amber-300'
+                  }`}
+                >
+                  <Repeat className="h-4 w-4" />
+                  {isVideoLooping ? 'Repeat On' : 'Repeat Video'}
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body

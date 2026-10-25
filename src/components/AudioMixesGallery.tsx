@@ -14,13 +14,15 @@ import {
 import { AudioMixData, VideoData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
 import { FALLBACK_IMAGE, normalizeImageUrl } from '../utils/imageOptimization';
-import { isVideoFile, extractYouTubeEmbedUrl } from './DocumentarySection';
+import { isVideoFile, extractYouTubeEmbedUrl, getLoopingVideoEmbedUrl } from './DocumentarySection';
 
 interface AudioMixesGalleryProps {
   mixes: AudioMixData[];
   videos: VideoData[];
   isLooping: boolean;
   onToggleLoop: () => void;
+  isVideoLooping: boolean;
+  onToggleVideoLoop: () => void;
 }
 
 export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
@@ -28,6 +30,8 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
   videos,
   isLooping,
   onToggleLoop,
+  isVideoLooping,
+  onToggleVideoLoop,
 }) => {
   const [selectedStyle, setSelectedStyle] = useState<string>('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -535,11 +539,12 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                   controls
                   autoPlay
                   playsInline
+                  loop={isVideoLooping}
                   className="w-full h-full object-contain"
                 />
               ) : (
                 <iframe
-                  src={extractYouTubeEmbedUrl(activeVideo.video_url) || undefined}
+                  src={getLoopingVideoEmbedUrl(activeVideo.video_url, isVideoLooping) || undefined}
                   title={activeVideo.title}
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -547,6 +552,24 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                 />
               )}
             </div>
+            {(isVideoFile(activeVideo.video_url) || extractYouTubeEmbedUrl(activeVideo.video_url)) && (
+              <div className="flex justify-end border-t border-neutral-200 bg-neutral-100 p-2 dark:border-white/10 dark:bg-white/5">
+                <button
+                  type="button"
+                  onClick={onToggleVideoLoop}
+                  aria-label={isVideoLooping ? 'Turn video repeat off' : 'Repeat this video'}
+                  aria-pressed={isVideoLooping}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-xs font-industrial font-bold uppercase transition-colors ${
+                    isVideoLooping
+                      ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                      : 'border-neutral-300 text-neutral-700 hover:border-amber-400 dark:border-white/15 dark:text-neutral-300 dark:hover:text-amber-300'
+                  }`}
+                >
+                  <Repeat className="h-4 w-4" />
+                  {isVideoLooping ? 'Repeat On' : 'Repeat Video'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -92,6 +92,7 @@ function AppContent() {
   const [activeTrack, setActiveTrack] = useState<ActiveTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
+  const [isVideoLooping, setIsVideoLooping] = useState(false);
   const [isEpkOpen, setIsEpkOpen] = useState(false);
   const [isAdminRoute, setIsAdminRoute] = useState(
     () => window.location.pathname.replace(/\/+$/, '') === '/admin'
@@ -374,6 +375,8 @@ function AppContent() {
             videos={data.videos}
             isLooping={isLooping}
             onToggleLoop={() => setIsLooping((looping) => !looping)}
+            isVideoLooping={isVideoLooping}
+            onToggleVideoLoop={() => setIsVideoLooping((looping) => !looping)}
           />
           <ReleasesSection
             releases={data.releases}
@@ -383,6 +386,8 @@ function AppContent() {
             onTogglePlay={() => setIsPlaying((playing) => !playing)}
             logoUrl={data.profile.logo_url}
             signatureBpm={data.profile.signature_bpm}
+            isVideoLooping={isVideoLooping}
+            onToggleVideoLoop={() => setIsVideoLooping((looping) => !looping)}
           />
           <HeritageVaSection
             settings={data.heritage.settings}
@@ -393,8 +398,14 @@ function AppContent() {
           <DocumentarySection
             settings={data.documentarySettings}
             episodes={data.documentaries}
+            isVideoLooping={isVideoLooping}
+            onToggleVideoLoop={() => setIsVideoLooping((looping) => !looping)}
           />
-          <GallerySection gallery={data.gallery} />
+          <GallerySection
+            gallery={data.gallery}
+            isVideoLooping={isVideoLooping}
+            onToggleVideoLoop={() => setIsVideoLooping((looping) => !looping)}
+          />
           <VitalFestMerchNewsletter profile={data.profile} />
           <BookingFormSection
             profile={data.profile}

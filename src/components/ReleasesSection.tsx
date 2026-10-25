@@ -1,9 +1,9 @@
 import React from 'react';
-import { Play, Pause, Radio, Music, ExternalLink, Video, X } from 'lucide-react';
+import { Play, Pause, Radio, Music, ExternalLink, Video, X, Repeat } from 'lucide-react';
 import { ReleaseData } from '../db/sqlite';
 import { ActiveTrack } from '../types';
 import { ScrollReveal } from './ScrollReveal';
-import { extractYouTubeEmbedUrl, isVideoFile } from './DocumentarySection';
+import { extractYouTubeEmbedUrl, getLoopingVideoEmbedUrl, isVideoFile } from './DocumentarySection';
 
 interface ReleasesSectionProps {
   releases: ReleaseData[];
@@ -13,6 +13,8 @@ interface ReleasesSectionProps {
   onTogglePlay: () => void;
   logoUrl?: string;
   signatureBpm?: number;
+  isVideoLooping: boolean;
+  onToggleVideoLoop: () => void;
 }
 
 export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
@@ -23,6 +25,8 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
   onTogglePlay,
   logoUrl,
   signatureBpm = 164,
+  isVideoLooping,
+  onToggleVideoLoop,
 }) => {
   const activeLogo = logoUrl || '/images/vital_fest_logo.png';
   const [activeVideoRelease, setActiveVideoRelease] = React.useState<ReleaseData | null>(null);
@@ -256,11 +260,12 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                   controls
                   autoPlay
                   playsInline
+                  loop={isVideoLooping}
                   className="h-full w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeVideoRelease.video_url) ? (
                 <iframe
-                  src={extractYouTubeEmbedUrl(activeVideoRelease.video_url) || undefined}
+                  src={getLoopingVideoEmbedUrl(activeVideoRelease.video_url, isVideoLooping) || undefined}
                   title={activeVideoRelease.title}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -279,6 +284,24 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                 </div>
               )}
             </div>
+            {(isVideoFile(activeVideoRelease.video_url) || extractYouTubeEmbedUrl(activeVideoRelease.video_url)) && (
+              <div className="flex justify-end border-t border-neutral-200 bg-neutral-100 p-2 dark:border-white/10 dark:bg-white/5">
+                <button
+                  type="button"
+                  onClick={onToggleVideoLoop}
+                  aria-label={isVideoLooping ? 'Turn video repeat off' : 'Repeat this video'}
+                  aria-pressed={isVideoLooping}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-xs font-industrial font-bold uppercase transition-colors ${
+                    isVideoLooping
+                      ? 'border-amber-500 bg-amber-400/20 text-amber-700 dark:text-amber-300'
+                      : 'border-neutral-300 text-neutral-700 hover:border-amber-400 dark:border-white/15 dark:text-neutral-300 dark:hover:text-amber-300'
+                  }`}
+                >
+                  <Repeat className="h-4 w-4" />
+                  {isVideoLooping ? 'Repeat On' : 'Repeat Video'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
