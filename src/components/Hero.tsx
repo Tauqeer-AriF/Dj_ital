@@ -62,6 +62,12 @@ export const Hero: React.FC<HeroProps> = ({
   const signatureBpm = profile?.signature_bpm || 164;
   const brandSlogan = profile?.brand_slogan || 'DjItal 164bpm';
   const logoSrc = profile?.logo_url || profile?.epk_logo_png || '/images/vital_fest_logo.png';
+  const displayedStats = stats.filter(
+    (stat) =>
+      !['VITAL FEST EDITIONS HOSTED', 'ORIGINAL PIRATE RADIO SHOWS'].includes(
+        stat.label.toUpperCase()
+      )
+  );
 
   return (
     <section className="relative overflow-hidden pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 transition-colors duration-200">
@@ -423,8 +429,8 @@ export const Hero: React.FC<HeroProps> = ({
 
             {/* Metrics Strip */}
             <ScrollReveal variant="fade-up" delay={250}>
-              <div className="pt-6 border-t border-neutral-200 dark:border-white/15 grid grid-cols-4 gap-6">
-                {stats.map((s, idx) => (
+              <div className="pt-6 border-t border-neutral-200 dark:border-white/15 grid grid-cols-2 gap-6 max-w-xs">
+                {displayedStats.map((s, idx) => (
                   <div key={s.id} className="space-y-1 relative">
                     {idx > 0 && (
                       <div className="block absolute -left-3 top-2 bottom-2 w-px bg-neutral-300 dark:border-white/15" />
