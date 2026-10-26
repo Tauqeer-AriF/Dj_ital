@@ -285,9 +285,21 @@ export const SocialProofManager: React.FC<SocialProofManagerProps> = ({ onRefres
                 <p className="text-xs text-neutral-700 dark:text-neutral-300 italic leading-relaxed">
                   "{t.quote}"
                 </p>
-                <div className="pt-2 border-t border-neutral-100 dark:border-white/10 text-xs">
-                  <div className="font-bold text-neutral-900 dark:text-white">{t.author_name}</div>
-                  <div className="text-[11px] font-mono text-neutral-500">{t.role_venue}</div>
+                <div className="pt-2 border-t border-neutral-100 dark:border-white/10 text-xs flex items-center gap-2.5">
+                  {t.avatar_url ? (
+                    <img
+                      src={t.avatar_url}
+                      alt={t.author_name}
+                      className="w-9 h-9 rounded-full object-cover shrink-0 border border-amber-400/30 bg-neutral-100 dark:bg-neutral-800"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <div className="font-bold text-neutral-900 dark:text-white truncate">{t.author_name}</div>
+                    <div className="text-[11px] font-mono text-neutral-500 truncate">{t.role_venue}</div>
+                  </div>
                 </div>
               </div>
 

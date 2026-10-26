@@ -257,12 +257,24 @@ export const VitalFestEvents: React.FC<VitalFestEventsProps> = ({
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-neutral-200 dark:border-white/10 font-industrial">
-                      <div className="text-xs font-black uppercase text-neutral-950 dark:text-white">
-                        {t.author_name}
-                      </div>
-                      <div className="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
-                        {t.role_venue}
+                    <div className="pt-3 border-t border-neutral-200 dark:border-white/10 flex items-center gap-3 font-industrial">
+                      {t.avatar_url ? (
+                        <img
+                          src={t.avatar_url}
+                          alt={t.author_name}
+                          className="w-10 h-10 rounded-full object-cover shrink-0 border border-amber-400/40 shadow-sm bg-neutral-100 dark:bg-neutral-800"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <div className="text-xs font-black uppercase text-neutral-950 dark:text-white truncate">
+                          {t.author_name}
+                        </div>
+                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider truncate">
+                          {t.role_venue}
+                        </div>
                       </div>
                     </div>
                   </div>
