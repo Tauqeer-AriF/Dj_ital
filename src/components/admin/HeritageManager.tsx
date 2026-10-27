@@ -741,6 +741,17 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
             </div>
 
             <div>
+              <ImageInput
+                label="Exhibition Image Insert"
+                helperText="The image displayed in the left side of the museum exhibition photo."
+                value={settings.va_overlay_image || ''}
+                defaultUrl={DEFAULT_HERITAGE_SETTINGS.va_overlay_image}
+                onChange={(url) => handleSettingsFieldChange('va_overlay_image', url)}
+                aspectRatio="portrait"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300 uppercase mb-1">
                 Image Alt Accessibility Text
               </label>

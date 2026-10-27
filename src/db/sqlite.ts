@@ -281,6 +281,7 @@ export interface HeritageSettingsData {
   heading: string;
   description: string;
   va_image: string;
+  va_overlay_image: string;
   va_image_alt: string;
   plaque_title: string;
   plaque_tag: string;
@@ -334,6 +335,7 @@ export const DEFAULT_HERITAGE_SETTINGS: HeritageSettingsData = {
   description:
     'Documenting over three decades of pirate radio engineering, dubplate cutting, and sound system culture that shaped modern electronic music.',
   va_image: '/images/va_museum_exhibition_1790112416279.jpg',
+  va_overlay_image: '/images/kool_fm_vintage_1790112400005.jpg',
   va_image_alt: 'V&A East Museum Exhibition - UK Underground Music Heritage featuring DJ Ital',
   plaque_title: 'V&A EAST CULTURAL RECOGNITION',
   plaque_tag: 'EXHIBITION ARCHIVE',
@@ -495,6 +497,14 @@ export function ensureSchemaMigrations(db: Database) {
       const columns = new Set(audioMixesTable[0].values.map((column) => String(column[1])));
       if (!columns.has('cover_image_url')) {
         db.run("ALTER TABLE audio_mixes ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT ''");
+      }
+    }
+
+    const heritageSettingsTable = db.exec('PRAGMA table_info(heritage_settings)');
+    if (heritageSettingsTable.length > 0) {
+      const columns = new Set(heritageSettingsTable[0].values.map((column) => String(column[1])));
+      if (!columns.has('va_overlay_image')) {
+        db.run("ALTER TABLE heritage_settings ADD COLUMN va_overlay_image TEXT NOT NULL DEFAULT '/images/kool_fm_vintage_1790112400005.jpg'");
       }
     }
 

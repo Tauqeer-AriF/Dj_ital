@@ -65,9 +65,14 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
               {settings.plaque_title}
             </h3>
 
-            <p className="text-neutral-700 dark:text-neutral-300 text-sm sm:text-base leading-relaxed">
-              {settings.plaque_description}
-            </p>
+            <div className="text-neutral-700 dark:text-neutral-300 text-sm sm:text-base leading-relaxed">
+              <img
+                src={normalizeImageUrl(settings.va_overlay_image || '/images/kool_fm_vintage_1790112400005.jpg')}
+                alt=""
+                className="float-right ml-5 mb-3 w-28 sm:w-32 h-auto rounded-lg border border-neutral-200 dark:border-white/10 shadow-lg"
+              />
+              <p>{settings.plaque_description}</p>
+            </div>
 
             <div className="p-4 rounded-xl bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 space-y-1">
               <div className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
