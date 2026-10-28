@@ -272,7 +272,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                     </div>
 
                   </div>
-                  <div className="p-5 space-y-2 text-white">
+                  <div className="p-5 space-y-2 text-neutral-900 dark:text-white">
                     <div className="flex flex-wrap items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
                       <span className="sound-tag flex items-center gap-1.5">
                         {isVideoFile(item.image_url) && <Film className="w-3.5 h-3.5" />}
@@ -280,7 +280,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                       </span>
                       <span>{item.year}</span>
                       {item.location && (
-                        <span className="flex items-center gap-1 text-white font-medium">
+                        <span className="flex items-center gap-1 text-neutral-700 dark:text-white font-medium">
                           <MapPin className="w-3 h-3 text-amber-400" />
                           <span>{item.location}</span>
                         </span>
