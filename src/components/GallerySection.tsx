@@ -18,6 +18,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
   const [lightboxItem, setLightboxItem] = useState<GalleryData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const galleryGridRef = useRef<HTMLDivElement>(null);
 
   const categories = useMemo(() => {
     const defaultCats = ['All', 'Vital Fest', 'Kool FM Archive', 'V&A Museum', 'Studio', 'Video Clips'];
@@ -40,6 +41,13 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
     const currentIndex = lightboxIndex >= 0 ? lightboxIndex : 0;
     const nextIndex = (currentIndex + direction + filteredGallery.length) % filteredGallery.length;
     setLightboxItem(filteredGallery[nextIndex]);
+  };
+
+  const changeGalleryPage = (page: number) => {
+    setCurrentPage(page);
+    requestAnimationFrame(() => {
+      galleryGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   useEffect(() => {
@@ -209,7 +217,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
         </ScrollReveal>
 
         {/* Gallery Bento Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div ref={galleryGridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleGallery.map((item, index) => {
             const isSpan2 = index % 5 === 0 && index !== 0;
             const imgUrl = normalizeImageUrl(item.image_url);
@@ -299,7 +307,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                onClick={() => changeGalleryPage(Math.max(safeCurrentPage - 1, 1))}
                 disabled={safeCurrentPage === 1}
                 aria-label="Previous gallery page"
                 className="inline-flex items-center gap-1 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-800 transition-colors hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:text-amber-300"
@@ -312,7 +320,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
               </span>
               <button
                 type="button"
-                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                onClick={() => changeGalleryPage(Math.min(safeCurrentPage + 1, totalPages))}
                 disabled={safeCurrentPage === totalPages}
                 aria-label="Next gallery page"
                 className="inline-flex items-center gap-1 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-800 transition-colors hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:text-amber-300"
