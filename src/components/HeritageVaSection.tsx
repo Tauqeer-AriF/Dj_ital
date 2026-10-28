@@ -90,17 +90,18 @@ export const HeritageVaSection: React.FC<HeritageVaSectionProps> = ({
           </div>
 
           <div className="lg:col-span-6">
-            <div className="relative rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 aspect-[4/3] bg-neutral-200 dark:bg-neutral-900 shadow-2xl group">
-              <img
-                src={normalizeImageUrl(settings.va_image)}
-                alt={settings.va_image_alt || 'V&A East Exhibition'}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/va_museum_exhibition_1790112416279.jpg';
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 text-xs font-mono text-white bg-black/70 backdrop-blur-md p-3 rounded border border-white/10">
+            <div className="rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 bg-neutral-200 dark:bg-neutral-900 shadow-2xl">
+              <div className="aspect-[4/3] overflow-hidden group">
+                <img
+                  src={normalizeImageUrl(settings.va_image)}
+                  alt={settings.va_image_alt || 'V&A East Exhibition'}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/images/va_museum_exhibition_1790112416279.jpg';
+                  }}
+                />
+              </div>
+              <div className="p-3 text-xs font-mono text-neutral-700 dark:text-white bg-white dark:bg-neutral-900">
                 {settings.va_image_alt || 'Victoria & Albert East Museum Collection'}
               </div>
             </div>

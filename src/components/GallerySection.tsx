@@ -33,6 +33,14 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
   const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
   const pageStartIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
   const visibleGallery = filteredGallery.slice(pageStartIndex, pageStartIndex + ITEMS_PER_PAGE);
+  const lightboxIndex = lightboxItem ? filteredGallery.findIndex((item) => item.id === lightboxItem.id) : -1;
+
+  const moveLightbox = (direction: -1 | 1) => {
+    if (!lightboxItem || filteredGallery.length < 2) return;
+    const currentIndex = lightboxIndex >= 0 ? lightboxIndex : 0;
+    const nextIndex = (currentIndex + direction + filteredGallery.length) % filteredGallery.length;
+    setLightboxItem(filteredGallery[nextIndex]);
+  };
 
   useEffect(() => {
     if (currentPage !== safeCurrentPage) setCurrentPage(safeCurrentPage);
@@ -58,19 +66,27 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
     };
   }, [isDropdownOpen]);
 
-  // Handle ESC key to close lightbox and dropdown
+  // Handle lightbox and dropdown keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setLightboxItem(null);
         setIsDropdownOpen(false);
       }
+      if (lightboxItem && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveLightbox(-1);
+      }
+      if (lightboxItem && e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveLightbox(1);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [lightboxItem, filteredGallery, lightboxIndex]);
 
   return (
     <section id="gallery" className="py-24 md:py-32 lg:py-36 border-t border-neutral-200 dark:border-white/10 relative transition-colors duration-200">
@@ -239,9 +255,6 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                       />
                     )}
 
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity pointer-events-none" />
-
                     {/* Hover focus frame indicator */}
                     <div className="absolute inset-2 rounded border border-amber-400/0 group-hover:border-amber-400/40 transition-colors pointer-events-none" />
 
@@ -250,35 +263,24 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                       <Maximize2 className="w-4 h-4 text-amber-400" />
                     </div>
 
-                    {/* Metadata Badge */}
-                    <div className="absolute top-4 left-4 sound-tag bg-black/80 flex items-center gap-1.5">
-                      {isVideoFile(item.image_url) && <Film className="w-3.5 h-3.5 text-amber-400" />}
-                      <span>{item.category}</span>
-                    </div>
-
-                    {/* Bottom Caption */}
-                    <div className="absolute bottom-0 left-0 right-0 p-5 space-y-1.5 text-white">
-                      <div className="flex items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
-                        <span>{item.year}</span>
-                        {item.location && (
-                          <>
-                            <span aria-hidden="true" className="text-white/40">·</span>
-                            <span className="flex items-center gap-1 text-white font-medium">
-                              <MapPin className="w-3 h-3 text-amber-400" />
-                              <span>{item.location}</span>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <h3 className="font-display font-bold text-base sm:text-lg leading-snug group-hover:text-amber-300 transition-colors text-white">
-                        {item.title}
-                      </h3>
-                      {item.caption && (
-                        <p className="text-xs text-white/90 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-normal">
-                          {item.caption}
-                        </p>
+                  </div>
+                  <div className="p-5 space-y-2 text-white">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-industrial font-bold uppercase tracking-wider text-amber-400">
+                      <span className="sound-tag flex items-center gap-1.5">
+                        {isVideoFile(item.image_url) && <Film className="w-3.5 h-3.5" />}
+                        <span>{item.category}</span>
+                      </span>
+                      <span>{item.year}</span>
+                      {item.location && (
+                        <span className="flex items-center gap-1 text-white font-medium">
+                          <MapPin className="w-3 h-3 text-amber-400" />
+                          <span>{item.location}</span>
+                        </span>
                       )}
                     </div>
+                    <h3 className="font-display font-bold text-base sm:text-lg leading-snug group-hover:text-amber-300 transition-colors">
+                      {item.title}
+                    </h3>
                   </div>
                 </div>
               </ScrollReveal>
@@ -364,6 +366,28 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                 />
               )}
             </div>
+            {filteredGallery.length > 1 && (
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => moveLightbox(-1)}
+                  className="inline-flex items-center gap-1.5 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-700 transition-colors hover:border-amber-400 hover:bg-amber-400 hover:text-neutral-950 dark:border-white/15 dark:text-white cursor-pointer"
+                  aria-label="Previous gallery image"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveLightbox(1)}
+                  className="inline-flex items-center gap-1.5 rounded border border-neutral-300 px-3 py-2 text-xs font-industrial font-bold uppercase text-neutral-700 transition-colors hover:border-amber-400 hover:bg-amber-400 hover:text-neutral-950 dark:border-white/15 dark:text-white cursor-pointer"
+                  aria-label="Next gallery image"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             {isVideoFile(lightboxItem.image_url) && (
               <div className="flex justify-end">
                 <button
@@ -403,7 +427,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
               </div>
 
               <div className="text-[11px] font-industrial text-neutral-500 dark:text-white/70 shrink-0 self-start sm:self-center font-bold tracking-wider uppercase">
-                ARCHIVE REF #GAL-{lightboxItem.id}
+                {filteredGallery.length > 1 && `${Math.max(lightboxIndex, 0) + 1} / ${filteredGallery.length} · `}ARCHIVE REF #GAL-{lightboxItem.id}
               </div>
             </div>
 
