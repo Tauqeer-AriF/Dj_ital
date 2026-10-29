@@ -20,11 +20,13 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-  const [isVideoPickerOpen, setIsVideoPickerOpen] = useState(false);
   const [isAudioPickerOpen, setIsAudioPickerOpen] = useState(false);
+  const [isVideoPickerOpen, setIsVideoPickerOpen] = useState(false);
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -96,6 +98,25 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
     } finally {
       setIsUploadingVideo(false);
       if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingAudio(true);
+      const result = await uploadMediaFileToServer(file, 'audio', undefined, {
+        category: 'Audio',
+        source: 'Release Audio Upload',
+      });
+      setFormData((current) => ({ ...current, stream_url: result.url }));
+      showSuccess('Audio Uploaded', `${file.name} is ready to attach to this release.`);
+    } catch (error) {
+      showError('Audio Upload Failed', error instanceof Error ? error.message : 'Could not upload the audio file.');
+    } finally {
+      setIsUploadingAudio(false);
+      if (audioFileInputRef.current) audioFileInputRef.current.value = '';
     }
   };
 
@@ -337,22 +358,40 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   Audio URL <span className="font-normal text-neutral-500">(used by the cover play button)</span>
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   value={formData.stream_url || ''}
                   onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
-                  placeholder="https://... (direct audio file or supported audio stream)"
+                  placeholder="https://... or /uploads/audio/..."
                   className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setIsAudioPickerOpen(true)}
-                  className="flex items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200 dark:hover:bg-white/20"
-                >
-                  <Music className="h-3.5 w-3.5 text-amber-500" />
-                  Choose Audio from Media Library
-                </button>
+                <input
+                  ref={audioFileInputRef}
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+                  onChange={handleAudioUpload}
+                  className="hidden"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAudioPickerOpen(true)}
+                    className="flex items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200 dark:hover:bg-white/20"
+                  >
+                    <Music className="h-3.5 w-3.5 text-amber-500" />
+                    Choose Audio from Media Library
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => audioFileInputRef.current?.click()}
+                    disabled={isUploadingAudio}
+                    className="flex items-center gap-1.5 rounded bg-amber-400 px-3 py-2 text-xs font-bold text-neutral-950 hover:bg-amber-300 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    {isUploadingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {isUploadingAudio ? 'Uploading...' : 'Upload Audio'}
+                  </button>
+                </div>
                 <p className="text-[11px] text-neutral-500">
-                  Optional. Add a playable audio URL; the album cover play button uses this field. Video clips are configured separately below.
+                  Optional. Accepts full URLs and site-relative Media Library paths such as /uploads/audio/.... The album cover play button uses this field. Video clips are configured separately below.
                 </p>
               </div>
 

@@ -62,7 +62,10 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {releases.map((rel, idx) => {
             const isCurrent = activeTrack?.id === rel.id;
-            const trackActiveAndPlaying = isCurrent && isPlaying;
+            const hasVideo = Boolean(rel.video_url?.trim());
+            const hasAudio = Boolean(rel.stream_url?.trim());
+            const trackActiveAndPlaying = isCurrent && isPlaying && !hasVideo;
+            const hasPlayableMedia = hasVideo || hasAudio;
 
             return (
               <ScrollReveal
@@ -118,20 +121,39 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                         {/* Play trigger overlay on vinyl */}
                         <button
                           onClick={() => {
-                            if (isCurrent) {
+                            if (hasVideo) {
+                              if (isPlaying) onTogglePlay();
+                              setActiveVideoRelease(rel);
+                            } else if (!hasAudio) {
+                              return;
+                            } else if (isCurrent) {
                               onTogglePlay();
                             } else {
                               onPlayTrack(rel);
                             }
                           }}
-                          className={`absolute inset-0 m-auto w-10 h-10 rounded flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                          disabled={!hasPlayableMedia}
+                          className={`absolute inset-0 m-auto w-10 h-10 rounded flex items-center justify-center shadow-lg transition-all ${
+                            hasPlayableMedia ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                          } ${
                             trackActiveAndPlaying
                               ? 'bg-amber-400 text-neutral-950 scale-105 shadow-amber-400/50'
                               : 'bg-black/85 hover:bg-amber-400 text-white hover:text-neutral-950 hover:scale-105'
                           }`}
-                          aria-label={trackActiveAndPlaying ? 'Pause dub' : 'Play dub'}
+                          aria-label={
+                            hasVideo
+                              ? `Watch ${rel.title} video`
+                              : trackActiveAndPlaying
+                              ? `Pause ${rel.title} audio`
+                              : hasAudio
+                              ? `Play ${rel.title} audio`
+                              : 'No audio or video attached'
+                          }
+                          title={hasVideo ? 'Watch video clip' : hasAudio ? 'Play audio' : 'No audio or video attached'}
                         >
-                          {trackActiveAndPlaying ? (
+                          {hasVideo ? (
+                            <Video className="w-4 h-4" />
+                          ) : trackActiveAndPlaying ? (
                             <Pause className="w-4 h-4 fill-current" />
                           ) : (
                             <Play className="w-4 h-4 fill-current ml-0.5" />
