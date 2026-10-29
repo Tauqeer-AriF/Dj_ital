@@ -164,7 +164,7 @@ export const Hero: React.FC<HeroProps> = ({
                   <span>
                     {isLiveOnAir
                       ? (isPlaying ? '🔴 LIVE ON AIR BROADCAST' : '🔴 LIVE STREAM READY')
-                      : '⚪ STATION CURRENTLY OFF AIR'}
+                      : '⚪ SHOW CURRENTLY OFF AIR'}
                   </span>
                 </div>
 
@@ -172,7 +172,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <button
                   type="button"
                   onClick={isLiveOnAir ? onPlayTrack : () => setShowOffAirModal(true)}
-                  aria-label={isLiveOnAir ? (isPlaying ? 'Pause audio stream' : 'Play live broadcast') : 'Station currently off air'}
+                  aria-label={isLiveOnAir ? (isPlaying ? 'Pause audio stream' : 'Play live broadcast') : 'Show currently off air'}
                   className={`absolute right-4 bottom-4 w-28 h-28 rounded p-2 bg-neutral-950/95 border-2 ${
                     isLiveOnAir ? 'border-amber-400' : 'border-neutral-600'
                   } shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 group hover:scale-105 ${
@@ -227,7 +227,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="font-display font-black text-sm truncate text-neutral-900 dark:text-white">
                   {isLiveOnAir
                     ? (activeTrack?.title || (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission'))
-                    : 'Station Currently Off Air — No Live Stream Active'}
+                    : 'Show Currently Off Air — No Live Stream Active'}
                 </div>
               </div>
             </div>
@@ -389,7 +389,7 @@ export const Hero: React.FC<HeroProps> = ({
                     type="button"
                     onClick={() => setShowOffAirModal(true)}
                     className="hardware-btn group relative flex items-center gap-3.5 px-6 py-4 rounded bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-industrial font-black transition-all duration-200 shadow-md active:scale-98 cursor-pointer border border-neutral-300 dark:border-white/10"
-                    title="Station currently off air — click for broadcast info"
+                    title="Show currently off air — click for broadcast info"
                   >
                     <div className="w-8 h-8 rounded bg-neutral-300 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 flex items-center justify-center shrink-0">
                       <VolumeX className="w-4 h-4" />
@@ -400,7 +400,7 @@ export const Hero: React.FC<HeroProps> = ({
                         <span>BROADCAST: OFF AIR</span>
                       </div>
                       <div className="text-sm font-display font-black tracking-wide truncate max-w-[200px]">
-                        STATION CURRENTLY OFF AIR
+                        SHOW CURRENTLY OFF AIR
                       </div>
                     </div>
                   </button>
@@ -489,8 +489,8 @@ export const Hero: React.FC<HeroProps> = ({
                     } shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center cursor-pointer group/disc transition-transform hover:scale-105 active:scale-95 ${
                       isPlaying && isLiveOnAir ? 'shadow-[0_0_40px_rgba(251,191,36,0.7)] ring-2 ring-amber-400' : ''
                     }`}
-                    title={isLiveOnAir ? (isPlaying ? 'Click to Pause Stream' : 'Click to Tune In Live') : 'Station is currently off air'}
-                    aria-label={isLiveOnAir ? (isPlaying ? 'Pause live stream' : 'Play live broadcast') : 'Station off air'}
+                    title={isLiveOnAir ? (isPlaying ? 'Click to Pause Stream' : 'Click to Tune In Live') : 'Show is currently off air'}
+                    aria-label={isLiveOnAir ? (isPlaying ? 'Pause live stream' : 'Play live broadcast') : 'Show off air'}
                   >
                     <img
                       src={logoSrc}
@@ -535,7 +535,7 @@ export const Hero: React.FC<HeroProps> = ({
                     <span>
                       {isLiveOnAir
                         ? (isPlaying ? '🔴 LIVE ON AIR NOW' : '🔴 BROADCAST ONLINE')
-                        : '⚪ STATION CURRENTLY OFF AIR'}
+                        : '⚪ SHOW CURRENTLY OFF AIR'}
                     </span>
                   </div>
                 </div>
@@ -550,7 +550,7 @@ export const Hero: React.FC<HeroProps> = ({
                       <div className="text-sm font-display font-black text-neutral-950 dark:text-white truncate">
                         {isLiveOnAir
                           ? (activeTrack?.title || (profile?.live_show_title ? `${profile.live_show_title} (Live Feed)` : 'DJ Ital Live Stream Transmission'))
-                          : 'Station Currently Off Air — No Live Stream Active'}
+                          : 'Show Currently Off Air — No Live Stream Active'}
                       </div>
                     </div>
 
