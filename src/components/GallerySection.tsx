@@ -13,7 +13,7 @@ interface GallerySectionProps {
 
 export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideoLooping, onToggleVideoLoop }) => {
   const ITEMS_PER_PAGE = 6;
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Vital Fest');
   const [currentPage, setCurrentPage] = useState(1);
   const [lightboxItem, setLightboxItem] = useState<GalleryData | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
