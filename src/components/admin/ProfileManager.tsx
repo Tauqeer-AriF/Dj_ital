@@ -1769,7 +1769,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({ profile, onRefre
                 className="w-full px-3.5 py-2.5 rounded bg-neutral-50 border border-neutral-300 text-neutral-900 dark:bg-neutral-950 dark:border-white/10 dark:text-white focus:border-amber-500 focus:outline-none text-sm"
               />
               <p className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                Displayed on the homepage Merch card badge (above "Vital Fest Apparel & Limited Dubplates") and in the Footer store link.
+                Displayed on the homepage Merch card badge (above "Vital Fest Featured") and in the Footer store link.
               </p>
             </div>
           </div>
