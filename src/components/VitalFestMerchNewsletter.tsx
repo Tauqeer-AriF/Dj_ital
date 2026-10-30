@@ -64,18 +64,12 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
                   </h3>
 
                   <p className="text-sm text-neutral-700 dark:text-white/95 leading-relaxed max-w-md font-normal">
-                    Official heavyweight hoodies, vintage Hackney sound clash t-shirts, Technics slipmats, and limited 10" vinyl releases directly dispatched from East London.
+                    Visit our online store for branded clothing and accessories.
                   </p>
 
                   <div className="pt-2 flex flex-wrap gap-2 text-[11px] font-industrial font-bold text-neutral-800 dark:text-white uppercase tracking-wider">
                     <span className="sound-tag">
-                      100% Organic Heavy Cotton
-                    </span>
-                    <span className="sound-tag">
                       Worldwide Shipping
-                    </span>
-                    <span className="sound-tag">
-                      Limited Dubplate Pressings
                     </span>
                   </div>
                 </div>
