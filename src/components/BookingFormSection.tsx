@@ -116,7 +116,7 @@ export const BookingFormSection: React.FC<BookingFormSectionProps> = ({
                   Direct Booking & Enquiries
                 </h2>
                 <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base leading-relaxed font-normal">
-                  Available worldwide for festival headline stages, authentic vinyl dubplate heritage sessions, and Vital Fest club takeovers.
+                  Available worldwide for festival headline stages, authentic heritage sessions, and Vital Fest club takeovers.
                 </p>
               </div>
             </ScrollReveal>

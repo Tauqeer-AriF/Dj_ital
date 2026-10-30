@@ -443,12 +443,12 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
           <ScrollReveal variant="fade-up">
             <div className="space-y-3 mb-8 sm:mb-10">
               <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
-                <span className="sound-badge">[ RECAP FOOTAGE // DUBPLATE CUTTING & CLASHES ]</span>
+                <span className="sound-badge">[ RECAP FOOTAGE ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
                 <span className="text-amber-600 dark:text-amber-400 font-bold">VITAL FEST VAULT</span>
               </div>
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-neutral-950 dark:text-white uppercase tracking-tight">
-                Sound System Video Clips & Recaps
+                Rave Video Clips & Recaps
               </h3>
               <p className="text-neutral-600 dark:text-white/90 text-sm max-w-xl font-normal leading-relaxed">
                 High-definition live action footage: dubplate cutting sessions, sound system crowd reactions, and festival highlights from Vital Fest and legendary club appearances.
