@@ -60,7 +60,7 @@ export const VitalFestMerchNewsletter: React.FC<VitalFestMerchNewsletterProps> =
                   </div>
 
                   <h3 className="text-3xl sm:text-4xl font-display font-black text-neutral-950 dark:text-white uppercase tracking-tight leading-tight">
-                    Vital Fest Featured
+                    Official Vital Fest Merch Store
                   </h3>
 
                   <p className="text-sm text-neutral-700 dark:text-white/95 leading-relaxed max-w-md font-normal">
