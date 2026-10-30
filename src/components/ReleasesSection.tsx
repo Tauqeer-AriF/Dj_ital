@@ -39,7 +39,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
             <div className="space-y-3 max-w-2xl">
               <div className="flex items-center gap-2 text-xs font-industrial font-black tracking-wider uppercase text-neutral-800 dark:text-white">
-                <span className="sound-badge">[ DUBPLATE CATALOGUE // {signatureBpm || 164} BPM ACETATE ]</span>
+                <span className="sound-badge">[ ARCHIVE CATALOGUE // {signatureBpm || 164} BPM ACETATE ]</span>
                 <span aria-hidden="true" className="opacity-60">·</span>
                 <span className="text-amber-600 dark:text-amber-400 font-bold">HISTORIC PRESSINGS & VIP DUBS</span>
               </div>
@@ -47,7 +47,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                 Releases & Audio Transmissions
               </h2>
               <p className="text-neutral-700 dark:text-white/90 text-sm sm:text-base font-normal leading-relaxed">
-                From seminal 1990s pirate radio dubplates to official anniversary pressings. Click play on any release to audition the interactive Web Audio procedural jungle synthesiser.
+                From seminal 1990s pirate radio archive recordings to official releases. Click play on any release to audition the interactive Web Audio procedural jungle synthesiser.
               </p>
             </div>
 
