@@ -275,7 +275,11 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                 <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
-            <div className="relative aspect-video w-full shrink-0 bg-black">
+            <div className={`relative w-full shrink-0 bg-black flex items-center justify-center ${
+              isVideoFile(activeVideoRelease.video_url)
+                ? 'h-[min(65dvh,50rem)] max-h-[calc(100vh-12rem)]'
+                : 'aspect-video'
+            }`}>
               {isVideoFile(activeVideoRelease.video_url) ? (
                 <video
                   src={activeVideoRelease.video_url}
@@ -283,7 +287,7 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                   autoPlay
                   playsInline
                   loop={isVideoLooping}
-                  className="h-full w-full object-contain"
+                  className="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeVideoRelease.video_url) ? (
                 <iframe

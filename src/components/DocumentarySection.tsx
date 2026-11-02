@@ -233,7 +233,11 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
               </h3>
             </div>
 
-            <div className="flex aspect-video max-h-[calc(100dvh-8rem)] items-center justify-center bg-black">
+            <div className={`flex w-full items-center justify-center bg-black ${
+              isVideoFile(activeEpisode.youtube_url)
+                ? 'h-[min(65dvh,50rem)] max-h-[calc(100dvh-12rem)]'
+                : 'aspect-video max-h-[calc(100dvh-8rem)]'
+            }`}>
               {isVideoFile(activeEpisode.youtube_url) ? (
                 <video
                   src={activeEpisode.youtube_url}
@@ -245,7 +249,7 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
                   onContextMenu={(event) => {
                     if (!activeEpisode.allow_download) event.preventDefault();
                   }}
-                  className="h-full w-full object-contain"
+                  className="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeEpisode.youtube_url) ? (
                 <iframe

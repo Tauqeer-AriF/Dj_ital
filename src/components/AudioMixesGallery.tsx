@@ -578,7 +578,11 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
               </button>
             </div>
 
-            <div className="relative aspect-video w-full shrink-0 bg-black flex items-center justify-center">
+            <div className={`relative w-full shrink-0 bg-black flex items-center justify-center ${
+              isVideoFile(activeVideo.video_url)
+                ? 'h-[min(65dvh,50rem)] max-h-[calc(100dvh-12rem)]'
+                : 'aspect-video'
+            }`}>
               {isVideoFile(activeVideo.video_url) ? (
                 <video
                   src={activeVideo.video_url}
@@ -588,7 +592,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                   loop={isVideoLooping}
                   controlsList={activeVideo.allow_download ? undefined : 'nodownload'}
                   onContextMenu={(e) => { if (!activeVideo.allow_download) e.preventDefault(); }}
-                  className="w-full h-full object-contain"
+                  className="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               ) : (
                 <iframe

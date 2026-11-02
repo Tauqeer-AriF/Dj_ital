@@ -1446,7 +1446,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-neutral-950">
+            <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-neutral-950">
               {previewItem.file_type === 'image' ? (
                 <img
                   src={normalizeImageUrl(previewItem.url)}
@@ -1454,7 +1454,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                   className="max-h-[60vh] w-auto object-contain rounded shadow-2xl filter drop-shadow-lg"
                 />
               ) : previewItem.file_type === 'video' ? (
-                <div className="w-full max-w-3xl aspect-video rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl relative">
+                <div className="w-full max-w-3xl h-[min(65dvh,42rem)] max-h-[calc(90dvh-14rem)] rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 shadow-2xl relative">
                   {(previewItem.url.includes('youtube.com') || previewItem.url.includes('youtu.be') || previewItem.url.includes('vimeo.com')) ? (
                     <iframe
                       src={extractYouTubeEmbedUrl(previewItem.url) || undefined}
@@ -1471,7 +1471,7 @@ export const MediaLibraryManager: React.FC<MediaLibraryManagerProps> = ({ onRefr
                       autoPlay
                       playsInline
                       preload="metadata"
-                      className="w-full h-full object-contain"
+                      className="h-auto w-auto max-h-full max-w-full object-contain"
                     />
                   )}
                 </div>

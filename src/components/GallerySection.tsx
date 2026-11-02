@@ -353,7 +353,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
               <X className="w-5 h-5" />
             </button>
 
-            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded overflow-hidden bg-black flex items-center justify-center border border-white/10">
+            <div className={`relative w-full rounded overflow-hidden bg-black flex items-center justify-center border border-white/10 ${
+              isVideoFile(lightboxItem.image_url)
+                ? 'h-[min(65dvh,50rem)] max-h-[calc(100dvh-18rem)]'
+                : 'aspect-[16/10] sm:aspect-[16/9]'
+            }`}>
               {isVideoFile(lightboxItem.image_url) ? (
                 <video
                   src={lightboxItem.image_url}
@@ -361,7 +365,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
                   autoPlay
                   playsInline
                   loop={isVideoLooping}
-                  className="max-h-full max-w-full object-contain"
+                  className="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               ) : (
                 <img
