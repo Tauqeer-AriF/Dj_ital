@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Film, Youtube, Clock, Tag, ExternalLink, X, Repeat } from 'lucide-react';
+import { Play, Film, Youtube, Clock, Tag, ExternalLink, X, Repeat, Download } from 'lucide-react';
 import { DocumentaryData, DocumentarySettingsData } from '../db/sqlite';
 import { normalizeImageUrl } from '../utils/imageOptimization';
 
@@ -241,6 +241,10 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
                   autoPlay
                   playsInline
                   loop={isVideoLooping}
+                  controlsList={activeEpisode.allow_download ? undefined : 'nodownload'}
+                  onContextMenu={(event) => {
+                    if (!activeEpisode.allow_download) event.preventDefault();
+                  }}
                   className="h-full w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeEpisode.youtube_url) ? (
@@ -270,7 +274,17 @@ export const DocumentarySection: React.FC<DocumentarySectionProps> = ({
               )}
             </div>
             {(isVideoFile(activeEpisode.youtube_url) || extractYouTubeEmbedUrl(activeEpisode.youtube_url)) && (
-              <div className="flex justify-end border-t border-neutral-200 bg-neutral-100 p-2 dark:border-white/10 dark:bg-white/5">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-neutral-200 bg-neutral-100 p-2 dark:border-white/10 dark:bg-white/5">
+                {Boolean(activeEpisode.allow_download) && isVideoFile(activeEpisode.youtube_url) && (
+                  <a
+                    href={activeEpisode.youtube_url}
+                    download
+                    className="inline-flex items-center gap-2 rounded border border-amber-500 bg-amber-400/20 px-3 py-2 text-xs font-industrial font-bold uppercase text-amber-700 hover:bg-amber-400/30 dark:text-amber-300"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Video
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={onToggleVideoLoop}

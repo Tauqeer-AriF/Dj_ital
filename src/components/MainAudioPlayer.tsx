@@ -194,8 +194,8 @@ export const MainAudioPlayer: React.FC<MainAudioPlayerProps> = ({
     <>
       {/* Embedded Stream Modal (for SoundCloud or Mixcloud streams) */}
       {activeEmbedUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/65 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl sound-cabinet rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-neutral-950/65 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto sound-cabinet rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between text-xs font-industrial uppercase tracking-wider">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold">
                 <Radio className="w-4 h-4 animate-pulse" />

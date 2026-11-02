@@ -163,9 +163,9 @@ export const AdminEntryConfirmModal: React.FC<AdminEntryConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-2xl animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6 bg-black/85 backdrop-blur-2xl animate-in fade-in duration-200">
       <div
-        className="w-full max-w-lg rounded sound-cabinet shadow-2xl overflow-hidden transition-all text-neutral-900 dark:text-neutral-100 border border-neutral-200/80 dark:border-white/15 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent"
+        className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg rounded sound-cabinet shadow-2xl overflow-y-auto transition-all text-neutral-900 dark:text-neutral-100 border border-neutral-200/80 dark:border-white/15 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-amber-400/40 before:to-transparent"
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-portal-title"

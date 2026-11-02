@@ -337,11 +337,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
       {/* Lightbox Modal */}
       {lightboxItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-start sm:items-center overflow-y-auto p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setLightboxItem(null)}
         >
           <div
-            className="relative max-w-4xl w-full sound-cabinet rounded border border-neutral-200 dark:border-white/25 bg-white dark:bg-neutral-900 overflow-hidden shadow-2xl space-y-4 p-6 text-neutral-900 dark:text-white"
+            className="relative my-auto max-h-[calc(100dvh-2rem)] max-w-4xl w-full sound-cabinet rounded border border-neutral-200 dark:border-white/25 bg-white dark:bg-neutral-900 overflow-y-auto shadow-2xl space-y-4 p-4 sm:p-6 text-neutral-900 dark:text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -205,8 +205,8 @@ export const EventsManager: React.FC<EventsManagerProps> = ({ events, onRefresh 
 
       {/* Modal Form for Create / Edit */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/80 backdrop-blur-md">
+          <div className="relative my-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-5">
             <ComponentLoadingOverlay
               isSaving={isSaving}
               message={editingEvent ? 'Saving event changes to database...' : 'Creating event in database...'}

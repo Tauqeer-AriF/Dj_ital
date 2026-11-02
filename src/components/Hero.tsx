@@ -586,8 +586,8 @@ export const Hero: React.FC<HeroProps> = ({
 
       {/* Off Air Status Modal */}
       {showOffAirModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg sound-cabinet rounded border border-neutral-300 dark:border-white/15 p-6 shadow-2xl space-y-5 text-neutral-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto sound-cabinet rounded border border-neutral-300 dark:border-white/15 p-6 shadow-2xl space-y-5 text-neutral-900 dark:text-white">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10 text-xs font-industrial uppercase tracking-wider">
               <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-300 font-bold">
                 <span className="w-2 h-2 rounded-full bg-neutral-400" />

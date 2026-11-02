@@ -47,9 +47,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-md bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-white/10 shadow-2xl p-6 space-y-4">
+      <div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-white/10 shadow-2xl p-6 space-y-4">
         <button
           onClick={() => onCancel && onCancel()}
           disabled={busy}

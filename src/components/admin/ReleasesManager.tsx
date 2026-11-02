@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Plus, X, Loader2, Upload, FolderArchive, Video, Music } from 'lucide-react';
+import { Plus, X, Loader2, Upload, FolderArchive, Video, Music, Download, Shield } from 'lucide-react';
 import { ReleaseData, createRelease, updateRelease, deleteRelease } from '../../db/sqlite';
 import { ConfirmModal } from './ConfirmModal';
 import { ImageInput } from './ImageInput';
@@ -42,6 +42,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
     is_featured: 0,
     album_cover_url: '',
     video_url: '',
+    allow_download: 0,
   });
 
   const openCreateModal = () => {
@@ -59,6 +60,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       is_featured: 1,
       album_cover_url: '',
       video_url: '',
+      allow_download: 0,
     });
     setIsModalOpen(true);
   };
@@ -78,6 +80,7 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
       is_featured: rel.is_featured,
       album_cover_url: rel.album_cover_url || '',
       video_url: rel.video_url || '',
+      allow_download: rel.allow_download ? 1 : 0,
     });
     setIsModalOpen(true);
   };
@@ -228,6 +231,19 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   )}
                 </div>
               )}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {rel.allow_download ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-400/30">
+                    <Download className="w-3 h-3" />
+                    Downloads Enabled
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-white/10">
+                    <Shield className="w-3 h-3 text-amber-500/70" />
+                    Downloads Disabled
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="pt-3 border-t border-neutral-100 dark:border-white/10 flex items-center justify-between">
@@ -255,8 +271,8 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/80 backdrop-blur-md">
+          <div className="relative my-auto w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 rounded border border-neutral-200 dark:border-white/15 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xl space-y-4">
             <ComponentLoadingOverlay
               isSaving={isSaving}
               message={editingRelease ? 'Saving release changes...' : 'Cataloging new release...'}
@@ -393,6 +409,35 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                 <p className="text-[11px] text-neutral-500">
                   Optional. Accepts full URLs and site-relative Media Library paths such as /uploads/audio/.... The album cover play button uses this field. Video clips are configured separately below.
                 </p>
+
+                {/* Allow Audio Download Toggle */}
+                <div className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-800/50">
+                  <div className="space-y-0.5">
+                    <label className="text-xs font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5 cursor-pointer">
+                      <Download className="w-3.5 h-3.5 text-amber-500" />
+                      Allow Audio Download
+                    </label>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                      When turned off, download options are removed from the player and the stream is protected. Turn on only if listeners should be permitted to save the audio file.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.allow_download === 1}
+                    onClick={() => setFormData({ ...formData, allow_download: formData.allow_download === 1 ? 0 : 1 })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                      formData.allow_download === 1 ? 'bg-amber-400' : 'bg-neutral-300 dark:bg-neutral-700'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        formData.allow_download === 1 ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1">

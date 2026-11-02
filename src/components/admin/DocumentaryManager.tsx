@@ -25,6 +25,7 @@ import {
   Search,
   Upload,
   FolderArchive,
+  Download,
 } from 'lucide-react';
 import {
   DocumentaryData,
@@ -136,6 +137,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
     thumbnail_url: '/images/hackney_pirate_radio_1790113898507.jpg',
     action_button_text: 'WATCH ARCHIVAL TAPE',
     order_index: 1,
+    allow_download: 0,
   });
 
   // Load all documentary data from SQLite
@@ -229,6 +231,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
       thumbnail_url: '/images/dj_ital_hero_1790112374509.jpg',
       action_button_text: 'WATCH ARCHIVAL TAPE',
       order_index: episodes.length + 1,
+      allow_download: 0,
     });
     setIsModalOpen(true);
   };
@@ -247,6 +250,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
       thumbnail_url: ep.thumbnail_url || '/images/dj_ital_hero_1790112374509.jpg',
       action_button_text: ep.action_button_text || 'WATCH ARCHIVAL TAPE',
       order_index: ep.order_index ?? ep.episode_number,
+      allow_download: ep.allow_download ? 1 : 0,
     });
     setIsModalOpen(true);
   };
@@ -274,6 +278,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
             thumbnail_url: episodeForm.thumbnail_url.trim(),
             action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
             order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
+            allow_download: episodeForm.allow_download ? 1 : 0,
           });
           showSuccess('Episode Updated', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" saved.`);
         } else {
@@ -288,6 +293,7 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
             thumbnail_url: episodeForm.thumbnail_url.trim(),
             action_button_text: episodeForm.action_button_text.trim() || 'WATCH ARCHIVAL TAPE',
             order_index: Number(episodeForm.order_index) || Number(episodeForm.episode_number) || 1,
+            allow_download: episodeForm.allow_download ? 1 : 0,
           });
           showSuccess('Episode Added', `Episode ${episodeForm.episode_number}: "${episodeForm.title}" created.`);
         }
@@ -1132,6 +1138,35 @@ export const DocumentaryManager: React.FC<DocumentaryManagerProps> = ({ onRefres
                     />
                   </div>
                 )}
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-800/50 p-3">
+                <div className="space-y-0.5">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-neutral-900 dark:text-white">
+                    <Download className="h-3.5 w-3.5 text-amber-500" />
+                    Allow Video Download
+                  </label>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Enables the download option for uploaded video files. YouTube downloads remain controlled by YouTube.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Allow video download"
+                  aria-checked={episodeForm.allow_download === 1}
+                  onClick={() => setEpisodeForm((prev) => ({ ...prev, allow_download: prev.allow_download ? 0 : 1 }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    episodeForm.allow_download === 1 ? 'bg-amber-400' : 'bg-neutral-300 dark:bg-neutral-700'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      episodeForm.allow_download === 1 ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Thumbnail Image with ImageInput */}

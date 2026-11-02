@@ -10,6 +10,8 @@ import {
   ChevronDown,
   Check,
   Repeat,
+  Download,
+  Shield,
 } from 'lucide-react';
 import { AudioMixData, VideoData } from '../db/sqlite';
 import { ScrollReveal } from './ScrollReveal';
@@ -36,6 +38,7 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
   const [selectedStyle, setSelectedStyle] = useState<string>('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeEmbedUrl, setActiveEmbedUrl] = useState<string | null>(null);
+  const [activeMix, setActiveMix] = useState<AudioMixData | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const audioPlayerRef = useRef<HTMLDivElement>(null);
@@ -216,7 +219,10 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                       <span className="font-black text-amber-600 dark:text-amber-400 tracking-wider uppercase">[ SOUND SYSTEM DECK STREAMING ]</span>
                     </div>
                     <button
-                      onClick={() => setActiveEmbedUrl(null)}
+                      onClick={() => {
+                        setActiveEmbedUrl(null);
+                        setActiveMix(null);
+                      }}
                       className="p-1 rounded text-neutral-700 dark:text-white hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       <X className="w-4 h-4" />
@@ -269,7 +275,28 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                               <span>LIVE SOUND SYSTEM STREAM DECK</span>
                             </div>
                             <div className="flex w-full max-w-xl items-center gap-2">
-                              <audio controls autoPlay loop={isLooping} src={clean} className="min-w-0 flex-1" />
+                              <audio
+                                controls
+                                controlsList={activeMix?.allow_download ? undefined : 'nodownload'}
+                                onContextMenu={(e) => {
+                                  if (!activeMix?.allow_download) e.preventDefault();
+                                }}
+                                autoPlay
+                                loop={isLooping}
+                                src={clean}
+                                className="min-w-0 flex-1"
+                              />
+                              {Boolean(activeMix?.allow_download) && (
+                                <a
+                                  href={clean}
+                                  download
+                                  title="Download Recording"
+                                  aria-label="Download Recording"
+                                  className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </a>
+                              )}
                               <button
                                 type="button"
                                 onClick={onToggleLoop}
@@ -414,22 +441,41 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                         {/* Footer Actions */}
                         <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center justify-between font-industrial">
                           <button
-                            onClick={() => setActiveEmbedUrl(mix.embed_url || mix.stream_url)}
+                            onClick={() => {
+                              setActiveEmbedUrl(mix.embed_url || mix.stream_url);
+                              setActiveMix(mix);
+                            }}
                             className="hardware-btn flex items-center gap-2 px-4 py-2 rounded bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
                           >
                             <Play className="w-3.5 h-3.5 fill-current" />
                             <span>STREAM MIX</span>
                           </button>
 
-                          <a
-                            href={mix.stream_url || mix.embed_url || mix.mediafire_url || mix.rinse_fm_url || mix.dejavu_fm_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold uppercase tracking-wider transition-colors"
-                          >
-                            <span>Open on {mix.platform}</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                          {Boolean(mix.allow_download) ? (
+                            <a
+                              href={mix.stream_url || mix.embed_url}
+                              download
+                              className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 font-bold uppercase tracking-wider transition-colors"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download Audio</span>
+                            </a>
+                          ) : mix.platform && !['Direct Audio', 'Uploaded Audio'].includes(mix.platform) && !mix.embed_url?.includes('/uploads/') ? (
+                            <a
+                              href={mix.stream_url || mix.embed_url || mix.mediafire_url || mix.rinse_fm_url || mix.dejavu_fm_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-white/90 hover:text-amber-600 dark:hover:text-amber-300 font-bold uppercase tracking-wider transition-colors"
+                            >
+                              <span>Open on {mix.platform}</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400 font-mono uppercase tracking-wider">
+                              <Shield className="w-3 h-3 text-amber-500/70" />
+                              <span>Protected Stream</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </ScrollReveal>
@@ -540,6 +586,8 @@ export const AudioMixesGallery: React.FC<AudioMixesGalleryProps> = ({
                   autoPlay
                   playsInline
                   loop={isVideoLooping}
+                  controlsList={activeVideo.allow_download ? undefined : 'nodownload'}
+                  onContextMenu={(e) => { if (!activeVideo.allow_download) e.preventDefault(); }}
                   className="w-full h-full object-contain"
                 />
               ) : (

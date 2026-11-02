@@ -1174,8 +1174,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* MODAL: CREDENTIAL (CREATE / EDIT) */}
       {/* ============================================================= */}
       {isCredModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
             <ComponentLoadingOverlay isSaving={savingActive} message="Saving archival credential to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">
@@ -1291,8 +1291,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* MODAL: CHAPTER (CREATE / EDIT) */}
       {/* ============================================================= */}
       {isChapModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
             <ComponentLoadingOverlay isSaving={savingActive} message="Saving archival chapter to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">
@@ -1401,8 +1401,8 @@ export const HeritageManager: React.FC<HeritageManagerProps> = ({ onRefresh }) =
       {/* MODAL: MILESTONE (CREATE / EDIT) */}
       {/* ============================================================= */}
       {isMileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded sound-cabinet bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 shadow-2xl p-6 sm:p-7 space-y-5">
             <ComponentLoadingOverlay isSaving={savingActive} message="Saving timeline milestone to database..." />
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <h3 className="text-base font-bold font-industrial uppercase text-neutral-950 dark:text-white">

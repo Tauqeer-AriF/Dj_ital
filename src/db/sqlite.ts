@@ -110,6 +110,7 @@ export interface ReleaseData {
   is_featured: number;
   album_cover_url: string;
   video_url: string;
+  allow_download?: number;
 }
 
 export interface GalleryData {
@@ -135,6 +136,7 @@ export interface DocumentaryData {
   badge_label?: string;
   action_button_text?: string;
   order_index?: number;
+  allow_download?: number;
 }
 
 export interface DocumentarySettingsData {
@@ -199,6 +201,7 @@ export interface AudioMixData {
   rinse_fm_url?: string;
   dejavu_fm_url?: string;
   cover_image_url: string;
+  allow_download?: number;
 }
 
 export interface VideoData {
@@ -209,6 +212,7 @@ export interface VideoData {
   thumbnail_url: string;
   duration: string;
   order_index: number;
+  allow_download?: number;
 }
 
 export interface TestimonialData {
@@ -490,6 +494,9 @@ export function ensureSchemaMigrations(db: Database) {
       if (!columns.has('video_url')) {
         db.run("ALTER TABLE releases ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
       }
+      if (!columns.has('allow_download')) {
+        db.run("ALTER TABLE releases ADD COLUMN allow_download INTEGER NOT NULL DEFAULT 0");
+      }
     }
 
     const audioMixesTable = db.exec('PRAGMA table_info(audio_mixes)');
@@ -498,7 +505,28 @@ export function ensureSchemaMigrations(db: Database) {
       if (!columns.has('cover_image_url')) {
         db.run("ALTER TABLE audio_mixes ADD COLUMN cover_image_url TEXT NOT NULL DEFAULT ''");
       }
+      if (!columns.has('allow_download')) {
+        db.run("ALTER TABLE audio_mixes ADD COLUMN allow_download INTEGER NOT NULL DEFAULT 0");
+      }
     }
+
+    const videosTable = db.exec('PRAGMA table_info(videos)');
+    if (videosTable.length > 0) {
+      const columns = new Set(videosTable[0].values.map((column) => String(column[1])));
+      if (!columns.has('allow_download')) {
+        db.run("ALTER TABLE videos ADD COLUMN allow_download INTEGER NOT NULL DEFAULT 0");
+      }
+    }
+
+    const documentaryTable = db.exec('PRAGMA table_info(documentary)');
+    if (documentaryTable.length > 0) {
+      const columns = new Set(documentaryTable[0].values.map((column) => String(column[1])));
+      if (!columns.has('allow_download')) {
+        db.run("ALTER TABLE documentary ADD COLUMN allow_download INTEGER NOT NULL DEFAULT 0");
+      }
+    }
+
+    db.run("DELETE FROM stats WHERE id IN (2, 3) OR label LIKE '%Vital Fest Editions%' OR label LIKE '%Original Pirate Radio%'");
 
     const heritageSettingsTable = db.exec('PRAGMA table_info(heritage_settings)');
     if (heritageSettingsTable.length > 0) {
@@ -919,8 +947,8 @@ export async function getReleases(): Promise<ReleaseData[]> {
 export async function createRelease(data: Partial<ReleaseData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO releases (title, release_year, label, catalog_number, format, bpm, audio_theme, stream_url, description, is_featured, album_cover_url, video_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO releases (title, release_year, label, catalog_number, format, bpm, audio_theme, stream_url, description, is_featured, album_cover_url, video_url, allow_download)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title || 'Untitled Dubplate',
       data.release_year || new Date().getFullYear(),
@@ -934,6 +962,7 @@ export async function createRelease(data: Partial<ReleaseData>): Promise<number>
       data.is_featured ? 1 : 0,
       data.album_cover_url || '',
       data.video_url || '',
+      data.allow_download ? 1 : 0,
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');
@@ -1024,8 +1053,8 @@ export async function getDocumentaries(): Promise<DocumentaryData[]> {
 export async function createDocumentary(data: Partial<DocumentaryData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO documentary (episode_number, title, duration, description, youtube_url, topics, thumbnail_url, badge_label, action_button_text, order_index)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO documentary (episode_number, title, duration, description, youtube_url, topics, thumbnail_url, badge_label, action_button_text, order_index, allow_download)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.episode_number || 1,
       data.title || 'Episode',
@@ -1037,6 +1066,7 @@ export async function createDocumentary(data: Partial<DocumentaryData>): Promise
       data.badge_label || `EPISODE ${data.episode_number || 1}`,
       data.action_button_text || 'WATCH ARCHIVAL TAPE',
       data.order_index || data.episode_number || 1,
+      data.allow_download ? 1 : 0,
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');
@@ -1213,8 +1243,8 @@ export async function getAudioMixes(): Promise<AudioMixData[]> {
 export async function createAudioMix(data: Partial<AudioMixData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO audio_mixes (title, style, platform, embed_url, stream_url, duration, description, is_featured, order_index, cover_image_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO audio_mixes (title, style, platform, embed_url, stream_url, duration, description, is_featured, order_index, cover_image_url, allow_download)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title || 'Live Jungle Set',
       data.style || 'Jungle / D&B',
@@ -1226,6 +1256,7 @@ export async function createAudioMix(data: Partial<AudioMixData>): Promise<numbe
       data.is_featured ? 1 : 0,
       data.order_index || 0,
       data.cover_image_url || '',
+      data.allow_download ? 1 : 0,
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');
@@ -1265,8 +1296,8 @@ export async function getVideos(): Promise<VideoData[]> {
 export async function createVideo(data: Partial<VideoData>): Promise<number> {
   const db = await initDatabase();
   db.run(
-    `INSERT INTO videos (title, category, video_url, thumbnail_url, duration, order_index)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO videos (title, category, video_url, thumbnail_url, duration, order_index, allow_download)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title || 'Festival Video',
       data.category || 'Live Set',
@@ -1274,6 +1305,7 @@ export async function createVideo(data: Partial<VideoData>): Promise<number> {
       data.thumbnail_url || '/images/dj_ital_hero_1790112374509.jpg',
       data.duration || '12:00',
       data.order_index || 0,
+      data.allow_download ? 1 : 0,
     ]
   );
   const idRes = db.exec('SELECT last_insert_rowid() as id');
