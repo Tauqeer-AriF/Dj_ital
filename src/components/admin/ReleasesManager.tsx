@@ -415,10 +415,10 @@ export const ReleasesManager: React.FC<ReleasesManagerProps> = ({ releases, onRe
                   <div className="space-y-0.5">
                     <label className="text-xs font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5 cursor-pointer">
                       <Download className="w-3.5 h-3.5 text-amber-500" />
-                      Allow Audio Download
+                      Allow Release Downloads
                     </label>
                     <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      When turned off, download options are removed from the player and the stream is protected. Turn on only if listeners should be permitted to save the audio file.
+                      When turned off, download options are hidden in the release audio and video players. Turn on only if listeners should be permitted to save the attached media.
                     </p>
                   </div>
                   <button

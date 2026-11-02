@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Radio, Music, ExternalLink, Video, X, Repeat } from 'lucide-react';
+import { Play, Pause, Radio, Music, Video, X, Repeat } from 'lucide-react';
 import { ReleaseData } from '../db/sqlite';
 import { ActiveTrack } from '../types';
 import { ScrollReveal } from './ScrollReveal';
@@ -229,15 +229,6 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                       )}
                     </div>
 
-                    <a
-                      href={rel.stream_url || 'https://djital.me'}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group/link hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center gap-1 font-black uppercase tracking-wider shrink-0 text-[11px] sm:text-xs text-neutral-700 dark:text-white/90"
-                    >
-                      <span>Archive Catalogue</span>
-                      <ExternalLink className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
-                    </a>
                   </div>
                 </div>
               </ScrollReveal>
@@ -287,6 +278,10 @@ export const ReleasesSection: React.FC<ReleasesSectionProps> = ({
                   autoPlay
                   playsInline
                   loop={isVideoLooping}
+                  controlsList={activeVideoRelease.allow_download ? undefined : 'nodownload'}
+                  onContextMenu={(event) => {
+                    if (!activeVideoRelease.allow_download) event.preventDefault();
+                  }}
                   className="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               ) : extractYouTubeEmbedUrl(activeVideoRelease.video_url) ? (
