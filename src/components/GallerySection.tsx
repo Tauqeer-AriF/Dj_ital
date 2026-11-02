@@ -337,7 +337,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ gallery, isVideo
       {/* Lightbox Modal */}
       {lightboxItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-start sm:items-center overflow-y-auto p-4 sm:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-start justify-center sm:items-center overflow-y-auto p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setLightboxItem(null)}
         >
           <div
